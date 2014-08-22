@@ -3,5 +3,13 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    commands.cpp \
+    common.cpp
 
+HEADERS += \
+    commands.h \
+    common.h \
+    defines.h
+
+QMAKE_CXXFLAGS += -std=c++11
