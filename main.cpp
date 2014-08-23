@@ -5,6 +5,8 @@
 #include <iostream>
 #include <map>
 #include <exception>
+#include <limits>
+#include <curses.h>
 
 using namespace std;
 using namespace common;
@@ -33,15 +35,19 @@ int main(int argc, char ** argv) {
     cmds.insert(make_pair<string, Command *>("load", new CmdLoad));
     cmds.insert(make_pair<string, Command *>("default", new Command));
 
-    char c;
+//    int c;
+//    initscr();
+//    cbreak();
+//    keypad(stdscr, TRUE);
     try {
-		do{
+        do{
             cout.put('>');
         } while (!readCmd(cin, cmds, state));
-	} catch (exception e) {
-		cout << e.what() << endl;
-	}
+    } catch (exception e) {
+        printInfo(string(e.what()));
+    }
 
     cleanCommands(cmds);
+//    endwin();
 	return (0);
 }

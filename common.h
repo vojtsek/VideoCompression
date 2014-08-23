@@ -17,6 +17,8 @@ namespace common
     int checkFile(std::string &path);
     std::vector<std::string> extract(const std::string text, const std::string from, int count);
     int runExternal(std::string &o, std::string &e, const std::string &cmd, int numargs, ...);
+    void reportError(const std::string &err);
+    void printInfo(const std::string &msg);
     std::ostream &red(std::ostream &out);
     std::ostream &green(std::ostream &out);
     std::ostream &black(std::ostream &out);

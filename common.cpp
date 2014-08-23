@@ -11,9 +11,11 @@
 #include <algorithm>
 #include <stdexcept>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
+
 
 using namespace std;
 
@@ -35,19 +37,19 @@ int common::readCmd(istream &ins, map<string, Command *> &cmds, State &state) {
 
 void common::listCmds() {
     cout << "List of available commands:" << endl;
-    cout << setw(10) << "help" <<  setw(35) << "[command_name]" << endl;
-    cout << setw(10) << "show" <<  setw(35) << "parametres|jobs|neighbors" << endl;
-    cout << setw(10) << "load" <<  setw(35) << "/path/to/file" << endl;
-    cout << setw(10) << "set" <<  setw(35) << "parameter=new_value[,...]" << endl;
-    cout << setw(10) << "start" <<  setw(35) << endl;
-    cout << setw(10) << "quit" <<  setw(35) << endl;
+    show("help", "[command_name]");
+    show("show", "parametres|jobs|neighbors");
+    show("load", "/path/to/file");
+    show("set", "[parameter=new_value[,...]]");
+    show("start", "");
+    show("quit", "");
 }
 
 int common::checkFile(string &path) {
     struct stat info;
 
     if (stat (path.c_str(), &info) == -1){
-        cerr << red << "An error occured while controlling the file: " << path << defaultFg << endl;
+        common::reportError("An error occured while controlling the file: " + path);
         return (-1);
     }
     size_t pos = path.rfind('.');
@@ -58,6 +60,10 @@ int common::checkFile(string &path) {
         return (-1);
     }
     return (0);
+}
+
+void common::printInfo(const string &msg) {
+    cout << msg << endl;
 }
 
 vector<string> common::extract(const string text, const string from, int count) {
@@ -78,6 +84,10 @@ vector<string> common::extract(const string text, const string from, int count) 
     }
 
     return result;
+}
+
+void common::reportError(const string &err) {
+    cerr << red << err << defaultFg << endl;
 }
 
 int common::runExternal(string &stdo, string &stde, const string &cmd, int numargs, ...) {
@@ -108,7 +118,7 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
         close(pd_e[0]);
         dup(pd_e[1]);
         if ((execvp(cmd.c_str(), args)) == -1) {
-            cerr << red << "Error while spawning external command." << defaultFg << endl;
+            common::reportError("Error while spawning external command.");
             return (-1);
         }
         break;
@@ -124,6 +134,8 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
         close(pd_o[1]);
         close(pd_e[1]);
         stdo = stde = "";
+        int st;
+        wait(&st);
         while(read(pd_o[0], bo, 1) == 1){
             bo++;
             if(bo - buf_o > bufsize){

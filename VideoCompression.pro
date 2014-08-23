@@ -14,3 +14,5 @@ HEADERS += \
 
 QMAKE_CXXFLAGS += -std=c++11
 
+
+unix|win32: LIBS += -lcurses
