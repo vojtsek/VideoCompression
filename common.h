@@ -15,7 +15,8 @@ namespace common
     int readCmd(std::istream &ins, std::map<std::string, Command *> &cmds, State &st);
     void listCmds();
     int checkFile(std::string &path);
-    std::vector<string> extract(std::string &text, std::string &from, int count);
+    std::vector<std::string> extract(const std::string text, const std::string from, int count);
+    int runExternal(std::string &o, std::string &e, const std::string &cmd, int numargs, ...);
     std::ostream &red(std::ostream &out);
     std::ostream &green(std::ostream &out);
     std::ostream &black(std::ostream &out);

@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <stdexcept>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <string.h>
 
 using namespace std;
 
@@ -57,7 +60,7 @@ int common::checkFile(string &path) {
     return (0);
 }
 
-vector<string> common::extract(string &text, string &from, int count) {
+vector<string> common::extract(const string text, const string from, int count) {
     vector<string> result;
     string word;
     stringstream ss(text);
@@ -68,12 +71,80 @@ vector<string> common::extract(string &text, string &from, int count) {
             start = true;
         if (start) {
             result.push_back(word);
-            if (!--count)
+            --count;
+            if (!count)
                 break;
         }
     }
 
     return result;
+}
+
+int common::runExternal(string &stdo, string &stde, const string &cmd, int numargs, ...) {
+    pid_t pid;
+    int pd_o[2], pd_e[2];
+    size_t bufsize = 65536;
+    char buf_o[bufsize], buf_e[bufsize];
+    char *bo = buf_o, *be = buf_e;
+    pipe(pd_o);
+    pipe(pd_e);
+    switch (pid = fork()) {
+    case 0: {
+        va_list arg_ptr;
+        va_start (arg_ptr, numargs);
+        char *args[numargs + 1];
+        int i;
+        // TODO: safety!
+        for(i = 0; i < numargs; ++i) {
+            char *arg = va_arg(arg_ptr, char *);
+            args[i] = arg;
+        }
+        args[i] = nullptr;
+        va_end(arg_ptr);
+        close(STDOUT_FILENO);
+        close(pd_o[0]);
+        dup(pd_o[1]);
+        close(STDERR_FILENO);
+        close(pd_e[0]);
+        dup(pd_e[1]);
+        if ((execvp(cmd.c_str(), args)) == -1) {
+            cerr << red << "Error while spawning external command." << defaultFg << endl;
+            return (-1);
+        }
+        break;
+        }
+    case -1:
+        close(pd_o[0]);
+        close(pd_o[1]);
+        close(pd_e[0]);
+        close(pd_e[1]);
+        return (-1);
+        break;
+    default:
+        close(pd_o[1]);
+        close(pd_e[1]);
+        stdo = stde = "";
+        while(read(pd_o[0], bo, 1) == 1){
+            bo++;
+            if(bo - buf_o > bufsize){
+                stdo += string(buf_o);
+                bo = buf_o;
+            }
+        }
+        while(read(pd_e[0], be, 1) == 1){
+            be++;
+            if(be - buf_e > bufsize){
+                stde += string(buf_e);
+                be = buf_e;
+            }
+        }
+        stdo += string(buf_o);
+        stde += string(buf_e);
+        close(pd_o[0]);
+        close(pd_e[0]);
+        break;
+    }
+    return (0);
 }
 
 ostream &common::red(ostream &out){

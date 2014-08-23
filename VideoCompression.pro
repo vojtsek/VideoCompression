@@ -13,3 +13,4 @@ HEADERS += \
     defines.h
 
 QMAKE_CXXFLAGS += -std=c++11
+
