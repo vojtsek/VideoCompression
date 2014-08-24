@@ -10,7 +10,7 @@
 
 class State {
 public:
-    std::string fpath, codec, dir_location, extension, basename;
+    std::string fpath, codec, dir_location, extension, basename, format;
 //    in bytes
     double fsize, duration, bitrate;
     size_t secs_per_chunk, c_chunks, chunk_size;
@@ -19,6 +19,8 @@ public:
     void printState() {
         if (!fpath.empty())
             show("File:", fpath.c_str());
+        if (!codec.empty())
+            show("Codec:", codec);
         if (bitrate)
             show("Bitrate:", bitrate);
         if (duration)
@@ -29,7 +31,7 @@ public:
             show("Chunks count:", c_chunks);
         }
         if (chunk_size)
-            show("Chunk size: ", chunk_size / 1024);
+            show("Chunk size:", chunk_size / 1024);
     }
 
     void resetFileInfo() {

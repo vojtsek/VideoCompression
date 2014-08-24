@@ -1,6 +1,9 @@
 ﻿#include "commands.h"
 #include "common.h"
 #include "defines.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/filestream.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,6 +14,7 @@
 
 using namespace std;
 using namespace common;
+using namespace rapidjson;
 
 int splitVideo(State &state) {
     string out, err;
@@ -127,9 +131,12 @@ void CmdSet::execute(stringstream &ss, State &) {
 }
 
 void CmdLoad::execute(stringstream &ss, State &state){
-    string path, out, err, help;
+    string path, out, err, help, err_msg("Error loading the file");
     double duration, bitrate, fsize;
     vector<string> res;
+    Document document;
+    stringstream ssd;
+
     if (ss.good()) {
         ss >> path;
     }
@@ -145,8 +152,7 @@ void CmdLoad::execute(stringstream &ss, State &state){
     state.fpath = path;
     state.extension = getExtension(path);
     state.basename = getBasename(path);
-    cout << green << path << " loaded." << defaultFg << endl;
-    if (runExternal(out, err, "ffprobe", 5, "ffprobe", state.fpath.c_str(), "-show_format", "-print_format", "json") == -1) {
+    if (runExternal(out, err, "ffprobe", 6, "ffprobe", state.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }
@@ -158,38 +164,102 @@ void CmdLoad::execute(stringstream &ss, State &state){
     char dir_name[32];
     sprintf(dir_name, "job_%s", getTimestamp().c_str());
     state.dir_location = string(dir_name);
-    res = extract(out, "\"bit_rate\":", 2);
-    try {
-        help = res.at(1);
-        stringstream ssd(help.substr(1, help.length()));
-        ssd >> bitrate;
-        state.bitrate = bitrate / 8;
-    } catch (...) {
-        reportError("Error while getting information about file.");
-        state.resetFileInfo();
+    if(document.Parse(out.c_str()).HasParseError()) {
+        reportError(err_msg);
         return;
     }
-    res = extract(out, "\"duration\":", 2);
-    try {
-        help = res.at(1);
-        stringstream ssd(help.substr(1, help.length()));
-        ssd >> duration;
-        state.duration = duration;
-    } catch (...) {
-        reportError("Error while getting information about file.");
-        state.resetFileInfo();
+    if (!document.HasMember("format")) {
+        reportError(err_msg);
         return;
     }
-    res = extract(out, "\"size\":", 2);
-    try {
-        help = res.at(1);
-        stringstream ssd(help.substr(1, help.length()));
-        ssd >> fsize;
-        state.fsize = fsize;
-    } catch (...) {
-        reportError("Error while getting information about file.");
-        state.resetFileInfo();
+    if(!document["format"].HasMember("bit_rate")) {
+        reportError(err_msg);
+        return;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["bit_rate"].GetString());
+    ssd >> bitrate;
+    state.bitrate = bitrate / 8;
+
+    if(!document["format"].HasMember("duration")) {
+        reportError(err_msg);
+        return;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["duration"].GetString());
+    ssd >> duration;
+    state.duration = duration;
+
+    if(!document["format"].HasMember("size")) {
+        reportError(err_msg);
+        return;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["size"].GetString());
+    ssd >> fsize;
+    state.fsize = fsize;
+
+    if(!document["format"].HasMember("format_name")) {
+        reportError(err_msg);
+        return;
+    }
+    state.format = document["format"]["format_name"].GetString();
+
+
+    if(!document.HasMember("streams")) {
+        reportError(err_msg);
+        return;
+    }
+    const Value &v = document["streams"];
+    bool found = false;
+    if (!v.IsArray()) {
+        reportError("Invalid video file");
+        return;
+    }
+    for(SizeType i = 0; i < v.Size(); ++i) {
+        if (v[i].HasMember("codec_type") && (v[i]["codec_type"].GetString() == string("video"))) {
+            state.codec = v[i]["codec_name"].GetString();
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        reportError("Invalid video file");
         return;
     }
     state.secs_per_chunk = CHUNK_SIZE  / (bitrate / 8);
+    cout << green << path << " loaded." << defaultFg << endl;
+//    res = extract(out, "\"bit_rate\":", 2);
+//    try {
+//        help = res.at(1);
+//        stringstream ssd(help.substr(1, help.length()));
+//        ssd >> bitrate;
+//        state.bitrate = bitrate / 8;
+//    } catch (...) {
+//        reportError("Error while getting information about file.");
+//        state.resetFileInfo();
+//        return;
+//    }
+//    res = extract(out, "\"duration\":", 2);
+//    try {
+//        help = res.at(1);
+//        stringstream ssd(help.substr(1, help.length()));
+//        ssd >> duration;
+//        state.duration = duration;
+//    } catch (...) {
+//        reportError("Error while getting information about file.");
+//        state.resetFileInfo();
+//        return;
+//    }
+//    res = extract(out, "\"size\":", 2);
+//    try {
+//        help = res.at(1);
+//        stringstream ssd(help.substr(1, help.length()));
+//        ssd >> fsize;
+//        state.fsize = fsize;
+//    } catch (...) {
+//        reportError("Error while getting information about file.");
+//        state.resetFileInfo();
+//        return;
+//    }
 }
