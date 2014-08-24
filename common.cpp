@@ -11,7 +11,10 @@
 #include <algorithm>
 #include <stdexcept>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
@@ -45,6 +48,26 @@ void common::listCmds() {
     show("quit", "");
 }
 
+string common::getExtension(const string &str) {
+    size_t pos = str.rfind('.');
+    string extension("");
+    if (pos != string::npos)
+        extension = str.substr(pos + 1);
+    return extension;
+}
+
+string common::getBasename(const string &str) {
+    size_t pos = str.rfind('/');
+    string basename("");
+    if (pos == string::npos)
+        return string("");
+    basename = str.substr(pos + 1);
+    pos = basename.rfind('.');
+    if (pos == string::npos)
+        return basename;
+    basename = basename.substr(0, pos);
+    return basename;
+}
 int common::checkFile(string &path) {
     struct stat info;
 
@@ -52,12 +75,61 @@ int common::checkFile(string &path) {
         common::reportError("An error occured while controlling the file: " + path);
         return (-1);
     }
-    size_t pos = path.rfind('.');
-    string extension = path.substr(pos + 1);
+    string extension = getExtension(path);
+    if (extension.empty()) {
+        common::reportError("Invalid file extension.");
+        return (-1);
+    }
     vector<string> video_ext {"avi", "mkv", "ogg"};
     if (find(video_ext.begin(), video_ext.end(), extension) == video_ext.end()) {
-        cerr << red << "Unknown filename extension." << defaultFg << endl;
+        cerr << red << "Unknown file extension." << defaultFg << endl;
         return (-1);
+    }
+    return (0);
+}
+
+int common::rmrDir(const char *dir, bool recursive) {
+  DIR *d, *t;
+  struct dirent *entry;
+  char abs_fn[256];
+  d = opendir(dir);
+  if (d == NULL)
+    return (-1);
+  while ((entry = readdir(d))) {
+    if ((strcmp(entry->d_name, ".") == 0) ||
+      (strcmp(entry->d_name, "..") == 0))
+      continue;
+    sprintf(abs_fn, "%s/%s", dir, entry->d_name);
+    if ((t = opendir(abs_fn))) {
+      closedir(t);
+      if(recursive)
+        rmrDir(abs_fn, true);
+      else
+         return (-1);
+    } else {
+      if (unlink(abs_fn) == -1)
+          return (-1);
+    }
+  }
+  closedir(d);
+  rmdir(dir);
+  return (0);
+}
+
+
+int common::prepareDir(string &location) {
+    if (mkdir(location.c_str(), 0700) == -1) {
+        switch (errno) {
+        case EEXIST:
+            if (rmrDir(location.c_str(), false) == -1)
+                return (-1);
+            if (mkdir(location.c_str(), 0700) == -1)
+                return (-1);
+            break;
+        default:
+            return (-1);
+            break;
+        }
     }
     return (0);
 }
@@ -84,6 +156,12 @@ vector<string> common::extract(const string text, const string from, int count) 
     }
 
     return result;
+}
+
+string common::getTimestamp() {
+    char stamp[16];
+    sprintf(stamp, "%d", (int) time(NULL));
+    return string(stamp);
 }
 
 void common::reportError(const string &err) {
@@ -179,7 +257,23 @@ ostream &common::white(ostream &out){
     return out;
 }
 
+ostream &common::gray(ostream &out){
+    out << CSI << "01;30m";
+    return out;
+}
+
+
 ostream &common::defaultFg(ostream &out){
     out << CSI << "00;39m";
+    return out;
+}
+
+ostream &common::grayBg(ostream &out){
+    out << CSI << "01;40m";
+    return out;
+}
+
+ostream &common::defaultBg(ostream &out){
+    out << CSI << "00;49m";
     return out;
 }
