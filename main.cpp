@@ -3,6 +3,8 @@
 #include "commands.h"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <map>
 #include <exception>
 #include <limits>
@@ -12,10 +14,27 @@ using namespace std;
 using namespace common;
 
 void usage() {
-	cout << "Usage: run [port_number]" << endl;
+    printw("Usage: run [port_number]");
 }
 
-void cleanCommands(map<string, Command *> &cmds) {
+int readConfiguration(const string &cf, configuration_t &conf) {
+    ifstream ifs(cf);
+    string param, value, line;
+    while(ifs.good()) {
+        getline(ifs, line);
+        stringstream ss(line);
+        ss >> param;
+        ss >> value;
+        try {
+            conf.at(param) = value;
+        } catch (...) {
+            reportError("Unknown parameter: " + param);
+        }
+    }
+   return (0);
+}
+
+void cleanCommands(cmd_storage_t &cmds) {
     for (auto &c : cmds)
         delete c.second;
 }
@@ -26,8 +45,15 @@ int main(int argc, char ** argv) {
 		return (1);
 	}
 
-    map<string, Command *> cmds;
-    State state;
+    cmd_storage_t cmds;
+    configuration_t conf;
+    conf.insert(make_pair<string, string>("WD_PREFIX", ""));
+
+    if (readConfiguration("conf.h", conf) == -1) {
+        reportError("Error reading configuration!");
+        return (1);
+    }
+    State state(conf);
     cmds.insert(make_pair<string, Command *>("show", new CmdShow));
     cmds.insert(make_pair<string, Command *>("start", new CmdStart));
     cmds.insert(make_pair<string, Command *>("help", new CmdHelp));
@@ -36,18 +62,21 @@ int main(int argc, char ** argv) {
     cmds.insert(make_pair<string, Command *>("default", new Command));
 
 //    int c;
-//    initscr();
-//    cbreak();
-//    keypad(stdscr, TRUE);
+    initCurses();
+    char line[80];
+    stringstream ss;
     try {
         do{
-            cout.put('>');
-        } while (!readCmd(cin, cmds, state));
+            printw(">");
+            getstr(line);
+            ss.clear();
+            ss.str(line);
+        } while (!readCmd(ss, cmds, state));
     } catch (exception e) {
-        printInfo(string(e.what()));
+       printw(e.what());
     }
 
     cleanCommands(cmds);
-//    endwin();
+    endwin();
 	return (0);
 }

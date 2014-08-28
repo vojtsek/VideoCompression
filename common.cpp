@@ -17,12 +17,13 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <curses.h>
 #include <string.h>
 
 
 using namespace std;
 
-int common::readCmd(istream &ins, map<string, Command *> &cmds, State &state) {
+int common::readCmd(stringstream &ins, cmd_storage_t &cmds, State &state) {
     string line, cmd_name;
     getline(ins, line);
     stringstream ss(line);
@@ -39,7 +40,7 @@ int common::readCmd(istream &ins, map<string, Command *> &cmds, State &state) {
 }
 
 void common::listCmds() {
-    cout << "List of available commands:" << endl;
+    printw("List of available commands:\n");
     show("help", "[command_name]");
     show("show", "parametres|jobs|neighbors");
     show("load", "/path/to/file");
@@ -82,7 +83,7 @@ int common::checkFile(string &path) {
     }
     vector<string> video_ext {"avi", "mkv", "ogg"};
     if (find(video_ext.begin(), video_ext.end(), extension) == video_ext.end()) {
-        cerr << red << "Unknown file extension." << defaultFg << endl;
+        common::reportError("Unknown file extension");
         return (-1);
     }
     return (0);
@@ -134,10 +135,6 @@ int common::prepareDir(string &location) {
     return (0);
 }
 
-void common::printInfo(const string &msg) {
-    cout << msg << endl;
-}
-
 vector<string> common::extract(const string text, const string from, int count) {
     vector<string> result;
     string word;
@@ -165,7 +162,45 @@ string common::getTimestamp() {
 }
 
 void common::reportError(const string &err) {
-    cerr << red << err << defaultFg << endl;
+    attron(A_BOLD);
+    attron(COLOR_PAIR(RED));
+    printw("%s\n", err.c_str());
+    attroff(COLOR_PAIR(RED));
+    attroff(A_BOLD);
+}
+
+void common::reportSuccess(const string &msg) {
+    attron(A_BOLD);
+    attron(COLOR_PAIR(GREEN));
+    printw("%s\n", msg.c_str());
+    attroff(COLOR_PAIR(GREEN));
+    attroff(A_BOLD);
+}
+
+void common::initCurses() {
+    initscr();
+    cbreak();
+    keypad(stdscr, TRUE);
+    start_color();
+    use_default_colors();
+    init_pair(DEFAULT, -1, -1);
+    init_pair(RED, COLOR_RED, -1);
+    init_pair(GREEN, COLOR_GREEN, -1);
+    init_pair(BLUE, COLOR_BLUE, -1);
+    init_pair(YELLOWALL, COLOR_YELLOW, COLOR_YELLOW);
+}
+
+void common::printProgress(double percent) {
+    int y, x;
+    getyx(stdscr, y, x);
+    move(y, 0);
+    clrtoeol();
+    printw("(%d%%)", (int) (percent * 100));
+    attron(COLOR_PAIR(YELLOWALL));
+    for(int i = 0; i < percent * 75; ++i)
+        printw("#");
+    attroff(COLOR_PAIR(YELLOWALL));
+    refresh();
 }
 
 int common::runExternal(string &stdo, string &stde, const string &cmd, int numargs, ...) {
@@ -237,43 +272,14 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
     return (0);
 }
 
-ostream &common::red(ostream &out){
-    out << CSI << "01;31m";
-    return out;
-}
-
-ostream &common::black(ostream &out){
-    out << CSI << "00;30m";
-    return out;
-}
-
-ostream &common::green(ostream &out){
-    out << CSI << "01;32m";
-    return out;
-}
-
-ostream &common::white(ostream &out){
-    out << CSI << "01;37m";
-    return out;
-}
-
-ostream &common::gray(ostream &out){
-    out << CSI << "01;30m";
-    return out;
-}
-
-
-ostream &common::defaultFg(ostream &out){
-    out << CSI << "00;39m";
-    return out;
-}
-
-ostream &common::grayBg(ostream &out){
-    out << CSI << "01;40m";
-    return out;
-}
-
-ostream &common::defaultBg(ostream &out){
-    out << CSI << "00;49m";
-    return out;
+vector<string> common::split(const string &content, char sep) {
+    size_t pos;
+    vector<string> result;
+    string remaining(content);
+    while((pos = remaining.find(sep)) != string::npos) {
+        result.push_back(remaining.substr(0, pos));
+        remaining = remaining.substr(pos + 1, remaining.length());
+    }
+    result.push_back(remaining);
+    return result;
 }

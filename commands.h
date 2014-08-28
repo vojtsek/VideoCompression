@@ -2,10 +2,12 @@
 #include <iostream>
 #include <sstream>
 
-#include "defines.h"
-
 #ifndef COMMANDS_H
 #define COMMANDS_H
+
+#ifndef DEFINES_H
+#include "defines.h"
+#endif
 
 using namespace std;
 

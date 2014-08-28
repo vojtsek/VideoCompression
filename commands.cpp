@@ -19,7 +19,7 @@ using namespace rapidjson;
 int splitVideo(State &state) {
     string out, err;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
-    char chunk_duration[32], output[32], current[32], msg[256];
+    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH];
 
     if (prepareDir(state.dir_location) == -1) {
         reportError("Failed to create the job directory.");
@@ -27,53 +27,50 @@ int splitVideo(State &state) {
     }
     mins = state.secs_per_chunk / 60;
     secs = state.secs_per_chunk % 60;
-    sprintf(chunk_duration, "00:%02d:%02d", mins, secs);
-    cout << "Beginning to split " << state.fpath << endl;
-    for (int i = 0; i < state.c_chunks; ++i) {
+    snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
+    printw("Beginning to split %s", state.finfo.fpath.c_str());
+    for (unsigned int i = 0; i < state.c_chunks; ++i) {
+        double percent = (double) i / state.c_chunks;
+        printProgress(percent);
         elapsed = i * state.secs_per_chunk;
         hours = elapsed / 3600;
         elapsed = elapsed % 3600;
         mins = elapsed / 60;
         secs = elapsed % 60;
-        sprintf(current, "%02d:%02d:%02d", hours, mins, secs);
-        sprintf(output, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
+        snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
+        snprintf(output, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
         if (runExternal(out, err, "ffmpeg", 8, "ffmpeg",
-                    "-i", state.fpath.c_str(),
+                    "-i", state.finfo.fpath.c_str(),
                     "-ss", current,
                     "-t", chunk_duration,
                     output) == -1)
             return (-1);
         if (err.find("Conversion failed") != string::npos) {
             sprintf(msg, "%s %s %s %s %s %s %s %s\n", "ffmpeg",
-                "-i", state.fpath.c_str(),
+                "-i", state.finfo.fpath.c_str(),
                 "-ss", current,
                 "-t", chunk_duration,
                 output);
             reportError(msg);
             return (-1);
         }
-        double percent = (double) (i+1) / state.c_chunks;
-        string pretty;
-        cout << setw(74) << left;
-        for(int i = 0; i < percent * 74; ++i)
-            pretty.push_back('#');
-        cout << pretty;
-        cout << "(" << (int) (percent * 100) << "%)";
-        cout << endl;
     }
-    cout << green << state.fpath << " successfuly splitted." << defaultFg << endl;
+    printProgress(1);
+    reportSuccess("\nFile successfuly splitted.\n");
     return (0);
 }
 
 int joinVideo(State &state) {
-    string out, err, list_loc(state.dir_location + "/join_list.txt"), output(state.basename + "_output." + state.extension);
+    string out, err, list_loc(state.dir_location + "/join_list.txt"), output(state.finfo.basename + "_output." + state.finfo.extension);
     ofstream ofs(list_loc);
-    char file[128];
+    char file[BUF_LENGTH];
 
-    cout << "Beginning to join the file." << endl;
+    printw("Beginning to join the file.\n");
     for (unsigned int i = 0; i < state.c_chunks; ++i) {
-        sprintf(file, "file '%03d_splitted.avi'", i);
-        ofs << file << endl;
+        snprintf(file, BUF_LENGTH, "file '%03d_splitted.avi'", i);
+        try {
+            ofs << file << endl;
+        } catch (...) {} // TODO: handle exception
     }
     ofs.flush();
     ofs.close();
@@ -85,7 +82,7 @@ int joinVideo(State &state) {
         return (-1);
     if (err.find("failed") != string::npos)
         return (-1);
-    cout << green << "Successfuly joined, result: " << output << defaultFg << endl;
+    reportSuccess("Succesfully joined.\n");
     return (0);
 }
 
@@ -97,7 +94,6 @@ void CmdHelp::execute(stringstream &ss, State &) {
     string word;
     while (ss.good()){
         ss >> word;
-        cout << red << word << defaultFg << endl;
     }
 }
 
@@ -109,33 +105,58 @@ void CmdShow::execute(stringstream &ss, State &state) {
     } else if (what == "neighbors"){
 
     } else {
+        if (state.finfo.fpath.empty()) {
+            reportError("Please load the file first.");
+            return;
+        }
         state.printState();
     }
 }
 
 void CmdStart::execute(stringstream &, State &state) {
+    if (state.finfo.fpath.empty()) {
+        reportError("Please load the file first.");
+        return;
+    }
+    if (checkFile(state.finfo.fpath) == -1) {
+        reportError("Invalid file.");
+        return;
+    }
     state.printState();
+    printw("\nSplitting the file %s:\n", state.finfo.fpath.c_str());
+    refresh();
     if (splitVideo(state) == -1) {
         reportError("Error while splitting the video file.");
+        rmrDir(state.dir_location.c_str(), false);
         return;
     }
     if (joinVideo(state) == -1) {
         reportError("Error while joining the video file.");
+        rmrDir(state.dir_location.c_str(), false);
         return;
     }
     rmrDir(state.dir_location.c_str(), false);
 }
 
-void CmdSet::execute(stringstream &ss, State &) {
-
+void CmdSet::execute(stringstream &ss, State &state) {
+    string line;
+    vector<string> params, current;
+    while (ss.good()) {
+        getline(ss, line);
+        params = split(line, ',');
+        for (string a : params) {
+            current = split(a, '=');
+            for (string &b : current)
+                printw("%s\n", b.c_str());
+        }
+    }
 }
 
 void CmdLoad::execute(stringstream &ss, State &state){
     string path, out, err, help, err_msg("Error loading the file");
-    double duration, bitrate, fsize;
-    vector<string> res;
     Document document;
     stringstream ssd;
+    finfo_t finfo;
 
     if (ss.good()) {
         ss >> path;
@@ -149,10 +170,10 @@ void CmdLoad::execute(stringstream &ss, State &state){
         reportError("Loading the file " + path + " failed");
         return;
     }
-    state.fpath = path;
-    state.extension = getExtension(path);
-    state.basename = getBasename(path);
-    if (runExternal(out, err, "ffprobe", 6, "ffprobe", state.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+    finfo.fpath = path;
+    finfo.extension = getExtension(path);
+    finfo.basename = getBasename(path);
+    if (runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }
@@ -161,9 +182,6 @@ void CmdLoad::execute(stringstream &ss, State &state){
         state.resetFileInfo();
         return;
     }
-    char dir_name[32];
-    sprintf(dir_name, "job_%s", getTimestamp().c_str());
-    state.dir_location = string(dir_name);
     if(document.Parse(out.c_str()).HasParseError()) {
         reportError(err_msg);
         return;
@@ -178,8 +196,8 @@ void CmdLoad::execute(stringstream &ss, State &state){
     }
     ssd.clear();
     ssd.str(document["format"]["bit_rate"].GetString());
-    ssd >> bitrate;
-    state.bitrate = bitrate / 8;
+    ssd >> finfo.bitrate;
+    finfo.bitrate /= 8;
 
     if(!document["format"].HasMember("duration")) {
         reportError(err_msg);
@@ -187,8 +205,7 @@ void CmdLoad::execute(stringstream &ss, State &state){
     }
     ssd.clear();
     ssd.str(document["format"]["duration"].GetString());
-    ssd >> duration;
-    state.duration = duration;
+    ssd >> finfo.duration;
 
     if(!document["format"].HasMember("size")) {
         reportError(err_msg);
@@ -196,29 +213,27 @@ void CmdLoad::execute(stringstream &ss, State &state){
     }
     ssd.clear();
     ssd.str(document["format"]["size"].GetString());
-    ssd >> fsize;
-    state.fsize = fsize;
+    ssd >> finfo.fsize;
 
     if(!document["format"].HasMember("format_name")) {
         reportError(err_msg);
         return;
     }
-    state.format = document["format"]["format_name"].GetString();
-
+    finfo.format = document["format"]["format_name"].GetString();
 
     if(!document.HasMember("streams")) {
         reportError(err_msg);
         return;
     }
-    const Value &v = document["streams"];
+    const Value &streams = document["streams"];
     bool found = false;
-    if (!v.IsArray()) {
+    if (!streams.IsArray()) {
         reportError("Invalid video file");
         return;
     }
-    for(SizeType i = 0; i < v.Size(); ++i) {
-        if (v[i].HasMember("codec_type") && (v[i]["codec_type"].GetString() == string("video"))) {
-            state.codec = v[i]["codec_name"].GetString();
+    for(SizeType i = 0; i < streams.Size(); ++i) {
+        if (streams[i].HasMember("codec_type") && (streams[i]["codec_type"].GetString() == string("video"))) {
+            finfo.codec = streams[i]["codec_name"].GetString();
             found = true;
             break;
         }
@@ -227,39 +242,6 @@ void CmdLoad::execute(stringstream &ss, State &state){
         reportError("Invalid video file");
         return;
     }
-    state.secs_per_chunk = CHUNK_SIZE  / (bitrate / 8);
-    cout << green << path << " loaded." << defaultFg << endl;
-//    res = extract(out, "\"bit_rate\":", 2);
-//    try {
-//        help = res.at(1);
-//        stringstream ssd(help.substr(1, help.length()));
-//        ssd >> bitrate;
-//        state.bitrate = bitrate / 8;
-//    } catch (...) {
-//        reportError("Error while getting information about file.");
-//        state.resetFileInfo();
-//        return;
-//    }
-//    res = extract(out, "\"duration\":", 2);
-//    try {
-//        help = res.at(1);
-//        stringstream ssd(help.substr(1, help.length()));
-//        ssd >> duration;
-//        state.duration = duration;
-//    } catch (...) {
-//        reportError("Error while getting information about file.");
-//        state.resetFileInfo();
-//        return;
-//    }
-//    res = extract(out, "\"size\":", 2);
-//    try {
-//        help = res.at(1);
-//        stringstream ssd(help.substr(1, help.length()));
-//        ssd >> fsize;
-//        state.fsize = fsize;
-//    } catch (...) {
-//        reportError("Error while getting information about file.");
-//        state.resetFileInfo();
-//        return;
-//    }
+    state.loadFileInfo(finfo);
+    reportSuccess(finfo.fpath + " loaded.");
 }
