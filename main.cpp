@@ -54,6 +54,7 @@ int main(int argc, char ** argv) {
         return (1);
     }
     State state(conf);
+    HistoryStorage history("history.file");
     cmds.insert(make_pair<string, Command *>("show", new CmdShow));
     cmds.insert(make_pair<string, Command *>("start", new CmdStart));
     cmds.insert(make_pair<string, Command *>("help", new CmdHelp));
@@ -68,7 +69,7 @@ int main(int argc, char ** argv) {
     try {
         do{
             printw(">");
-            getstr(line);
+            getLine(line, 80, history);
             ss.clear();
             ss.str(line);
         } while (!readCmd(ss, cmds, state));

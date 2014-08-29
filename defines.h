@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <curses.h>
+#include <vector>
 
 
 #ifndef DEFINES_H
@@ -89,6 +90,19 @@ public:
         secs_per_chunk = 0;
         c_chunks = 0;
     }
+};
+
+class HistoryStorage {
+    std::vector<std::string> history;
+    std::string filename;
+    int c_index;
+public:
+    HistoryStorage(const std::string &fn);
+    void prev();
+    void next();
+    void save(std::string line);
+    void write();
+    std::string &getCurrent();
 };
 
 #endif

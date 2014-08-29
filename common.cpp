@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <string.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -201,6 +202,65 @@ void common::printProgress(double percent) {
         printw("#");
     attroff(COLOR_PAIR(YELLOWALL));
     refresh();
+}
+
+void common::cursorToX(int nx) {
+    int y, x;
+    getyx(stdscr, y, x);
+    move(y, nx);
+}
+
+int common::getLine(char *line, int len, HistoryStorage &hist) {
+    char c, *start = line;
+    int read = 0;
+    while(++read <= len) {
+        c = wgetch(stdscr);
+        if (c == 3) {
+            common::cursorToX(1);
+            clrtoeol();
+            hist.prev();
+            try {
+                printw(hist.getCurrent().c_str());
+                read = hist.getCurrent().size();
+                strncpy(start, hist.getCurrent().c_str(), read);
+                line = start + read;
+            } catch (...) {}
+            refresh();
+        } else if(c == 2) {
+            common::cursorToX(1);
+            clrtoeol();
+            hist.next();
+            try {
+                printw(hist.getCurrent().c_str());
+                read = hist.getCurrent().size();
+                strncpy(start, hist.getCurrent().c_str(), read);
+                line = start + read;
+            } catch (...) {}
+            refresh();
+        } else if (c == 8) {
+            int y, x;
+            getyx(stdscr, y, x);
+            if (x < 1)
+                ++x;
+            else {
+                --read;
+                --line;
+            }
+            move(y, x);
+            clrtoeol();
+            refresh();
+        } else
+            *(line++) = c;
+        if (c == '\n')
+            break;
+    }
+    *--line = '\0';
+    hist.save(string(start));
+    if (read <= len)
+        return (0);
+    else
+//        buffer too short
+        return (-1);
 }
 
 int common::runExternal(string &stdo, string &stde, const string &cmd, int numargs, ...) {
