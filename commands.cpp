@@ -9,6 +9,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <algorithm>
 #include <map>
 #include <stdio.h>
 
@@ -18,8 +20,9 @@ using namespace rapidjson;
 
 int splitVideo(State &state) {
     string out, err;
+    double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
-    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH];
+    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
 
     if (prepareDir(state.dir_location) == -1) {
         reportError("Failed to create the job directory.");
@@ -28,7 +31,7 @@ int splitVideo(State &state) {
     mins = state.secs_per_chunk / 60;
     secs = state.secs_per_chunk % 60;
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
-    printw("Beginning to split %s", state.finfo.fpath.c_str());
+    reportStatus("Splitting file: " + state.finfo.fpath);
     for (unsigned int i = 0; i < state.c_chunks; ++i) {
         double percent = (double) i / state.c_chunks;
         printProgress(percent);
@@ -39,9 +42,12 @@ int splitVideo(State &state) {
         secs = elapsed % 60;
         snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
         snprintf(output, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
-        if (runExternal(out, err, "ffmpeg", 8, "ffmpeg",
-                    "-i", state.finfo.fpath.c_str(),
+        snprintf(cmd, BUF_LENGTH, "ffmpeg");
+        if (runExternal(1, out, err, cmd, 12, cmd,
                     "-ss", current,
+                    "-i", state.finfo.fpath.c_str(),
+                    "-v", "quiet",
+                    "-c", "copy",
                     "-t", chunk_duration,
                     output) == -1)
             return (-1);
@@ -54,9 +60,18 @@ int splitVideo(State &state) {
             reportError(msg);
             return (-1);
         }
+        // TODO: handle!
+        try {
+        double duration;
+            stringstream ss(extract(err, "real", 2).at(1));
+            ss >> duration;
+            sum += duration;
+            refresh();
+        } catch (...) {}
     }
     printProgress(1);
-    reportSuccess("\nFile successfuly splitted.\n");
+    reportSuccess("File successfuly splitted.");
+    reportTime(state.finfo.fpath, sum);
     return (0);
 }
 
@@ -65,7 +80,7 @@ int joinVideo(State &state) {
     ofstream ofs(list_loc);
     char file[BUF_LENGTH];
 
-    printw("Beginning to join the file.\n");
+    reportStatus("Joining the file: " + output);
     for (unsigned int i = 0; i < state.c_chunks; ++i) {
         snprintf(file, BUF_LENGTH, "file '%03d_splitted.avi'", i);
         try {
@@ -74,7 +89,7 @@ int joinVideo(State &state) {
     }
     ofs.flush();
     ofs.close();
-    if (runExternal(out, err, "ffmpeg", 8, "ffmpeg",
+    if (runExternal(0, out, err, "ffmpeg", 8, "ffmpeg",
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
@@ -82,7 +97,7 @@ int joinVideo(State &state) {
         return (-1);
     if (err.find("failed") != string::npos)
         return (-1);
-    reportSuccess("Succesfully joined.\n");
+    reportSuccess("Succesfully joined.");
     return (0);
 }
 
@@ -123,7 +138,6 @@ void CmdStart::execute(stringstream &, State &state) {
         return;
     }
     state.printState();
-    printw("\nSplitting the file %s:\n", state.finfo.fpath.c_str());
     refresh();
     if (splitVideo(state) == -1) {
         reportError("Error while splitting the video file.");
@@ -146,8 +160,16 @@ void CmdSet::execute(stringstream &ss, State &state) {
         params = split(line, ',');
         for (string a : params) {
             current = split(a, '=');
-            for (string &b : current)
-                printw("%s\n", b.c_str());
+            if (current[0].find("codec") != string::npos) {
+                if (knownCodec(current[1])) {
+                    state.o_codec = current[1];
+
+                    reportStatus("Output codec set to: " + current[1]);
+                } else {
+                    reportError("Unknown codec: " + current[1]);
+                }
+                refresh();
+            }
         }
     }
 }
@@ -161,7 +183,6 @@ void CmdLoad::execute(stringstream &ss, State &state){
     if (ss.good()) {
         ss >> path;
     }
-    path = "/data/futu.avi";
     if (path.empty()) {
         reportError("File path not provided.");
         return;
@@ -173,7 +194,7 @@ void CmdLoad::execute(stringstream &ss, State &state){
     finfo.fpath = path;
     finfo.extension = getExtension(path);
     finfo.basename = getBasename(path);
-    if (runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+    if (runExternal(0, out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }

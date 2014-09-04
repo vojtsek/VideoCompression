@@ -10,7 +10,7 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define CHUNK_SIZE 20048576
+#define CHUNK_SIZE 40048576
 
 #define BUF_LENGTH 256
 #define DEFAULT 1
@@ -45,57 +45,15 @@ public:
     o_format("mkv"), o_codec("h264") {
         configuration = conf;
     }
-    void printState() {
-        char value[BUF_LENGTH];
-        if (!finfo.fpath.empty())
-            show("File:", finfo.fpath.c_str());
-        if (!finfo.codec.empty())
-            show("Codec:", finfo.codec.c_str());
-        if (finfo.bitrate) {
-            snprintf(value, BUF_LENGTH, "%f", finfo.bitrate);
-            show("Bitrate:", value);
-        }
-        if (finfo.duration) {
-            snprintf(value, BUF_LENGTH, "%f", finfo.duration);
-            show("Duration:", value);
-        }
-        if (finfo.fsize) {
-            snprintf(value, BUF_LENGTH, "%f", finfo.fsize);
-            show("File size:", value);
-            snprintf(value, BUF_LENGTH, "%d", c_chunks);
-            show("Chunks count:", value);
-        }
-        if (chunk_size) {
-            snprintf(value, BUF_LENGTH, "%d", chunk_size / 1024);
-            show("Chunk size:", value);
-        }
-        show("Output format:", o_format.c_str());
-    }
-
-    void loadFileInfo(finfo_t &finfo) {
-        this->finfo = finfo;
-        char dir_name[BUF_LENGTH];
-        sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
-        dir_location = configuration["WD_PREFIX"] + "/" + std::string(dir_name);
-        secs_per_chunk = CHUNK_SIZE  / finfo.bitrate;
-        c_chunks = (((size_t) finfo.fsize) / chunk_size) + 1;
-    }
-
-    void resetFileInfo() {
-        finfo.fpath = "";
-        finfo.codec = "";
-        finfo.bitrate = 0.0;
-        finfo.duration = 0.0;
-        finfo.fsize = 0.0;
-        secs_per_chunk = 0;
-        c_chunks = 0;
-    }
+    void printState();
+    void loadFileInfo(finfo_t &finfo);
+    void resetFileInfo();
 };
 
 class HistoryStorage {
     std::vector<std::string> history;
     std::string filename;
-    int c_index;
+    unsigned int c_index;
 public:
     HistoryStorage(const std::string &fn);
     void prev();
@@ -104,5 +62,4 @@ public:
     void write();
     std::string &getCurrent();
 };
-
 #endif

@@ -68,7 +68,10 @@ int main(int argc, char ** argv) {
     stringstream ss;
     try {
         do{
+            cursToCmd();
             printw(">");
+            clrtoeol();
+            refresh();
             getLine(line, 80, history);
             ss.clear();
             ss.str(line);
@@ -76,7 +79,7 @@ int main(int argc, char ** argv) {
     } catch (exception e) {
        printw(e.what());
     }
-
+    history.write();
     cleanCommands(cmds);
     endwin();
 	return (0);

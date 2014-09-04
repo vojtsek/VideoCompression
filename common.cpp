@@ -1,3 +1,4 @@
+#define _FILE_OFFSET_BITS 64
 #include "common.h"
 #include "commands.h"
 #include "defines.h"
@@ -5,6 +6,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
 #include <string>
 #include <map>
 #include <vector>
@@ -32,11 +34,11 @@ int common::readCmd(stringstream &ins, cmd_storage_t &cmds, State &state) {
     if (cmd_name == "q")
             return (1);
     try {
+        common::cursToInfo();
         cmds.at(cmd_name)->execute(ss, state);
     } catch (out_of_range) {
         cmds["default"]->execute(ss, state);
     }
-
     return (0);
 }
 
@@ -163,9 +165,10 @@ string common::getTimestamp() {
 }
 
 void common::reportError(const string &err) {
+    common::cursToStatus();
     attron(A_BOLD);
     attron(COLOR_PAIR(RED));
-    printw("%s\n", err.c_str());
+    common::reportStatus(err);
     attroff(COLOR_PAIR(RED));
     attroff(A_BOLD);
 }
@@ -173,9 +176,17 @@ void common::reportError(const string &err) {
 void common::reportSuccess(const string &msg) {
     attron(A_BOLD);
     attron(COLOR_PAIR(GREEN));
-    printw("%s\n", msg.c_str());
+    common::reportStatus(msg);
     attroff(COLOR_PAIR(GREEN));
     attroff(A_BOLD);
+}
+
+void common::reportStatus(const string &msg) {
+    common::cursToStatus();
+    usleep(300);
+    clrtoeol();
+    printw("%s", msg.c_str());
+    refresh();
 }
 
 void common::initCurses() {
@@ -192,16 +203,38 @@ void common::initCurses() {
 }
 
 void common::printProgress(double percent) {
-    int y, x;
-    getyx(stdscr, y, x);
-    move(y, 0);
+    common::cursToPerc();
     clrtoeol();
     printw("(%d%%)", (int) (percent * 100));
     attron(COLOR_PAIR(YELLOWALL));
-    for(int i = 0; i < percent * 75; ++i)
+    for(int i = 0; i < percent * 74; ++i)
         printw("#");
     attroff(COLOR_PAIR(YELLOWALL));
     refresh();
+}
+
+void common::cursToCmd() {
+    int max_x, max_y;
+    getmaxyx(stdscr, max_y, max_x);
+    move(max_y - 1, 0);
+}
+
+void common::cursToInfo() {
+    int max_x, max_y;
+    getmaxyx(stdscr, max_y, max_x);
+    move(0, 0);
+}
+
+void common::cursToStatus() {
+    int max_x, max_y;
+    getmaxyx(stdscr, max_y, max_x);
+    move(max_y - 2, 0);
+}
+
+void common::cursToPerc() {
+    int max_x, max_y;
+    getmaxyx(stdscr, max_y, max_x);
+    move(max_y - 3, 0);
 }
 
 void common::cursorToX(int nx) {
@@ -263,9 +296,9 @@ int common::getLine(char *line, int len, HistoryStorage &hist) {
         return (-1);
 }
 
-int common::runExternal(string &stdo, string &stde, const string &cmd, int numargs, ...) {
+int common::runExternal(bool measure, string &stdo, string &stde, char *cmd, int numargs, ...) {
     pid_t pid;
-    int pd_o[2], pd_e[2];
+    int pd_o[2], pd_e[2], i, j;
     size_t bufsize = 65536;
     char buf_o[bufsize], buf_e[bufsize];
     char *bo = buf_o, *be = buf_e;
@@ -275,14 +308,22 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
     case 0: {
         va_list arg_ptr;
         va_start (arg_ptr, numargs);
-        char *args[numargs + 1];
-        int i;
-        // TODO: safety!
-        for(i = 0; i < numargs; ++i) {
-            char *arg = va_arg(arg_ptr, char *);
-            args[i] = arg;
+        char *args[numargs + 3];
+        i = 0;
+        if (measure) {
+            i = 2;
+//            leak!
+            args[0] = (char *) malloc(sizeof (char) * BUF_LENGTH);
+            sprintf(args[0], "time");
+            args[1] = (char *) malloc(sizeof (char) * BUF_LENGTH);
+            sprintf(args[1], "-p");
         }
-        args[i] = nullptr;
+        // TODO: safety!
+        for(j = 0 ; j < numargs; ++j) {
+            char *arg = va_arg(arg_ptr, char *);
+            args[j + i] = arg;
+        }
+        args[i+j] = nullptr;
         va_end(arg_ptr);
         close(STDOUT_FILENO);
         close(pd_o[0]);
@@ -290,7 +331,11 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
         close(STDERR_FILENO);
         close(pd_e[0]);
         dup(pd_e[1]);
-        if ((execvp(cmd.c_str(), args)) == -1) {
+        char command[BUF_LENGTH];
+        strcpy(command, cmd);
+        if (measure)
+            snprintf(command, BUF_LENGTH, "time");
+        if ((execvp(command, args)) == -1) {
             common::reportError("Error while spawning external command.");
             return (-1);
         }
@@ -312,6 +357,7 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
         while(read(pd_o[0], bo, 1) == 1){
             bo++;
             if(bo - buf_o > bufsize){
+                *bo = '\0';
                 stdo += string(buf_o);
                 bo = buf_o;
             }
@@ -319,6 +365,7 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
         while(read(pd_e[0], be, 1) == 1){
             be++;
             if(be - buf_e > bufsize){
+                *be = '\0';
                 stde += string(buf_e);
                 be = buf_e;
             }
@@ -332,6 +379,14 @@ int common::runExternal(string &stdo, string &stde, const string &cmd, int numar
     return (0);
 }
 
+void common::reportTime(const string &file, double time) {
+    string fn("results/" + common::getBasename(file) + ".measured");
+    ofstream out(fn);
+    out << file << endl;
+    out << time << endl;
+    out.close();
+}
+
 vector<string> common::split(const string &content, char sep) {
     size_t pos;
     vector<string> result;
@@ -342,4 +397,13 @@ vector<string> common::split(const string &content, char sep) {
     }
     result.push_back(remaining);
     return result;
+}
+
+bool common::knownCodec(const string &cod) {
+    vector<string> know = {"h264", "h265"};
+    for (string &c : know) {
+        if (c == cod)
+            return (true);
+    }
+    return (false);
 }
