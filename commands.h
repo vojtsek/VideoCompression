@@ -13,33 +13,42 @@ using namespace std;
 
 class Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
     virtual ~Command() {}
 };
 
 class CmdHelp: public Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
 };
 
 class CmdShow: public Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
 };
 
 class CmdStart: public Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
 };
 
 class CmdSet: public Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
 };
 
 class CmdLoad: public Command {
 public:
-    virtual void execute(stringstream &ss, State &state);
+    virtual void execute(State &state);
 };
 
+class CmdSetCodec: public Command {
+public:
+    virtual void execute(State &state);
+};
+
+class CmdSetChSize: public Command {
+public:
+    virtual void execute(State &state);
+};
 #endif

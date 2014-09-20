@@ -8,7 +8,10 @@
 #include <map>
 #include <exception>
 #include <limits>
+#include <string>
+#include <mutex>
 #include <curses.h>
+#include <queue>
 
 using namespace std;
 using namespace common;
@@ -28,7 +31,7 @@ int readConfiguration(const string &cf, configuration_t &conf) {
         try {
             conf.at(param) = value;
         } catch (...) {
-            reportError("Unknown parameter: " + param);
+            reportStatus("@RUnknown parameter: " + param);
         }
     }
    return (0);
@@ -45,42 +48,34 @@ int main(int argc, char ** argv) {
 		return (1);
 	}
 
-    cmd_storage_t cmds;
     configuration_t conf;
     conf.insert(make_pair<string, string>("WD_PREFIX", ""));
 
     if (readConfiguration("conf.h", conf) == -1) {
-        reportError("Error reading configuration!");
+        reportStatus("@RError reading configuration!");
         return (1);
     }
     State state(conf);
-    HistoryStorage history("history.file");
-    cmds.insert(make_pair<string, Command *>("show", new CmdShow));
-    cmds.insert(make_pair<string, Command *>("start", new CmdStart));
-    cmds.insert(make_pair<string, Command *>("help", new CmdHelp));
-    cmds.insert(make_pair<string, Command *>("set", new CmdSet));
-    cmds.insert(make_pair<string, Command *>("load", new CmdLoad));
-    cmds.insert(make_pair<string, Command *>("default", new Command));
-
-//    int c;
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize));
     initCurses();
-    char line[80];
-    stringstream ss;
+    move(0,0);
+    printw("Distributed video compression tool.");
+    move(1, 0);
+    printw("Commands: %10s%10s%10s%10s", "F6 show", "F7 start", "F8 load", "F9 set", "F12 quit");
+    curs_set(0);
     try {
         do{
-            cursToCmd();
-            printw(">");
-            clrtoeol();
-            refresh();
-            getLine(line, 80, history);
-            ss.clear();
-            ss.str(line);
-        } while (!readCmd(ss, cmds, state));
+        } while (!acceptCmd(Data::getInstance()->cmds, state));
     } catch (exception e) {
        printw(e.what());
     }
-    history.write();
-    cleanCommands(cmds);
+    cleanCommands(Data::getInstance()->cmds);
     endwin();
 	return (0);
 }

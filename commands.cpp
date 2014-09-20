@@ -10,9 +10,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <thread>
 #include <algorithm>
 #include <map>
 #include <stdio.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace common;
@@ -43,14 +45,14 @@ int splitVideo(State &state) {
         snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
         snprintf(output, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
         snprintf(cmd, BUF_LENGTH, "ffmpeg");
-        if (runExternal(1, out, err, cmd, 12, cmd,
+        cursToStatus();
+        sum += Measured<>::exec_measure(runExternal, out, err, cmd, 12, cmd,
                     "-ss", current,
                     "-i", state.finfo.fpath.c_str(),
                     "-v", "quiet",
                     "-c", "copy",
                     "-t", chunk_duration,
-                    output) == -1)
-            return (-1);
+                    output);
         if (err.find("Conversion failed") != string::npos) {
             sprintf(msg, "%s %s %s %s %s %s %s %s\n", "ffmpeg",
                 "-i", state.finfo.fpath.c_str(),
@@ -60,61 +62,69 @@ int splitVideo(State &state) {
             reportError(msg);
             return (-1);
         }
-        // TODO: handle!
-        try {
-        double duration;
-            stringstream ss(extract(err, "real", 2).at(1));
-            ss >> duration;
-            sum += duration;
-            refresh();
-        } catch (...) {}
     }
     printProgress(1);
     reportSuccess("File successfuly splitted.");
-    reportTime(state.finfo.fpath, sum);
+    reportTime("/splitting.sp", sum / 1000);
     return (0);
 }
 
 int joinVideo(State &state) {
     string out, err, list_loc(state.dir_location + "/join_list.txt"), output(state.finfo.basename + "_output." + state.finfo.extension);
     ofstream ofs(list_loc);
-    char file[BUF_LENGTH];
-
+    stringstream ss;
+    char file[BUF_LENGTH], cmd[BUF_LENGTH], file_in[BUF_LENGTH], file_out[BUF_LENGTH];
+    long sum_size = 0;
+    double duration = 0;
+    unlink(output.c_str());
+    errno = 0;
     reportStatus("Joining the file: " + output);
+    snprintf(cmd, BUF_LENGTH, "ffmpeg");
     for (unsigned int i = 0; i < state.c_chunks; ++i) {
-        snprintf(file, BUF_LENGTH, "file '%03d_splitted.avi'", i);
+        snprintf(file_in, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
+        snprintf(file_out, BUF_LENGTH, "%s/%03d_splitted.mkv", state.dir_location.c_str(), i);
+        Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
+                                 "-i", file_in,
+                                 "-vcodec", "libx264",
+                                 "-acodec", "copy",
+                                 file_out);
+        snprintf(file, BUF_LENGTH, "file '%03d_splitted.mkv'", i);
         try {
+            ss.clear();
+            ss.str("");
+            ss << state.dir_location << "/" << setfill('0') << setw(3) << i << "_splitted.mkv";
+            sum_size += getFileSize(ss.str());
             ofs << file << endl;
         } catch (...) {} // TODO: handle exception
     }
     ofs.flush();
     ofs.close();
-    if (runExternal(0, out, err, "ffmpeg", 8, "ffmpeg",
+    thread thr(reportFileProgress, output, sum_size);
+    duration = Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
-                    output.c_str()) == -1)
+                    output.c_str());
+    if (err.find("failed") != string::npos) {
+        thr.detach();
         return (-1);
-    if (err.find("failed") != string::npos)
-        return (-1);
+    }
+    thr.join();
+    printProgress(1);
     reportSuccess("Succesfully joined.");
+    reportTime("/joining.j", duration / 1000);
     return (0);
 }
 
-void Command::execute(stringstream &, State &) {
-        common::listCmds();
+void Command::execute(State &) {
+    common::cursToInfo();
 }
 
-void CmdHelp::execute(stringstream &ss, State &) {
-    string word;
-    while (ss.good()){
-        ss >> word;
-    }
+void CmdHelp::execute(State &) {
 }
 
-void CmdShow::execute(stringstream &ss, State &state) {
-    string what;
-    ss >> what;
+void CmdShow::execute(State &state) {
+    string what = loadInput("show.hist", "", true);
     if (what == "jobs") {
 
     } else if (what == "neighbors"){
@@ -124,11 +134,12 @@ void CmdShow::execute(stringstream &ss, State &state) {
             reportError("Please load the file first.");
             return;
         }
+        cursToInfo();
         state.printState();
     }
 }
 
-void CmdStart::execute(stringstream &, State &state) {
+void CmdStart::execute(State &state) {
     if (state.finfo.fpath.empty()) {
         reportError("Please load the file first.");
         return;
@@ -137,6 +148,7 @@ void CmdStart::execute(stringstream &, State &state) {
         reportError("Invalid file.");
         return;
     }
+    cursToInfo();
     state.printState();
     refresh();
     if (splitVideo(state) == -1) {
@@ -152,37 +164,48 @@ void CmdStart::execute(stringstream &, State &state) {
     rmrDir(state.dir_location.c_str(), false);
 }
 
-void CmdSet::execute(stringstream &ss, State &state) {
-    string line;
-    vector<string> params, current;
-    while (ss.good()) {
-        getline(ss, line);
-        params = split(line, ',');
-        for (string a : params) {
-            current = split(a, '=');
-            if (current[0].find("codec") != string::npos) {
-                if (knownCodec(current[1])) {
-                    state.o_codec = current[1];
-
-                    reportStatus("Output codec set to: " + current[1]);
-                } else {
-                    reportError("Unknown codec: " + current[1]);
-                }
-                refresh();
-            }
-        }
+void CmdSetCodec::execute(State &state) {
+    string in = loadInput("codecs", "Enter new codec:", false);
+    if (knownCodec(in)) {
+        state.o_codec = in;
+        reportSuccess("Output codec set to: " + in);
+    } else {
+        reportError("Unknown codec: " + in);
+        stringstream msg;
+        msg << "Available codecs: ";
+        for (string c : Data::getKnownCodecs())
+            msg << c << ", ";
+        reportStatus(msg.str().substr(0, msg.str().length() - 2));
     }
 }
 
-void CmdLoad::execute(stringstream &ss, State &state){
-    string path, out, err, help, err_msg("Error loading the file");
+void CmdSetChSize::execute(State &state) {
+    string in = loadInput("", "Enter new chunk size (kB):", false);
+    size_t nsize = CHUNK_SIZE;
+    stringstream ss(in), msg;
+    ss >> nsize;
+    state.changeChunkSize(nsize * 1024);
+    msg << "Chunk size set to: " << nsize;
+    reportSuccess(msg.str());
+}
+
+void CmdSet::execute(State &state) {
+    string line = loadInput("set.history", "What option set?", false);
+    if (line.find("codec") != string::npos)
+        Data::getInstance()->cmds[SET_CODEC]->execute(state);
+    else if (line.find("chunksize") != string::npos)
+        Data::getInstance()->cmds[SET_SIZE]->execute(state);
+    else
+        reportStatus("Available options: 'codec'', 'chunksize'");
+}
+
+void CmdLoad::execute(State &state){
+    string path, out, err, err_msg("Error loading the file: ");
     Document document;
     stringstream ssd;
     finfo_t finfo;
 
-    if (ss.good()) {
-        ss >> path;
-    }
+    path = loadInput("paths.history", "Enter a file path:", true);
     if (path.empty()) {
         reportError("File path not provided.");
         return;
@@ -194,7 +217,7 @@ void CmdLoad::execute(stringstream &ss, State &state){
     finfo.fpath = path;
     finfo.extension = getExtension(path);
     finfo.basename = getBasename(path);
-    if (runExternal(0, out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+    if (runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }
@@ -204,7 +227,7 @@ void CmdLoad::execute(stringstream &ss, State &state){
         return;
     }
     if(document.Parse(out.c_str()).HasParseError()) {
-        reportError(err_msg);
+        reportError(err_msg + "Parse error");
         return;
     }
     if (!document.HasMember("format")) {

@@ -1,6 +1,11 @@
 #include <string>
+#include <curses.h>
 #include <fstream>
-#include"defines.h"
+#include <utility>
+#include <mutex>
+#include <condition_variable>
+#include "defines.h"
+#include "common.h"
 
 using namespace std;
 
@@ -41,8 +46,7 @@ void State::loadFileInfo(finfo_t &finfo) {
     char dir_name[BUF_LENGTH];
     sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
     dir_location = configuration["WD_PREFIX"] + "/" + std::string(dir_name);
-    secs_per_chunk = CHUNK_SIZE  / finfo.bitrate;
-    c_chunks = (((size_t) finfo.fsize) / chunk_size) + 1;
+    changeChunkSize(CHUNK_SIZE);
 }
 
 void State::resetFileInfo() {
@@ -55,12 +59,19 @@ void State::resetFileInfo() {
     c_chunks = 0;
 }
 
+void State::changeChunkSize(size_t nsize) {
+    chunk_size = nsize;
+    secs_per_chunk = chunk_size  / finfo.bitrate;
+    c_chunks = (((size_t) finfo.fsize) / chunk_size) + 1;
+}
+
 HistoryStorage::HistoryStorage(const string &fn): filename(fn), c_index(0) {
     ifstream in(fn);
     string line;
     while (in.good()) {
         getline(in, line);
-        history.push_back(line);
+        if (!line.empty())
+            history.push_back(line);
     }
     c_index = history.size() ;
 }
@@ -68,14 +79,20 @@ HistoryStorage::HistoryStorage(const string &fn): filename(fn), c_index(0) {
 void HistoryStorage::next() {
     if (c_index < history.size() )
         ++c_index;
+    else
+        c_index = 0;
 }
 
 void HistoryStorage::prev() {
     if (c_index)
         --c_index;
+    else
+        c_index = history.size() - 1;
 }
 
 void HistoryStorage::save(string line) {
+    if (line.empty())
+        return;
     history.push_back(line);
     c_index = history.size();
 }
@@ -89,4 +106,46 @@ void HistoryStorage::write() {
     for(string &s : history)
         out << s << endl;
     out.close();
+}
+
+void StatusInfo::add(status_pairT msg) {
+    q.push_front(make_pair(msg.first, msg.second));
+    if (q.size() > 3)
+        q.pop_back();
+}
+
+void StatusInfo::print() {
+    unique_lock<mutex> lck(Data::getInstance()->input_mtx, defer_lock);
+
+    lck.lock();
+    while (Data::getInstance()->reading_input)
+        Data::getInstance()->cond.wait(lck);
+    Data::getInstance()->reading_input = true;
+    common::cursToStatus();
+    int x, y, col;
+    bool first = true;
+    getyx(stdscr, y, x);
+    for (status_pairT a : q) {
+        if (first)
+            attron(A_BOLD);
+        col = DEFAULT;
+        if (a.second == ERROR)
+            col = RED;
+        if (a.second == SUCCESS)
+            col = GREEN;
+        if (col != DEFAULT)
+        attron(COLOR_PAIR(col));
+        printw("%s\n", a.first.c_str());
+        move(--y, x);
+        if (col != DEFAULT)
+        attroff(	COLOR_PAIR(col));
+        if (first) {
+            first = false;
+            attroff(A_BOLD);
+        }
+    }
+    refresh();
+    Data::getInstance()->reading_input = false;
+    lck.unlock();
+    Data::getInstance()->cond.notify_one();
 }
