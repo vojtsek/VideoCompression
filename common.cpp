@@ -15,6 +15,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <stdexcept>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -34,7 +36,7 @@ using namespace std;
 
 std::shared_ptr<Data> Data::inst = nullptr;
 
-//int common::readCmd(stringstream &ins, cmd_storage_t &cmds, State &state) {
+//int common::readCmd(stringstream &ins, cmd_storage_t &cmds, VideoState &state) {
 //    string line, cmd_name;
 //    getline(ins, line);
 //    stringstream ss(line);
@@ -51,7 +53,7 @@ std::shared_ptr<Data> Data::inst = nullptr;
 //    return (0);
 //}
 
-int common::acceptCmd(cmd_storage_t &cmds, State &state) {
+int common::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(Data::getInstance()->input_mtx, std::defer_lock);
     do {
@@ -69,14 +71,24 @@ int common::acceptCmd(cmd_storage_t &cmds, State &state) {
         return (1);
     thread thr ([&]() {
         try {
-            cmds.at(Data::getCmdMapping().at(c))->execute(state);
+            cmds.at(Data::getCmdMapping().at(c))->execute();
         } catch (out_of_range) {
-            cmds[DEFCMD]->execute(state);
+            cmds[DEFCMD]->execute();
         }
     });
     thr.detach();
     usleep(10000);
     return(0);
+}
+
+struct sockaddr_storage common::addr2storage(const char *addrstr, int port, int family) {
+    //TODO: inet6
+    struct sockaddr_storage addr;
+    struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
+    addr4->sin_family = family;
+    addr4->sin_port = htons(port);
+    inet_pton(family, addrstr, &(addr4->sin_addr));
+    return addr;
 }
 
 string common::loadInput(const string &histf, const string &msg, bool save) {
@@ -286,6 +298,11 @@ void common::reportStatus(const string &msg) {
     Data::getInstance()->status_handler.print();
 }
 
+void common::reportDebug(const string &msg) {
+    Data::getInstance()->status_handler.add(std::make_pair(std::string(msg), DEBUG));
+    Data::getInstance()->status_handler.print();
+}
+
 void common::initCurses() {
     initscr();
     keypad(stdscr, TRUE);
@@ -474,7 +491,8 @@ int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...)
         wait(&st);
         while(read(pd_o[0], bo, 1) == 1){
             bo++;
-            if(bo - buf_o > bufsize){
+            //always positive anyway
+            if((unsigned)(bo - buf_o) > bufsize){
                 *bo = '\0';
                 stdo += string(buf_o);
                 bo = buf_o;
@@ -482,7 +500,7 @@ int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...)
         }
         while(read(pd_e[0], be, 1) == 1){
             be++;
-            if(be - buf_e > bufsize){
+            if((unsigned)(be - buf_e) > bufsize){
                 *be = '\0';
                 stde += string(buf_e);
                 be = buf_e;

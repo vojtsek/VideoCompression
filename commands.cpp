@@ -13,6 +13,7 @@
 #include <thread>
 #include <algorithm>
 #include <map>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -20,154 +21,58 @@ using namespace std;
 using namespace common;
 using namespace rapidjson;
 
-int splitVideo(State &state) {
-    string out, err;
-    double sum = 0.0;
-    size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
-    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
-
-    if (prepareDir(state.dir_location) == -1) {
-        reportError("Failed to create the job directory.");
-        return (-1);
-    }
-    mins = state.secs_per_chunk / 60;
-    secs = state.secs_per_chunk % 60;
-    snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
-    reportStatus("Splitting file: " + state.finfo.fpath);
-    for (unsigned int i = 0; i < state.c_chunks; ++i) {
-        double percent = (double) i / state.c_chunks;
-        printProgress(percent);
-        elapsed = i * state.secs_per_chunk;
-        hours = elapsed / 3600;
-        elapsed = elapsed % 3600;
-        mins = elapsed / 60;
-        secs = elapsed % 60;
-        snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
-        snprintf(output, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
-        snprintf(cmd, BUF_LENGTH, "ffmpeg");
-        cursToStatus();
-        sum += Measured<>::exec_measure(runExternal, out, err, cmd, 12, cmd,
-                    "-ss", current,
-                    "-i", state.finfo.fpath.c_str(),
-                    "-v", "quiet",
-                    "-c", "copy",
-                    "-t", chunk_duration,
-                    output);
-        if (err.find("Conversion failed") != string::npos) {
-            sprintf(msg, "%s %s %s %s %s %s %s %s\n", "ffmpeg",
-                "-i", state.finfo.fpath.c_str(),
-                "-ss", current,
-                "-t", chunk_duration,
-                output);
-            reportError(msg);
-            return (-1);
-        }
-    }
-    printProgress(1);
-    reportSuccess("File successfuly splitted.");
-    reportTime("/splitting.sp", sum / 1000);
-    return (0);
-}
-
-int joinVideo(State &state) {
-    string out, err, list_loc(state.dir_location + "/join_list.txt"), output(state.finfo.basename + "_output." + state.finfo.extension);
-    ofstream ofs(list_loc);
-    stringstream ss;
-    char file[BUF_LENGTH], cmd[BUF_LENGTH], file_in[BUF_LENGTH], file_out[BUF_LENGTH];
-    long sum_size = 0;
-    double duration = 0;
-    unlink(output.c_str());
-    errno = 0;
-    reportStatus("Joining the file: " + output);
-    snprintf(cmd, BUF_LENGTH, "ffmpeg");
-    for (unsigned int i = 0; i < state.c_chunks; ++i) {
-        snprintf(file_in, BUF_LENGTH, "%s/%03d_splitted.avi", state.dir_location.c_str(), i);
-        snprintf(file_out, BUF_LENGTH, "%s/%03d_splitted.mkv", state.dir_location.c_str(), i);
-        Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
-                                 "-i", file_in,
-                                 "-vcodec", "libx264",
-                                 "-acodec", "copy",
-                                 file_out);
-        snprintf(file, BUF_LENGTH, "file '%03d_splitted.mkv'", i);
-        try {
-            ss.clear();
-            ss.str("");
-            ss << state.dir_location << "/" << setfill('0') << setw(3) << i << "_splitted.mkv";
-            sum_size += getFileSize(ss.str());
-            ofs << file << endl;
-        } catch (...) {} // TODO: handle exception
-    }
-    ofs.flush();
-    ofs.close();
-    thread thr(reportFileProgress, output, sum_size);
-    duration = Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
-                    "-f", "concat",
-                    "-i", list_loc.c_str(),
-                    "-c", "copy",
-                    output.c_str());
-    if (err.find("failed") != string::npos) {
-        thr.detach();
-        return (-1);
-    }
-    thr.join();
-    printProgress(1);
-    reportSuccess("Succesfully joined.");
-    reportTime("/joining.j", duration / 1000);
-    return (0);
-}
-
-void Command::execute(State &) {
+void Command::execute() {
     common::cursToInfo();
 }
 
-void CmdHelp::execute(State &) {
+void CmdHelp::execute() {
 }
 
-void CmdShow::execute(State &state) {
+void CmdShow::execute() {
     string what = loadInput("show.hist", "", true);
     if (what == "jobs") {
 
     } else if (what == "neighbors"){
 
     } else {
-        if (state.finfo.fpath.empty()) {
+        if (state->finfo.fpath.empty()) {
             reportError("Please load the file first.");
             return;
         }
         cursToInfo();
-        state.printState();
+        state->printVideoState();
     }
 }
 
-void CmdStart::execute(State &state) {
-    if (state.finfo.fpath.empty()) {
+void CmdStart::execute() {
+    if (state->finfo.fpath.empty()) {
         reportError("Please load the file first.");
         return;
     }
-    if (checkFile(state.finfo.fpath) == -1) {
+    if (checkFile(state->finfo.fpath) == -1) {
         reportError("Invalid file.");
         return;
     }
     cursToInfo();
-    state.printState();
+    state->printVideoState();
     refresh();
-    if (splitVideo(state) == -1) {
+    if (state->split() == -1) {
         reportError("Error while splitting the video file.");
-        rmrDir(state.dir_location.c_str(), false);
+        rmrDir(state->dir_location.c_str(), false);
         return;
     }
-    if (joinVideo(state) == -1) {
+    if (state->join() == -1) {
         reportError("Error while joining the video file.");
-        rmrDir(state.dir_location.c_str(), false);
+        rmrDir(state->dir_location.c_str(), false);
         return;
     }
-    rmrDir(state.dir_location.c_str(), false);
+    rmrDir(state->dir_location.c_str(), false);
 }
 
-void CmdSetCodec::execute(State &state) {
+void CmdSetCodec::execute() {
     string in = loadInput("codecs", "Enter new codec:", false);
     if (knownCodec(in)) {
-        state.o_codec = in;
+        state->o_codec = in;
         reportSuccess("Output codec set to: " + in);
     } else {
         reportError("Unknown codec: " + in);
@@ -179,27 +84,27 @@ void CmdSetCodec::execute(State &state) {
     }
 }
 
-void CmdSetChSize::execute(State &state) {
+void CmdSetChSize::execute() {
     string in = loadInput("", "Enter new chunk size (kB):", false);
     size_t nsize = CHUNK_SIZE;
     stringstream ss(in), msg;
     ss >> nsize;
-    state.changeChunkSize(nsize * 1024);
+    state->changeChunkSize(nsize * 1024);
     msg << "Chunk size set to: " << nsize;
     reportSuccess(msg.str());
 }
 
-void CmdSet::execute(State &state) {
+void CmdSet::execute() {
     string line = loadInput("set.history", "What option set?", false);
     if (line.find("codec") != string::npos)
-        Data::getInstance()->cmds[SET_CODEC]->execute(state);
+        Data::getInstance()->cmds[SET_CODEC]->execute();
     else if (line.find("chunksize") != string::npos)
-        Data::getInstance()->cmds[SET_SIZE]->execute(state);
+        Data::getInstance()->cmds[SET_SIZE]->execute();
     else
         reportStatus("Available options: 'codec'', 'chunksize'");
 }
 
-void CmdLoad::execute(State &state){
+void CmdLoad::execute(){
     string path, out, err, err_msg("Error loading the file: ");
     Document document;
     stringstream ssd;
@@ -223,7 +128,7 @@ void CmdLoad::execute(State &state){
     }
     if (err.find("Invalid data") != string::npos) {
         reportError("Invalid video file");
-        state.resetFileInfo();
+        state->resetFileInfo();
         return;
     }
     if(document.Parse(out.c_str()).HasParseError()) {
@@ -286,6 +191,96 @@ void CmdLoad::execute(State &state){
         reportError("Invalid video file");
         return;
     }
-    state.loadFileInfo(finfo);
+    state->loadFileInfo(finfo);
     reportSuccess(finfo.fpath + " loaded.");
+}
+
+int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
+    int sock, family;
+    char errormsg[BUF_LENGTH];
+    family = ((struct sockaddr *) addr)->sa_family;
+    if ((sock = socket(family, SOCK_STREAM, 6)) == -1) {
+        strerror_r(errno, errormsg, BUF_LENGTH);
+        errno = 0;
+        reportError("Failed to create socket for connection." + string(errormsg));
+        return (-1);
+    }
+    if (connect(sock, (struct sockaddr *) addr, sizeof (*addr)) == -1) {
+        strerror_r(errno, errormsg, BUF_LENGTH);
+        errno = 0;
+        reportError("Failed to connect to remote peer." + string(errormsg));
+        return(-1);
+    }
+    reportSuccess("Connected");
+    return (sock);
+}
+
+void NetworkCommand::execute() {}
+
+void CmdAsk::execute() {
+    struct sockaddr_storage addr;
+    struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
+    reportStatus("Connecting...");
+    addr4->sin_family = AF_INET;
+    addr4->sin_port = htons(25000);
+    char astr[] = "127.0.0.1";
+    inet_pton(AF_INET, astr, &(addr4->sin_addr));
+    handler->confirmNeighbor(addr);
+    /* if ((sock = connectPeer((struct sockaddr_storage *) &addr)) == -1) {
+        reportError("Failed to establish a connection");
+        return;
+    }
+    handler->spawnConnection(OUTGOING, NULL, sock, RESPOND); */
+}
+
+void CmdRespond::execute() {
+    reportStatus("Responding");
+    CMDS action = REACT;
+    sendCmd(fd, action);
+    sendSth("Hi\0", fd, 3);
+}
+
+void CmdReact::execute() {
+    char response[BUF_LENGTH];
+    recvSth(response, fd, BUF_LENGTH);
+    reportSuccess("Received: " + string(response));
+    close(fd);
+}
+
+void CmdConfirmPeer::execute() {
+    CMDS action = CONFIRM_HOST;
+    bool ok = true;
+    int count = handler->getNeighborCount();
+    struct sockaddr_storage addr;
+    sendCmd(fd, action);
+    sendSth(ok, fd);
+    sendSth(count, fd);
+    addr = addr2storage("1.1.1.1", 0, AF_INET);
+    sendSth(addr, fd);
+    for (auto &neighbor : handler->getNeighbors()) {
+        addr = neighbor.address;
+        sendSth(addr, fd);
+    }
+}
+
+void CmdConfirmHost::execute() {
+    struct sockaddr_storage addr;
+    bool ok;
+    int count;
+    recvSth(ok, fd);
+    if (ok)
+        reportSuccess("Neighbor confirmed.");
+    if (!ok) {
+        close(fd);
+        return;
+    }
+    recvSth(count, fd);
+    recvSth(addr, fd);
+    handler->addNewNeighbor(false, addr);
+    for (int i = 0; i < count; ++i) {
+        recvSth(addr, fd);
+        reportDebug("Received one address.");
+        handler->addNewNeighbor(true, addr);
+    }
+    close(fd);
 }

@@ -15,10 +15,14 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
+#define DEBUGGING 1
+#define STATUS_LENGTH 5
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
 #define LINE_LENGTH 80
 #define LISTENING_PORT 25000
+#define SUPERPEER_PORT 26000
+#define SUPERPEER_ADDR "127.0.0.1"
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -56,9 +60,12 @@ typedef struct FileInfo {
     double fsize, duration, bitrate;
 } finfo_t;
 
-enum MSG_T { ERROR, PLAIN, SUCCESS };
+enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 enum CONN_T { OUTGOING, INCOMING };
-enum CMDS { DEFCMD, SHOW, START, LOAD, SET, SET_CODEC, SET_SIZE};
+enum CMDS { DEFCMD, SHOW, START, LOAD,
+            SET, SET_CODEC, SET_SIZE,
+          ASK, RESPOND, REACT,
+          CONFIRM_PEER, CONFIRM_HOST };
 class Command;
 typedef std::map<std::string, std::string> configuration_t;
 typedef std::map<CMDS, Command *> cmd_storage_t;
@@ -69,19 +76,25 @@ struct NeighborInfo {
     //quality
     bool confirmed;
     bool active;
+
+    NeighborInfo(struct sockaddr_storage &addr) {
+        address = addr;
+    }
 };
 
-class State {
+class VideoState {
 public:
     finfo_t finfo;
     configuration_t configuration;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, o_format, o_codec;
-    State(configuration_t &conf): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
+    VideoState(configuration_t &conf): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
     o_format("mkv"), o_codec("h264") {
         configuration = conf;
     }
-    void printState();
+    int split();
+    int join();
+    void printVideoState();
     void changeChunkSize(size_t nsize);
     void loadFileInfo(finfo_t &finfo);
     void resetFileInfo();
@@ -131,6 +144,7 @@ struct Data {
             { KEY_F(6), SHOW },
             { KEY_F(7), START },
             { KEY_F(8), LOAD },
+            { KEY_F(10), ASK },
             { KEY_F(9), SET } };
     }
 

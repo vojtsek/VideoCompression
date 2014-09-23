@@ -1,6 +1,7 @@
 #include "common.h"
 #include "defines.h"
 #include "commands.h"
+#include "networking.h"
 
 #include <iostream>
 #include <fstream>
@@ -42,7 +43,7 @@ void cleanCommands(cmd_storage_t &cmds) {
         delete c.second;
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char **) {
 	if (argc > 2) {
 		usage();
 		return (1);
@@ -52,26 +53,36 @@ int main(int argc, char ** argv) {
     conf.insert(make_pair<string, string>("WD_PREFIX", ""));
 
     if (readConfiguration("conf.h", conf) == -1) {
-        reportStatus("@RError reading configuration!");
+        reportError("Error reading configuration!");
         return (1);
     }
-    State state(conf);
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize));
+    VideoState state(conf);
+    NetworkHandle net_handler;
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(ASK, new CmdAsk(&state, 0, &net_handler)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(RESPOND, new CmdRespond(&state, 0, &net_handler)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(REACT, new CmdReact(&state, 0, &net_handler)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_HOST, new CmdConfirmHost(&state, 0, &net_handler)));
+    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_PEER, new CmdConfirmPeer(&state, 0, &net_handler)));
     initCurses();
     move(0,0);
     printw("Distributed video compression tool.");
     move(1, 0);
     printw("Commands: %10s%10s%10s%10s", "F6 show", "F7 start", "F8 load", "F9 set", "F12 quit");
     curs_set(0);
+    std::thread thr ([&]() {
+        net_handler.start_listening();
+    });
+    thr.detach();
     try {
         do{
-        } while (!acceptCmd(Data::getInstance()->cmds, state));
+        } while (!acceptCmd(Data::getInstance()->cmds));
     } catch (exception e) {
        printw(e.what());
     }

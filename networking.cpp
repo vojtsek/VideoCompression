@@ -16,16 +16,12 @@ using namespace common;
 
 int sendCmd(int fd, CMDS cmd) {
     bool response;
-    if ((write(fd, &cmd, sizeof (cmd))) < 1) {
-        reportError("Problem occured while sending the command.");
+    if (sendSth(cmd, fd) == -1)
         return (-1);
-    }
-    if ((read(fd, &response, sizeof (response))) < 1) {
-        reportError("Error reading the verifying response.");
+    if (recvSth(response, fd) == -1)
         return (-1);
-    }
     if (!response) {
-        reportError("The command was not accepted.");
+        reportDebug("The command was not accepted.");
         return (-1);
     }
     return (0);
@@ -44,19 +40,28 @@ void handlePeer(int fd, NeighborInfo *peer, int idx, NetworkHandle *handler,
     }
 
     while ((r = read(fd, &action, sizeof (action))) > 0) {
-       if (Data::getInstance()->cmds.find(action) != Data::getInstance()->cmds.end())
-           response = true;
-       else
-           response = false;
-           write(fd, &response, sizeof (response));
+        response = true;
        try {
-           Data::getInstance()->cmds.at(action)->execute();
+           if (Data::getInstance()->cmds.find(action) == Data::getInstance()->cmds.end()) {
+               response = false;
+               write(fd, &response, sizeof (response));
+               return;
+           }
+           NetworkCommand *cmd = dynamic_cast<NetworkCommand *>(Data::getInstance()->cmds.at(action));
+           if (cmd == nullptr) {
+               response = false;
+               write(fd, &response, sizeof (response));
+               throw 1;
+           }
+           write(fd, &response, sizeof (response));
+           cmd->fd = fd;
+           cmd->execute();
        } catch (...) {
-           reportError("Error while communicating: Unrecognized command.");
+           reportDebug("Error while communicating: Unrecognized command.");
        }
     }
-        handler->closeConnection(conn, idx);
-    }
+    handler->closeConnection(conn, idx);
+}
 
 void NetworkHandle::closeConnection(CONN_T conn, int idx) {
     conns_mtx.lock();
@@ -69,6 +74,8 @@ void NetworkHandle::closeConnection(CONN_T conn, int idx) {
         //TODO: handle!
     }
     conns_mtx.unlock();
+    if (conn == INCOMING)
+    reportDebug("Connection closed.");
 }
 
 void NetworkHandle::spawnConnection(CONN_T conn, NeighborInfo *neighbor,
@@ -81,7 +88,7 @@ void NetworkHandle::spawnConnection(CONN_T conn, NeighborInfo *neighbor,
     conns_mtx.unlock();
 }
 
-void NetworkHandle::start_listening() {
+int NetworkHandle::start_listening() {
     int sock, accepted, ip6_only = 0, reuse = 1;
     char errormsg[BUF_LENGTH];
     struct sockaddr_in6 in6;
@@ -97,46 +104,81 @@ void NetworkHandle::start_listening() {
     if ((sock = socket(AF_INET6, SOCK_STREAM, 6)) == -1) {
         strerror_r(errno, errormsg, BUF_LENGTH);
         errno = 0;
-        reportError("Failed to create listening socket." + string(errormsg));
-        return;
+        reportDebug("Failed to create listening socket." + string(errormsg));
+        return (-1);
     }
 
-    if ((setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
-                    &ip6_only, sizeof(ip6_only))) == -1) {
+    if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
+                    &ip6_only, sizeof(ip6_only)) == -1) {
         strerror_r(errno, errormsg, BUF_LENGTH);
         errno = 0;
-        reportError("Failed to set option to listening socket." + string(errormsg));
+        reportDebug("Failed to set option to listening socket." + string(errormsg));
+        return (-1);
     }
 
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
             &reuse, sizeof (reuse)) == -1) {
+        perror("option");
         strerror_r(errno, errormsg, BUF_LENGTH);
         errno = 0;
-        reportError("Failed to set option to listening socket." + string(errormsg));
-        return;
+        reportDebug("Failed to set option to listening socket." + string(errormsg));
+        return (-1);
    }
 
-    if ((bind(sock, (struct sockaddr *) &in6, in6_size) ) == -1) {
+    if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
         strerror_r(errno, errormsg, BUF_LENGTH);
         errno = 0;
-        reportError("Failed to bind the listening socket." + string(errormsg));
-        return;
+        reportDebug("Failed to bind the listening socket." + string(errormsg));
+        return (-1);
     }
 
-    if ((listen(sock, SOMAXCONN)) == -1) {
+    if (listen(sock, SOMAXCONN) == -1) {
         strerror_r(errno, errormsg, BUF_LENGTH);
         errno = 0;
-        reportError("Failed to start listen on the socket." + string(errormsg));
-        return;
+        reportDebug("Failed to start listen on the socket." + string(errormsg));
+        return (-1);
     }
 
     for (;;) {
         if ((accepted = accept(sock, (struct sockaddr *) &peer_addr, &psize)) == -1) {
             strerror_r(errno, errormsg, BUF_LENGTH);
             errno = 0;
-            reportError("Failed to accept connection." + string(errormsg));
+            reportDebug("Failed to accept connection." + string(errormsg));
             continue;
         }
         spawnConnection(INCOMING, NULL, accepted, DEFCMD);
     }
+}
+
+void NetworkHandle::confirmNeighbor(struct sockaddr_storage &addr) {
+    int sock;
+    NetworkCommand cmd(NULL, 0, NULL);
+    if ((sock = cmd.connectPeer(&addr)) == -1) {
+        reportDebug("Failed to establish connection.");
+        return;
+    }
+    spawnConnection(OUTGOING, NULL, sock, CONFIRM_PEER);
+}
+
+
+void NetworkHandle::addNeighbor() {
+    struct sockaddr_storage addr;
+    if (!potential_neighbors.size()) {
+        addr = addr2storage(SUPERPEER_ADDR, SUPERPEER_PORT, AF_INET);
+        confirmNeighbor(addr);
+    }
+
+    if(!potential_neighbors.size()) {
+        reportError("Failed to retrieve host info (unable to contact superpeer).");
+        return;
+    }
+    addr = potential_neighbors.at(potential_neighbors.size() - 1).address;
+    confirmNeighbor(addr);
+}
+
+void NetworkHandle::addNewNeighbor(bool potential, struct sockaddr_storage &addr) {
+    if (potential)
+        potential_neighbors.emplace_back(addr);
+    else
+        neighbors.emplace_back(addr);
 }

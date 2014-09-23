@@ -36,8 +36,13 @@ class NetworkHandle {
 public:
     NeighborInfo *lookupNeighbor(struct sockaddr_storage&);
     void spawnConnection(CONN_T conn, NeighborInfo *neighbor, int fd, CMDS cmd);
-    void start_listening();
+    int start_listening();
     void closeConnection(CONN_T conn, int idx);
+    void confirmNeighbor(struct sockaddr_storage &addr);
+    void addNeighbor();
+    int getNeighborCount() { return neighbors.size(); }
+    std::vector<NeighborInfo> getNeighbors() { return neighbors; }
+    void addNewNeighbor(bool potential, struct sockaddr_storage &addr);
 };
 
 #endif // NETWORKING_H
