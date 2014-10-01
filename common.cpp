@@ -55,14 +55,14 @@ std::shared_ptr<Data> Data::inst = nullptr;
 
 int common::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
-    std::unique_lock<std::mutex> lck(Data::getInstance()->input_mtx, std::defer_lock);
+    std::unique_lock<std::mutex> lck(Data::getInstance()->IO_mtx, std::defer_lock);
     do {
         lck.lock();
-        while (Data::getInstance()->reading_input)
+        while (Data::getInstance()->using_IO)
             Data::getInstance()->cond.wait(lck);
-        Data::getInstance()->reading_input = true;
+        Data::getInstance()->using_IO = true;
         c = getch();
-        Data::getInstance()->reading_input = false;
+        Data::getInstance()->using_IO = false;
         lck.unlock();
         Data::getInstance()->cond.notify_one();
         usleep(10000);
@@ -92,14 +92,14 @@ struct sockaddr_storage common::addr2storage(const char *addrstr, int port, int 
 }
 
 string common::loadInput(const string &histf, const string &msg, bool save) {
-    std::unique_lock<std::mutex> lck(Data::getInstance()->input_mtx, std::defer_lock);
+    std::unique_lock<std::mutex> lck(Data::getInstance()->IO_mtx, std::defer_lock);
 
     lck.lock();
-    while (Data::getInstance()->reading_input)
+    while (Data::getInstance()->using_IO)
         Data::getInstance()->cond.wait(lck);
     cursToQuestion();
     printw("%s", msg.c_str());
-    Data::getInstance()->reading_input = true;
+    Data::getInstance()->using_IO = true;
     char line[LINE_LENGTH];
     curs_set(1);
     cursToCmd();
@@ -112,7 +112,7 @@ string common::loadInput(const string &histf, const string &msg, bool save) {
     cursToQuestion();
     clrtoeol();
     refresh();
-    Data::getInstance()->reading_input = false;
+    Data::getInstance()->using_IO = false;
     lck.unlock();
     Data::getInstance()->cond.notify_one();
     return string(line);
@@ -257,6 +257,17 @@ int common::prepareDir(string &location) {
     return (0);
 }
 
+int common::encodeChunk(string &path, string &codec, string &extension) {
+    string out, err;
+    char cmd[BUF_LENGTH];
+    string file_out = common::getBasename(path) + "." + extension;
+    Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
+             "-i", path.c_str(),
+             "-vcodec", codec.c_str(),
+             "-acodec", "copy",
+             file_out.c_str());
+}
+
 vector<string> common::extract(const string text, const string from, int count) {
     vector<string> result;
     string word;
@@ -284,23 +295,29 @@ string common::getTimestamp() {
 }
 
 void common::reportError(const string &err) {
-    Data::getInstance()->status_handler.add(std::make_pair(std::string(err), ERROR));
+    status_pairT new_entry = std::make_pair(std::string(err), ERROR);
+    Data::getInstance()->status_handler.add(new_entry);
     Data::getInstance()->status_handler.print();
 }
 
 void common::reportSuccess(const string &msg) {
-    Data::getInstance()->status_handler.add(std::make_pair(std::string(msg), SUCCESS));
+    status_pairT new_entry = std::make_pair(std::string(msg), SUCCESS);
+    Data::getInstance()->status_handler.add(new_entry);
     Data::getInstance()->status_handler.print();
 }
 
 void common::reportStatus(const string &msg) {
-    Data::getInstance()->status_handler.add(std::make_pair(std::string(msg), PLAIN));
+    status_pairT new_entry = std::make_pair(std::string(msg), PLAIN);
+    Data::getInstance()->status_handler.add(new_entry);
     Data::getInstance()->status_handler.print();
 }
 
-void common::reportDebug(const string &msg) {
-    Data::getInstance()->status_handler.add(std::make_pair(std::string(msg), DEBUG));
-    Data::getInstance()->status_handler.print();
+void common::reportDebug(const string &msg, int lvl) {
+    if (lvl <= DEBUG_LEVEL) {
+        status_pairT new_entry = std::make_pair(std::string(msg), DEBUG);
+        Data::getInstance()->status_handler.add(new_entry);
+        Data::getInstance()->status_handler.print();
+    }
 }
 
 void common::initCurses() {
@@ -318,6 +335,7 @@ void common::initCurses() {
     init_pair(CYANALL, COLOR_CYAN, COLOR_CYAN);
     init_pair(GREYALL, COLOR_GREY, COLOR_GREY);
     init_pair(BG, COLOR_WHITE, BG_COL);
+    init_pair(INVERTED, BG_COL, COLOR_WHITE);
     wbkgd(stdscr, COLOR_PAIR(BG));
 }
 
@@ -360,8 +378,13 @@ void common::cursToQuestion() {
 
 void common::cursToPerc() {
     if (!Data::getInstance()->perc_y)
-        Data::getInstance()->perc_y = getmaxy(stdscr) - 2;
+        Data::getInstance()->perc_y = getmaxy(stdscr) - 3;
     move(Data::getInstance()->perc_y, 0);
+}
+
+void common::clearProgress() {
+    common::cursToPerc();
+    clrtoeol();
 }
 
 void common::cursorToX(int nx) {
@@ -545,4 +568,82 @@ bool common::knownCodec(const string &cod) {
             return (true);
     }
     return (false);
+}
+
+bool common::cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
+    if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
+        return false;
+    if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
+        if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port))
+                //(((struct sockaddr_in *) &s1)->sin_addr == ((struct sockaddr_in *) &s2)->sin_addr))
+            return true;
+        else
+            return false;
+    }
+    //TODO: maybe bad
+    if (((struct sockaddr *) &s1)->sa_family == AF_INET6) {
+        if ((((struct sockaddr_in6 *) &s1)->sin6_port == ((struct sockaddr_in6 *) &s2)->sin6_port))
+               // (((struct sockaddr_in6 *) &s1)->sin6_addr == ((struct sockaddr_in6 *) &s2)->sin6_addr))
+            return true;
+        else
+            return false;
+    }
+}
+
+bool common::addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo> list) {
+
+    for (NeighborInfo &n : list) {
+        if (cmpStorages(n.address, st))
+            return true;
+    }
+    return false;
+}
+
+string common::addr2str(struct sockaddr_storage &address) {
+    char ad[sizeof(struct sockaddr_in)];
+    struct sockaddr_in *addr = (struct sockaddr_in *) &address;
+    inet_ntop(AF_INET, &addr->sin_addr,
+              ad, sizeof(struct sockaddr_in));
+    stringstream ss;
+    ss << "Address: " << ad << " : " << ntohs(addr->sin_port);
+    return (ss.str());
+}
+
+//TODO getsockname doesnt fail if short structure was supplied!
+struct sockaddr_storage common::getHostAddr(int fd) {
+    struct sockaddr_storage in4, in6;
+    struct sockaddr_in *in4p = (struct sockaddr_in *) &in4;
+    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &in6;
+    bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
+    bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
+    socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
+    if (getsockname(fd, (struct sockaddr *) in4p, &size4) == -1) {
+        reportDebug("Not an IPv4 addr.", 4);
+    } else
+        return (in4);
+    if (getsockname(fd, (struct sockaddr *) in6p, &size6) == -1) {
+        reportDebug("Not an IPv6 addr.", 4);
+    } else
+        return (in4);
+    reportDebug("Failed to get host's address.", 2);
+    return (in4);
+}
+
+struct sockaddr_storage common::getPeerAddr(int fd) {
+    struct sockaddr_storage in4, in6;
+    struct sockaddr_in *in4p = (struct sockaddr_in *) &in4;
+    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &in6;
+    bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
+    bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
+    socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
+    if (getpeername(fd, (struct sockaddr *) in4p, &size4) == -1) {
+        reportDebug("Not an IPv4 addr.", 4);
+    } else
+        return (in4);
+    if (getpeername(fd, (struct sockaddr *) in6p, &size6) == -1) {
+        reportDebug("Not an IPv6 addr.", 4);
+    } else
+        return (in4);
+    reportDebug("Failed to get host's address.", 2);
+    return (in4);
 }

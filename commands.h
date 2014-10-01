@@ -24,15 +24,26 @@ public:
     virtual ~Command() {}
 };
 
+class NetworkCommand: public Command {
+protected:
+    NetworkHandle *handler;
+public:
+    int connectPeer(struct sockaddr_storage *addr);
+    int fd;
+    NetworkCommand(VideoState *state, int fildes, NetworkHandle *nhandler):
+        Command(state), handler(nhandler), fd(fildes) {}
+    virtual void execute();
+};
+
 class CmdHelp: public Command {
 public:
     CmdHelp(VideoState *st): Command(st) {}
     virtual void execute();
 };
 
-class CmdShow: public Command {
+class CmdShow: public NetworkCommand {
 public:
-    CmdShow(VideoState *st): Command(st) {}
+    CmdShow(VideoState *st, int fd, NetworkHandle *hndl): NetworkCommand(st, fd, hndl) {}
     virtual void execute();
 };
 
@@ -66,17 +77,6 @@ public:
     virtual void execute();
 };
 
-class NetworkCommand: public Command {
-protected:
-    NetworkHandle *handler;
-public:
-    int connectPeer(struct sockaddr_storage *addr);
-    int fd;
-    NetworkCommand(VideoState *state, int fildes, NetworkHandle *nhandler):
-        Command(state), handler(nhandler), fd(fildes) {}
-    virtual void execute();
-};
-
 class CmdAsk: public NetworkCommand {
 public:
     CmdAsk(VideoState *st, int fd, NetworkHandle *hndl): NetworkCommand(st, fd, hndl) {}
@@ -104,6 +104,18 @@ public:
 class CmdConfirmHost: public NetworkCommand {
 public:
     CmdConfirmHost(VideoState *st, int fd, NetworkHandle *hndl): NetworkCommand(st, fd, hndl) {}
+    virtual void execute();
+};
+
+class CmdAskHost: public NetworkCommand {
+public:
+    CmdAskHost(VideoState *st, int fd, NetworkHandle *hndl): NetworkCommand(st, fd, hndl) {}
+    virtual void execute();
+};
+
+class CmdAskPeer: public NetworkCommand {
+public:
+    CmdAskPeer(VideoState *st, int fd, NetworkHandle *hndl): NetworkCommand(st, fd, hndl) {}
     virtual void execute();
 };
 

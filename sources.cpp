@@ -54,12 +54,14 @@ int VideoState::split() {
                 "-t", chunk_duration,
                 output);
             reportError(msg);
+            clearProgress();
             return (-1);
         }
     }
     printProgress(1);
     reportSuccess("File successfuly splitted.");
     reportTime("/splitting.sp", sum / 1000);
+    clearProgress();
     return (0);
 }
 
@@ -68,7 +70,7 @@ int VideoState::join() {
     string out, err, list_loc(dir_location + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
     ofstream ofs(list_loc);
     stringstream ss;
-    char file[BUF_LENGTH], cmd[BUF_LENGTH], file_in[BUF_LENGTH], file_out[BUF_LENGTH];
+    char file[BUF_LENGTH], cmd[BUF_LENGTH];
     long sum_size = 0;
     double duration = 0;
     unlink(output.c_str());
@@ -76,18 +78,11 @@ int VideoState::join() {
     reportStatus("Joining the file: " + output);
     snprintf(cmd, BUF_LENGTH, "ffmpeg");
     for (unsigned int i = 0; i < c_chunks; ++i) {
-        snprintf(file_in, BUF_LENGTH, "%s/%03d_splitted.avi", dir_location.c_str(), i);
-        snprintf(file_out, BUF_LENGTH, "%s/%03d_splitted.mkv", dir_location.c_str(), i);
-        Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
-                                 "-i", file_in,
-                                 "-vcodec", "libx264",
-                                 "-acodec", "copy",
-                                 file_out);
-        snprintf(file, BUF_LENGTH, "file '%03d_splitted.mkv'", i);
+        snprintf(file, BUF_LENGTH, "file '%03d_splitted.avi'", i);
         try {
             ss.clear();
             ss.str("");
-            ss << dir_location << "/" << setfill('0') << setw(3) << i << "_splitted.mkv";
+            ss << dir_location << "/" << setfill('0') << setw(3) << i << "_splitted.avi";
             sum_size += getFileSize(ss.str());
             ofs << file << endl;
         } catch (...) {} // TODO: handle exception
@@ -102,18 +97,22 @@ int VideoState::join() {
                     output.c_str());
     if (err.find("failed") != string::npos) {
         thr.detach();
+        clearProgress();
         return (-1);
     }
     thr.join();
     printProgress(1);
     reportSuccess("Succesfully joined.");
     reportTime("/joining.j", duration / 1000);
+    clearProgress();
     return (0);
 }
 
 
 void VideoState::printVideoState() {
     char value[BUF_LENGTH];
+    wmove(Data::getInstance()->info_win, 0, 0);
+    werase(Data::getInstance()->info_win);
     if (!finfo.fpath.empty())
         show("File:", finfo.fpath.c_str());
     if (!finfo.codec.empty())
@@ -136,19 +135,22 @@ void VideoState::printVideoState() {
         snprintf(value, BUF_LENGTH, "%d", chunk_size / 1024);
         show("Chunk size:", value);
     }
+    wbkgd(Data::getInstance()->info_win, COLOR_PAIR(INVERTED));
     attron(A_BOLD);
     attron(COLOR_PAIR(BLUE));
     show("Output format:", o_format.c_str());
     show("Output codec:", o_codec.c_str());
     attroff(COLOR_PAIR(BLUE));
     attroff(A_BOLD);
+    wborder(Data::getInstance()->info_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    wrefresh(Data::getInstance()->info_win);
 }
 
 void VideoState::loadFileInfo(finfo_t &finfo) {
     this->finfo = finfo;
     char dir_name[BUF_LENGTH];
     sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
-    dir_location = configuration["WD_PREFIX"] + "/" + std::string(dir_name);
+    dir_location = Data::getInstance()->working_dir + "/" + std::string(dir_name);
     changeChunkSize(CHUNK_SIZE);
 }
 
@@ -211,51 +213,55 @@ void HistoryStorage::write() {
     out.close();
 }
 
-void StatusInfo::add(status_pairT msg) {
+void StatusInfo::add(status_pairT &msg) {
+    Data::getInstance()->report_mtx.lock();
     q.push_front(make_pair(msg.first, msg.second));
-    if (q.size() > STATUS_LENGTH)
-        q.pop_back();
+    //if (q.size() > STATUS_LENGTH)
+      //  q.pop_back();
+    Data::getInstance()->report_mtx.unlock();
 }
 
 void StatusInfo::print() {
-    unique_lock<mutex> lck(Data::getInstance()->input_mtx, defer_lock);
+    unique_lock<mutex> lck(Data::getInstance()->IO_mtx, defer_lock);
 
     lck.lock();
-    while (Data::getInstance()->reading_input)
+    while (Data::getInstance()->using_IO)
         Data::getInstance()->cond.wait(lck);
-    Data::getInstance()->reading_input = true;
-    common::cursToStatus();
-    int x, y, col;
+    Data::getInstance()->using_IO = true;
+    Data::getInstance()->report_mtx.lock();
+    WINDOW *win = Data::getInstance()->status_win;
+    int y = Data::getInstance()->status_length - 1, col;
     bool first = true;
-    getyx(stdscr, y, x);
-    for (status_pairT a : q) {
+    for (status_pairT &a : q) {
         if (first)
-            attron(A_BOLD);
+            wattron(win, A_BOLD);
         col = DEFAULT;
         if (a.second == ERROR)
             col = RED;
         if (a.second == SUCCESS)
             col = GREEN;
         if (a.second == DEBUG) {
-#ifndef DEBUGGING
-            attroff(A_BOLD);
-            return;
-#endif
             col = BLUE;
         }
         if (col != DEFAULT)
-        attron(COLOR_PAIR(col));
-        printw("%s\n", a.first.c_str());
-        move(--y, x);
+            wattron(win, COLOR_PAIR(col));
+        mvwprintw(win, --y, 0, "%s\n", a.first.c_str());
+        wrefresh(win);
         if (col != DEFAULT)
-        attroff(	COLOR_PAIR(col));
+            wattroff(win,	COLOR_PAIR(col));
         if (first) {
             first = false;
-            attroff(A_BOLD);
+            wattroff(win, A_BOLD);
         }
     }
     refresh();
-    Data::getInstance()->reading_input = false;
+    wrefresh(win);
+    Data::getInstance()->report_mtx.unlock();
+    Data::getInstance()->using_IO = false;
     lck.unlock();
     Data::getInstance()->cond.notify_one();
+}
+
+void NeighborInfo::printInfo() {
+    reportStatus(common::addr2str(address));
 }

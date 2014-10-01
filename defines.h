@@ -15,11 +15,13 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUGGING 1
-#define STATUS_LENGTH 5
+#define DEBUG_LEVEL 5
+#define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
 #define LINE_LENGTH 80
+#define MIN_NEIGHBOR_COUNT 2
+#define NEIGHBOR_CHECK_TIMEOUT 5
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
 #define SUPERPEER_ADDR "127.0.0.1"
@@ -32,12 +34,13 @@
 #define YELLOWALL 6
 #define GREYALL 7
 #define CYANALL 8
+#define INVERTED 9
 #define COLOR_GREY 100
 #define BG 20
 #define BG_COL COLOR_BLACK
 #define ST_Y 10
 
-#define show(x, y) printw("%15s%35s\n", x, y);
+#define show(x, y) wprintw(Data::getInstance()->info_win, "%15s%35s\n", x, y);
 
 template <typename Measure_inT = std::chrono::milliseconds>
 struct Measured {
@@ -65,6 +68,7 @@ enum CONN_T { OUTGOING, INCOMING };
 enum CMDS { DEFCMD, SHOW, START, LOAD,
             SET, SET_CODEC, SET_SIZE,
           ASK, RESPOND, REACT,
+          ASK_PEER, ASK_HOST,
           CONFIRM_PEER, CONFIRM_HOST };
 class Command;
 typedef std::map<std::string, std::string> configuration_t;
@@ -77,6 +81,8 @@ struct NeighborInfo {
     bool confirmed;
     bool active;
 
+    void printInfo();
+
     NeighborInfo(struct sockaddr_storage &addr) {
         address = addr;
     }
@@ -85,13 +91,11 @@ struct NeighborInfo {
 class VideoState {
 public:
     finfo_t finfo;
-    configuration_t configuration;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, o_format, o_codec;
-    VideoState(configuration_t &conf): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
-    o_format("mkv"), o_codec("h264") {
-        configuration = conf;
-    }
+    VideoState(): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
+    o_format("mkv"), o_codec("h264") {}
+
     int split();
     int join();
     void printVideoState();
@@ -118,22 +122,25 @@ typedef std::pair<std::string, MSG_T> status_pairT;
 class StatusInfo {
     std::deque<status_pairT> q;
 public:
-    void add(status_pairT msg);
+    void add(status_pairT &msg);
     void print();
 };
 
 struct Data {
     Data() : status_y(0), perc_y(0), question_y(0) {}
-    std::mutex input_mtx;
+    std::mutex IO_mtx, report_mtx;
 
     std::condition_variable cond;
-    bool reading_input = false;
+    bool using_IO = false, is_superpeer = false;
     StatusInfo status_handler;
     cmd_storage_t cmds;
-    int status_y, perc_y, question_y;
+    WINDOW *status_win, *info_win;
+    int status_y, perc_y, question_y, port_no, status_length;
+    std::string working_dir;
     static std::shared_ptr<Data> getInstance() {
-        if(!inst)
+        if(!inst) {
             inst = std::shared_ptr<Data>(new Data);
+        }
         return inst;
     }
     static std::vector<std::string> getKnownCodecs() {

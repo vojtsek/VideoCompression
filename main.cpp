@@ -11,17 +11,43 @@
 #include <limits>
 #include <string>
 #include <mutex>
-#include <curses.h>
 #include <queue>
+#include <string.h>
+#include <curses.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace common;
 
 void usage() {
-    printw("Usage: run [port_number]");
 }
 
-int readConfiguration(const string &cf, configuration_t &conf) {
+bool argsContains(char **argv, const char *str) {
+    while (*argv != nullptr) {
+        if (!strcmp(*argv, str))
+            return true;
+        ++argv;
+    }
+    return false;
+}
+
+int parseOptions(int argc, char **argv) {
+    int opt;
+    while ((opt = getopt(argc, argv, "p:")) != -1) {
+        switch (opt) {
+        case 'p':
+            Data::getInstance()->port_no = atoi(optarg);
+            break;
+        case '?':
+            usage();
+            break;
+        }
+    }
+    return (optind);
+}
+
+int readConfiguration(const string &cf) {
     ifstream ifs(cf);
     string param, value, line;
     while(ifs.good()) {
@@ -30,7 +56,6 @@ int readConfiguration(const string &cf, configuration_t &conf) {
         ss >> param;
         ss >> value;
         try {
-            conf.at(param) = value;
         } catch (...) {
             reportStatus("@RUnknown parameter: " + param);
         }
@@ -38,48 +63,94 @@ int readConfiguration(const string &cf, configuration_t &conf) {
    return (0);
 }
 
+void superPeerRoutine(NetworkHandle &net_handler) {
+    ifstream ifs("example_peers.conf");
+    string addr;
+    int port;
+    while (ifs.good()) {
+        ifs >> addr;
+        ifs >> port;
+        struct sockaddr_storage pseudo;
+        pseudo = addr2storage(addr.c_str(), port, AF_INET);
+//        net_handler.addNewNeighbor(false, pseudo);
+    }
+    net_handler.start_listening(SUPERPEER_PORT);
+}
+
+void initConfiguration() {
+    std::shared_ptr<Data> data = Data::getInstance();
+    data->port_no = LISTENING_PORT;
+    data->working_dir = ".";
+    int x,y, y_space;
+    getmaxyx(stdscr, y, x);
+    y_space = y - 5;
+    data->status_win = derwin(stdscr, y_space / 2, x, y - (y_space / 2) - 2, 0);
+    data->status_length = y_space / 2;
+    data->info_win = derwin(stdscr, y_space / 2, 80, 3, 0);
+}
+
+void initCommands(VideoState &state, NetworkHandle &net_handler) {
+    std::shared_ptr<Data> data = Data::getInstance();
+    data->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
+    data->cmds.insert(make_pair<CMDS, Command *>(ASK, new CmdAsk(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(RESPOND, new CmdRespond(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(REACT, new CmdReact(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_HOST, new CmdConfirmHost(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_PEER, new CmdConfirmPeer(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(ASK_PEER, new CmdAskPeer(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(ASK_HOST, new CmdAskHost(&state, 0, &net_handler)));
+}
+
 void cleanCommands(cmd_storage_t &cmds) {
     for (auto &c : cmds)
         delete c.second;
 }
 
-int main(int argc, char **) {
+int main(int argc, char **argv) {
 	if (argc > 2) {
 		usage();
-		return (1);
-	}
+    }
 
-    configuration_t conf;
-    conf.insert(make_pair<string, string>("WD_PREFIX", ""));
-
-    if (readConfiguration("conf.h", conf) == -1) {
+    initCurses();
+    initConfiguration();
+    if (readConfiguration("conf.h") == -1) {
         reportError("Error reading configuration!");
         return (1);
     }
-    VideoState state(conf);
+    int optidx = parseOptions(argc, argv);
+    VideoState state;
     NetworkHandle net_handler;
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(ASK, new CmdAsk(&state, 0, &net_handler)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(RESPOND, new CmdRespond(&state, 0, &net_handler)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(REACT, new CmdReact(&state, 0, &net_handler)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_HOST, new CmdConfirmHost(&state, 0, &net_handler)));
-    Data::getInstance()->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_PEER, new CmdConfirmPeer(&state, 0, &net_handler)));
-    initCurses();
-    move(0,0);
-    printw("Distributed video compression tool.");
-    move(1, 0);
-    printw("Commands: %10s%10s%10s%10s", "F6 show", "F7 start", "F8 load", "F9 set", "F12 quit");
+    initCommands(state, net_handler);
+    WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
+    wmove(win, 0,0);
+    wprintw(win, "Distributed video compression tool.");
+    wmove(win, 1, 0);
+    wprintw(win, "Commands: %10s%10s%10s%10s", "F6 show", "F7 start", "F8 load", "F9 set", "F12 quit");
     curs_set(0);
+    wrefresh(win);
+    refresh();
+    if (argsContains(argv + optidx, string("super").c_str())) {
+        Data::getInstance()->is_superpeer = true;
+        superPeerRoutine(net_handler);
+    }
     std::thread thr ([&]() {
-        net_handler.start_listening();
+        net_handler.start_listening(Data::getInstance()->port_no);
     });
     thr.detach();
+    std::thread thr2 ([&]() {
+        for (;;) {
+            if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT)
+                net_handler.confirmNeighbors(MIN_NEIGHBOR_COUNT);
+            sleep(NEIGHBOR_CHECK_TIMEOUT);
+       }
+    });
+    thr2.detach();
     try {
         do{
         } while (!acceptCmd(Data::getInstance()->cmds));

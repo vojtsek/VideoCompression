@@ -6,8 +6,8 @@ CONFIG -= qt
 SOURCES += main.cpp \
     commands.cpp \
     common.cpp \
-    sources.cpp \
-    networking.cpp
+    networking.cpp \
+    sources.cpp
 
 HEADERS += \
     commands.h \
