@@ -9,6 +9,7 @@
 #include <condition_variable>
 
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <curses.h>
 
 using namespace std;
@@ -111,46 +112,36 @@ int VideoState::join() {
 
 void VideoState::printVideoState() {
     char value[BUF_LENGTH];
-    wmove(Data::getInstance()->info_win, 0, 0);
-    werase(Data::getInstance()->info_win);
     if (!finfo.fpath.empty())
-        show("File:", finfo.fpath.c_str());
+        snprintf(value, BUF_LENGTH, "%15s%35s", "File:", finfo.fpath.c_str());
+        DATA->info_handler.add(string(value), PLAIN);
     if (!finfo.codec.empty())
-        show("Codec:", finfo.codec.c_str());
+        snprintf(value, BUF_LENGTH, "%15s%35s", "Codec:", finfo.codec.c_str());
+        DATA->info_handler.add(string(value), PLAIN);
     if (finfo.bitrate) {
-        snprintf(value, BUF_LENGTH, "%f", finfo.bitrate);
-        show("Bitrate:", value);
+        snprintf(value, BUF_LENGTH, "%15s%35f", "Bitrate:", finfo.bitrate);
+        DATA->info_handler.add(string(value), PLAIN);
     }
     if (finfo.duration) {
-        snprintf(value, BUF_LENGTH, "%f", finfo.duration);
-        show("Duration:", value);
+        snprintf(value, BUF_LENGTH, "%15s%35f", "Duration:", finfo.duration);
+        DATA->info_handler.add(string(value), PLAIN);
     }
     if (finfo.fsize) {
-        snprintf(value, BUF_LENGTH, "%f", finfo.fsize);
-        show("File size:", value);
-        snprintf(value, BUF_LENGTH, "%d", c_chunks);
-        show("Chunks count:", value);
+        snprintf(value, BUF_LENGTH, "%15s%35f", "Filesize:", finfo.fsize);
+        DATA->info_handler.add(string(value), PLAIN);
     }
     if (chunk_size) {
-        snprintf(value, BUF_LENGTH, "%d", chunk_size / 1024);
-        show("Chunk size:", value);
+        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->intValues.at("CHUNK_SIZE"));
+        DATA->info_handler.add(string(value), PLAIN);
     }
-    wbkgd(Data::getInstance()->info_win, COLOR_PAIR(INVERTED));
-    attron(A_BOLD);
-    attron(COLOR_PAIR(BLUE));
-    show("Output format:", o_format.c_str());
-    show("Output codec:", o_codec.c_str());
-    attroff(COLOR_PAIR(BLUE));
-    attroff(A_BOLD);
-    wborder(Data::getInstance()->info_win, '|', '|', '-', '-', '+', '+', '+', '+');
-    wrefresh(Data::getInstance()->info_win);
+    DATA->info_handler.print();
 }
 
 void VideoState::loadFileInfo(finfo_t &finfo) {
     this->finfo = finfo;
     char dir_name[BUF_LENGTH];
     sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
-    dir_location = Data::getInstance()->working_dir + "/" + std::string(dir_name);
+    dir_location = DATA->working_dir + "/" + std::string(dir_name);
     changeChunkSize(CHUNK_SIZE);
 }
 
@@ -213,27 +204,74 @@ void HistoryStorage::write() {
     out.close();
 }
 
-void StatusInfo::add(status_pairT &msg) {
-    Data::getInstance()->report_mtx.lock();
-    q.push_front(make_pair(msg.first, msg.second));
-    //if (q.size() > STATUS_LENGTH)
-      //  q.pop_back();
-    Data::getInstance()->report_mtx.unlock();
+string MyAddr::get() {
+    stringstream ss;
+    ss << "Address: " << addr << " : " << port;
+    return (ss.str());
 }
 
-void StatusInfo::print() {
-    unique_lock<mutex> lck(Data::getInstance()->IO_mtx, defer_lock);
+void MyAddr::print() {
+    reportStatus(get());
+}
+
+MyAddr::MyAddr(struct sockaddr_storage &address) {
+    char adr4[sizeof (struct sockaddr_in)], adr6[sizeof (struct sockaddr_in6)];
+    if (((struct sockaddr *)(&address))->sa_family == AF_INET) {
+        struct sockaddr_in *addr = (struct sockaddr_in *) &address;
+        inet_ntop(AF_INET, &addr->sin_addr,
+              adr4, sizeof(struct sockaddr_in));
+        this->addr = string(adr4);
+        port = ntohs(addr->sin_port);
+    } else {
+        struct sockaddr_in6 *addr = (struct sockaddr_in6 *) &address;
+        inet_ntop(AF_INET6, &addr->sin6_addr,
+              adr6, sizeof(struct sockaddr_in6));
+       this->addr = string(adr6);
+        port = ntohs(addr->sin6_port);
+    }
+}
+
+void WindowPrinter::add(string str, MSG_T type) {
+    DATA->report_mtx.lock();
+    if (direction == DOWN)
+        q.push_back(make_pair(str, type));
+    else
+        q.push_front(make_pair(str, type));
+    DATA->report_mtx.unlock();
+}
+
+void WindowPrinter::changeWin(WINDOW *nwin) {
+    win = nwin;
+}
+
+void WindowPrinter::print() {
+    unique_lock<mutex> lck(DATA->IO_mtx, defer_lock);
 
     lck.lock();
-    while (Data::getInstance()->using_IO)
-        Data::getInstance()->cond.wait(lck);
-    Data::getInstance()->using_IO = true;
-    Data::getInstance()->report_mtx.lock();
-    WINDOW *win = Data::getInstance()->status_win;
-    int y = Data::getInstance()->status_length - 1, col;
+    while (DATA->using_IO)
+        DATA->cond.wait(lck);
+    DATA->using_IO = true;
+    DATA->report_mtx.lock();
+    wbkgd(win, COLOR_PAIR(BG));
+    wmove(win, 0, 0);
+    werase(win);
+    int y, col;
+    if (start == BOTTOM)
+        y = DATA->intValues.at("STATUS_LENGTH") - 1;
+    else
+        y = 0;
     bool first = true;
-    for (status_pairT &a : q) {
-        if (first)
+    deque<printable_pair_T>::iterator s, e;
+    if (direction == UP) {
+        s = q.begin();
+    } else {
+        s = q.size() > (unsigned) DATA->intValues.at("STATUS_LENGTH") ?
+                    q.end() - DATA->intValues.at("STATUS_LENGTH") +1 : q.begin();
+    }
+    e = q.end();
+    while (s != e) {
+        auto a = *s++;
+        if (first && bolded)
             wattron(win, A_BOLD);
         col = DEFAULT;
         if (a.second == ERROR)
@@ -245,23 +283,29 @@ void StatusInfo::print() {
         }
         if (col != DEFAULT)
             wattron(win, COLOR_PAIR(col));
-        mvwprintw(win, --y, 0, "%s\n", a.first.c_str());
+        if (start == BOTTOM)
+            --y;
+        else
+            ++y;
+        mvwprintw(win, y, 1, "%s\n", a.first.c_str());
         wrefresh(win);
         if (col != DEFAULT)
             wattroff(win,	COLOR_PAIR(col));
-        if (first) {
+        if (first && bolded) {
             first = false;
             wattroff(win, A_BOLD);
         }
     }
     refresh();
+    wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(win);
-    Data::getInstance()->report_mtx.unlock();
-    Data::getInstance()->using_IO = false;
+    DATA->report_mtx.unlock();
+    DATA->using_IO = false;
     lck.unlock();
-    Data::getInstance()->cond.notify_one();
+    DATA->cond.notify_one();
 }
 
 void NeighborInfo::printInfo() {
-    reportStatus(common::addr2str(address));
+    MyAddr mad(address);
+    reportStatus(mad.get());
 }

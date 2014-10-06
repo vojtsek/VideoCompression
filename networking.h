@@ -41,9 +41,9 @@ public:
     int start_listening(int port);
     void closeConnection(CONN_T conn, int idx);
     void confirmNeighbor(struct sockaddr_storage addr);
-    void confirmNeighbors(int count);
+    void confirmNeighbors(unsigned int count);
     void collectNeighbors(unsigned int desired);
-    void askForAddresses(struct sockaddr_storage &addr, int count);
+    void askForAddresses(struct sockaddr_storage &addr);
     int getNeighborCount() { return neighbors.size(); }
     std::vector<NeighborInfo> getNeighbors() { return neighbors; }
     void addNewNeighbor(bool potential, struct sockaddr_storage &addr);

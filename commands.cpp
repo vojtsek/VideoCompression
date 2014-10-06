@@ -101,9 +101,9 @@ void CmdSetChSize::execute() {
 void CmdSet::execute() {
     string line = loadInput("set.history", "What option set?", false);
     if (line.find("codec") != string::npos)
-        Data::getInstance()->cmds[SET_CODEC]->execute();
+        DATA->cmds[SET_CODEC]->execute();
     else if (line.find("chunksize") != string::npos)
-        Data::getInstance()->cmds[SET_SIZE]->execute();
+        DATA->cmds[SET_SIZE]->execute();
     else
         reportStatus("Available options: 'codec'', 'chunksize'");
 }
@@ -217,8 +217,8 @@ int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
 void NetworkCommand::execute() {}
 
 void CmdAsk::execute() {
-            wscrl(Data::getInstance()->status_win, -3);
-            wrefresh(Data::getInstance()->status_win);
+            wscrl(DATA->status_win, -3);
+            wrefresh(DATA->status_win);
   /*  struct sockaddr_storage addr;
     struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
     reportStatus("Connecting...");
@@ -252,12 +252,13 @@ void CmdAskPeer::execute() {
     struct sockaddr_storage addr;
     sendCmd(fd, action);
     recvSth(peer_port, fd);
-    if (Data::getInstance()->is_superpeer) {
+    if (DATA->is_superpeer) {
 //        addr = getPeerAddr(fd);
 //        ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
         count = 1;
         addr = addr2storage("127.0.0.1", peer_port, AF_INET);
-        reportDebug(addr2str(addr),1);
+        MyAddr mad(addr);
+        reportDebug(mad.get(),1);
         handler->addNewNeighbor(false, addr);
         rand_n = rand() % handler->getNeighborCount();
         addr = handler->getNeighbors().at(rand_n).address;
@@ -280,12 +281,14 @@ void CmdAskPeer::execute() {
 void CmdAskHost::execute() {
     struct sockaddr_storage addr;
      int count;
-     sendSth(Data::getInstance()->port_no, fd);
+     sendSth(DATA->intValues.at("LISTENING_PORT"), fd);
     recvSth(count, fd);
+//    reportDebug("recvd", 1);
     for (int i = 0; i < count; ++i) {
         recvSth(addr, fd);
-        reportDebug(addr2str(addr), 3);
-        if (((sockaddr_in *) &addr)->sin_port != htons(Data::getInstance()->port_no))
+        MyAddr mad(addr);
+        reportDebug(mad.get(), 3);
+        if (((sockaddr_in *) &addr)->sin_port != htons(DATA->intValues.at("LISTENING_PORT")))
             handler->addNewNeighbor(true, addr);
         else
             reportDebug("I dont want myself.", 4);
@@ -296,8 +299,15 @@ void CmdAskHost::execute() {
 void CmdConfirmPeer::execute() {
     CMDS action = CONFIRM_HOST;
     bool ok = true;
-    struct sockaddr_storage addr = addr2storage("127.0.0.1",
-                                                Data::getInstance()->port_no, AF_INET);
+    struct sockaddr_storage addr;
+    addr = getHostAddr(fd);
+    /* if (DATA->IPv4_ONLY)
+        addr = addr2storage("127.0.0.1",
+                                                DATA->intValues.at("LISTENING_PORT"), AF_INET);
+    else
+        addr = addr2storage("127.0.0.1",
+                                                DATA->intValues.at("LISTENING_PORT"), AF_INET6);
+    */
     sendCmd(fd, action);
     sendSth(ok, fd);
     sendSth(addr, fd);
@@ -314,6 +324,7 @@ void CmdConfirmHost::execute() {
     }
     recvSth(addr, fd);
     handler->addNewNeighbor(false, addr);
-    reportDebug("Neighbor confirmed." + addr2str(addr), 2);
+    MyAddr mad(addr);
+    reportDebug("Neighbor confirmed." + mad.get(), 2);
     close(fd);
 }

@@ -28,8 +28,9 @@ class NetworkCommand: public Command {
 protected:
     NetworkHandle *handler;
 public:
-    int connectPeer(struct sockaddr_storage *addr);
+    NeighborInfo *peer;
     int fd;
+    int connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, int fildes, NetworkHandle *nhandler):
         Command(state), handler(nhandler), fd(fildes) {}
     virtual void execute();

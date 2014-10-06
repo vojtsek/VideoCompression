@@ -24,7 +24,7 @@
 #define NEIGHBOR_CHECK_TIMEOUT 5
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
-#define SUPERPEER_ADDR "127.0.0.1"
+#define SUPERPEER_ADDR "::ffff:127.0.0.1"
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -39,8 +39,8 @@
 #define BG 20
 #define BG_COL COLOR_BLACK
 #define ST_Y 10
-
-#define show(x, y) wprintw(Data::getInstance()->info_win, "%15s%35s\n", x, y);
+#define DATA Data::getInstance()
+#define show(x, y) wprintw(DATA->info_win, "%15s%35s\n", x, y);
 
 template <typename Measure_inT = std::chrono::milliseconds>
 struct Measured {
@@ -117,26 +117,45 @@ public:
     std::string &getCurrent();
 };
 
-typedef std::pair<std::string, MSG_T> status_pairT;
+typedef std::pair<std::string, MSG_T> printable_pair_T;
 
-class StatusInfo {
-    std::deque<status_pairT> q;
+class WindowPrinter {
+    WINDOW *win;
+    std::deque<printable_pair_T> q;
+    bool bolded;
 public:
-    void add(status_pairT &msg);
+    enum DIRECTION {UP, DOWN} direction;
+    enum START {TOP, BOTTOM} start;
+    WindowPrinter(DIRECTION dir, bool b, START st): bolded(b), direction(dir), start(st){
+        win = stdscr;
+    }
+    void changeWin(WINDOW *nwin);
+    void add(std::string msg, MSG_T type);
     void print();
 };
 
+struct MyAddr {
+    std::string addr;
+    int port;
+    void print();
+    std::string get();
+    MyAddr(struct sockaddr_storage &addr);
+};
+
 struct Data {
-    Data() : status_y(0), perc_y(0), question_y(0) {}
+    Data(): status_handler(WindowPrinter::UP, true, WindowPrinter::BOTTOM),
+        info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),
+        status_y(0), perc_y(0), question_y(0) {}
     std::mutex IO_mtx, report_mtx;
 
     std::condition_variable cond;
-    bool using_IO = false, is_superpeer = false;
-    StatusInfo status_handler;
+    bool using_IO = false, is_superpeer = false, IPv4_ONLY;
+    WindowPrinter status_handler, info_handler;
     cmd_storage_t cmds;
     WINDOW *status_win, *info_win;
-    int status_y, perc_y, question_y, port_no, status_length;
-    std::string working_dir;
+    std::map<std::string, int> intValues;
+    int status_y, perc_y, question_y;
+    std::string working_dir, superpeer_addr;
     static std::shared_ptr<Data> getInstance() {
         if(!inst) {
             inst = std::shared_ptr<Data>(new Data);

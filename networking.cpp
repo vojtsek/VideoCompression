@@ -43,13 +43,13 @@ void handlePeer(int fd, NeighborInfo *peer, int idx, NetworkHandle *handler,
     while ((r = read(fd, &action, sizeof (action))) > 0) {
         response = true;
        try {
-           if (Data::getInstance()->cmds.find(action) == Data::getInstance()->cmds.end()) {
+           if (DATA->cmds.find(action) == DATA->cmds.end()) {
                response = false;
                write(fd, &response, sizeof (response));
                return;
            }
            NetworkCommand *cmd = dynamic_cast<NetworkCommand *>(
-                       Data::getInstance()->cmds.at(action));
+                       DATA->cmds.at(action));
            if (cmd == nullptr) {
                response = false;
                write(fd, &response, sizeof (response));
@@ -57,6 +57,7 @@ void handlePeer(int fd, NeighborInfo *peer, int idx, NetworkHandle *handler,
            }
            write(fd, &response, sizeof (response));
            cmd->fd = fd;
+           cmd->peer = peer;
            cmd->execute();
        } catch (...) {
            reportDebug("Error while communicating: Unrecognized command.", 1);
@@ -149,7 +150,8 @@ int NetworkHandle::start_listening(int port) {
 void NetworkHandle::confirmNeighbor(struct sockaddr_storage addr) {
     int sock;
     NetworkCommand cmd(NULL, 0, NULL);
-    reportDebug("CONFIRMING " + addr2str(addr), 4);
+    MyAddr mad(addr);
+    reportDebug("CONFIRMING " + mad.get(), 4);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to establish connection.", 2);
         return;
@@ -157,7 +159,7 @@ void NetworkHandle::confirmNeighbor(struct sockaddr_storage addr) {
     spawnConnection(OUTGOING, NULL, sock, CONFIRM_PEER, true);
 }
 
-void NetworkHandle::confirmNeighbors(int count) {
+void NetworkHandle::confirmNeighbors(unsigned int count) {
     // if nobody to ask to, try to earn some more addresses
     if (potential_neighbors.size() < count) {
         reportDebug("Need to collect more potential neighbors", 3);
@@ -165,7 +167,7 @@ void NetworkHandle::confirmNeighbors(int count) {
     }
     struct sockaddr_storage addr;
     n_mtx.lock();
-    for (int i = 0; i < count; ++i) {
+    for (unsigned int i = 0; i < count; ++i) {
         if (!potential_neighbors.size())
             break;
         addr = *(potential_neighbors.end() - 1);
@@ -184,31 +186,36 @@ void NetworkHandle::collectNeighbors(unsigned int desired) {
         reportDebug("Trying neighbors.", 4);
         for (NeighborInfo &n : nghrs) {
             addr = n.address;
-            reportDebug("Trying neighbor. " + addr2str(addr), 4);
-            askForAddresses(addr, MIN_NEIGHBOR_COUNT);
+            MyAddr mad(addr);
+            reportDebug("Trying neighbor. " + mad.get(), 4);
+            askForAddresses(addr);
             if (potential_neighbors.size() >= desired)
                 break;
         }
     }
     if ((potential_neighbors.size() < desired) && (potential_neighbors.size())) {
+        //TODO: getting method
         n_mtx.lock();
         std::vector<struct sockaddr_storage> nghrs = potential_neighbors;
         n_mtx.unlock();
         reportDebug("Trying first potential neighbor.", 4);
         for (struct sockaddr_storage &addr : nghrs) {
-            askForAddresses(addr, MIN_NEIGHBOR_COUNT);
+            askForAddresses(addr);
             if (potential_neighbors.size() >= desired)
                 break;
         }
     }
     if (potential_neighbors.size() < desired){
         reportDebug("Trying superpeer.", 4);
-        addr = addr2storage(SUPERPEER_ADDR, SUPERPEER_PORT, AF_INET);
-        askForAddresses(addr, MIN_NEIGHBOR_COUNT);
+        if (DATA->IPv4_ONLY)
+            addr = addr2storage(DATA->superpeer_addr.c_str(), DATA->intValues.at("SUPERPEER_PORT"), AF_INET);
+        else
+            addr = addr2storage(DATA->superpeer_addr.c_str(), DATA->intValues.at("SUPERPEER_PORT"), AF_INET6);
+        askForAddresses(addr);
     }
 }
 
-void NetworkHandle::askForAddresses(struct sockaddr_storage &addr, int count) {
+void NetworkHandle::askForAddresses(struct sockaddr_storage &addr) {
     int sock;
     NetworkCommand cmd(NULL, 0, NULL);
     if ((sock = cmd.connectPeer(&addr)) == -1) {

@@ -37,7 +37,7 @@ int parseOptions(int argc, char **argv) {
     while ((opt = getopt(argc, argv, "p:")) != -1) {
         switch (opt) {
         case 'p':
-            Data::getInstance()->port_no = atoi(optarg);
+            DATA->intValues.at("LISTENING_PORT") = atoi(optarg);
             break;
         case '?':
             usage();
@@ -50,47 +50,49 @@ int parseOptions(int argc, char **argv) {
 int readConfiguration(const string &cf) {
     ifstream ifs(cf);
     string param, value, line;
+    int intvalue;
     while(ifs.good()) {
         getline(ifs, line);
         stringstream ss(line);
         ss >> param;
         ss >> value;
+        intvalue = atoi(value.c_str());
         try {
+            DATA->intValues.at(param) = intvalue;
         } catch (...) {
-            reportStatus("@RUnknown parameter: " + param);
+            // read also strings - determine exceptions
+            reportDebug("Failed to read parameter.", 3);
         }
     }
    return (0);
 }
 
 void superPeerRoutine(NetworkHandle &net_handler) {
-    ifstream ifs("example_peers.conf");
-    string addr;
-    int port;
-    while (ifs.good()) {
-        ifs >> addr;
-        ifs >> port;
-        struct sockaddr_storage pseudo;
-        pseudo = addr2storage(addr.c_str(), port, AF_INET);
-//        net_handler.addNewNeighbor(false, pseudo);
-    }
-    net_handler.start_listening(SUPERPEER_PORT);
+    net_handler.start_listening(DATA->intValues.at("SUPERPEER_PORT"));
 }
 
 void initConfiguration() {
-    std::shared_ptr<Data> data = Data::getInstance();
-    data->port_no = LISTENING_PORT;
+    std::shared_ptr<Data> data = DATA;
     data->working_dir = ".";
+    data->IPv4_ONLY = false;
     int x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
-    data->status_win = derwin(stdscr, y_space / 2, x, y - (y_space / 2) - 2, 0);
-    data->status_length = y_space / 2;
+    data->status_win = derwin(stdscr, y_space / 2, x, y - (y_space / 2) - 3, 0);
     data->info_win = derwin(stdscr, y_space / 2, 80, 3, 0);
+    data->status_handler.changeWin(data->status_win);
+    data->info_handler.changeWin(data->info_win);
+    data->superpeer_addr = SUPERPEER_ADDR;
+    data->intValues.emplace("NEIGHBOR_CHECK_TIMEOUT", NEIGHBOR_CHECK_TIMEOUT);
+    data->intValues.emplace("MIN_NEIGHBOR_COUNT", MIN_NEIGHBOR_COUNT);
+    data->intValues.emplace("LISTENING_PORT", LISTENING_PORT);
+    data->intValues.emplace("STATUS_LENGTH", y_space / 2);
+    data->intValues.emplace("CHUNK_SIZE", CHUNK_SIZE);
+    data->intValues.emplace("SUPERPEER_PORT", SUPERPEER_PORT);
 }
 
 void initCommands(VideoState &state, NetworkHandle &net_handler) {
-    std::shared_ptr<Data> data = Data::getInstance();
+    std::shared_ptr<Data> data = DATA;
     data->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state, 0, &net_handler)));
     data->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
@@ -119,7 +121,7 @@ int main(int argc, char **argv) {
 
     initCurses();
     initConfiguration();
-    if (readConfiguration("conf.h") == -1) {
+    if (readConfiguration("CONF") == -1) {
         reportError("Error reading configuration!");
         return (1);
     }
@@ -136,28 +138,28 @@ int main(int argc, char **argv) {
     wrefresh(win);
     refresh();
     if (argsContains(argv + optidx, string("super").c_str())) {
-        Data::getInstance()->is_superpeer = true;
+        DATA->is_superpeer = true;
         superPeerRoutine(net_handler);
     }
     std::thread thr ([&]() {
-        net_handler.start_listening(Data::getInstance()->port_no);
+        net_handler.start_listening(DATA->intValues.at("LISTENING_PORT"));
     });
     thr.detach();
     std::thread thr2 ([&]() {
         for (;;) {
             if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT)
                 net_handler.confirmNeighbors(MIN_NEIGHBOR_COUNT);
-            sleep(NEIGHBOR_CHECK_TIMEOUT);
+            sleep(DATA->intValues.at("NEIGHBOR_CHECK_TIMEOUT"));
        }
     });
     thr2.detach();
     try {
         do{
-        } while (!acceptCmd(Data::getInstance()->cmds));
+        } while (!acceptCmd(DATA->cmds));
     } catch (exception e) {
        printw(e.what());
     }
-    cleanCommands(Data::getInstance()->cmds);
+    cleanCommands(DATA->cmds);
     endwin();
 	return (0);
 }

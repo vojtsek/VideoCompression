@@ -58,7 +58,6 @@ namespace common
     bool isAcceptable(char c);
     bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo> list);
     bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);
-    std::string addr2str(struct sockaddr_storage &addr);
     template<typename T>
     int sendSth(T what, int fd) {
         int w;
