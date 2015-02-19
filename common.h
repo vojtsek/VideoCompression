@@ -8,6 +8,7 @@
 
 #include "commands.h"
 #include "networking.h"
+#include "handle_IO.h"
 #include "defines.h"
 
 #ifndef COMMON_H
@@ -22,7 +23,6 @@ namespace common
     int checkFile(std::string &path);
     int prepareDir(std::string &loc);
     int rmrDir(const char *loc, bool rec);
-    int getLine(char *line, int len, const std::string &histf, bool save);
     int runExternal(std::string &o, std::string &e, char *cmd, int numargs, ...);
     int encodeChunk(std::string &path, std::string &codec, std::string &extension);
     long getFileSize(const std::string &file);
@@ -31,70 +31,8 @@ namespace common
     std::string getTimestamp();
     std::string getExtension(const std::string &str);
     std::string getBasename(const std::string &str);
-    std::string loadInput(const std::string &histf, const std::string &msg, bool save);
-    struct sockaddr_storage addr2storage(const char* addr, int port, int family);
-    struct sockaddr_storage getHostAddr(int fd);
-    struct sockaddr_storage getPeerAddr(int fd);
     void listCmds();
-    void initCurses();
-    void cursToInfo();
-    void cursToPerc();
-    void cursToCmd();
-    void cursToStatus();
-    void cursToQuestion();
-    void clearNlines(int n);
-    void clearProgress();
-    void reportFileProgress(const std::string &file, long desired);
-    void cursorToX(int nx);
-    void writeSuccess(const std::string &msg);
-    void writeError(const std::string &err);
-    void reportError(const std::string &err);
-    void reportSuccess(const std::string &msg);
-    void reportStatus(const std::string &msg);
-    void reportDebug(const std::string &msg, int lvl);
-    void printProgress(double percent);
-    void reportTime(const std::string &file, double time);
     bool knownCodec(const std::string &cod);
     bool isAcceptable(char c);
-    bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo> list);
-    bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);
-    template<typename T>
-    int sendSth(T what, int fd) {
-        int w;
-        if ((w = write(fd, &what, sizeof (T))) < 1) {
-            common::reportError("Problem occured while sending the data.");
-            return (-1);
-        }
-        return (w);
-    }
-
-    template<typename T>
-    int sendSth(T *what, int fd, int len) {
-        int w;
-        if ((w = write(fd, what, len * sizeof(T))) < 1) {
-            reportError("Problem occured while sending the data.");
-            return (-1);
-        }
-        return (w);
-    }
-    template<typename T>
-    int recvSth(T &where, int fd) {
-        int r;
-         if ((r = read(fd, &where, sizeof (T))) < 1) {
-            reportError("Problem occured while accepting the data.");
-            return (-1);
-        }
-        return (r);
-    }
-    template<typename T>
-    int recvSth(T *where, int fd, int len) {
-        int r;
-        if ((r = read(fd, where, len * sizeof (T))) < 1) {
-            reportError("Problem occured while accepting the data.");
-            return (-1);
-        }
-        return (r);
-    }
 }
-
 #endif

@@ -1,5 +1,7 @@
 ﻿#include "commands.h"
 #include "common.h"
+#include "handle_IO.h"
+#include "network_helper.h"
 #include "defines.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -23,10 +25,14 @@ using namespace common;
 using namespace rapidjson;
 
 void Command::execute() {
-    common::cursToInfo();
+    cursToInfo();
 }
 
 void CmdHelp::execute() {
+}
+
+void CmdDef::execute() {
+
 }
 
 void CmdShow::execute() {
@@ -210,24 +216,16 @@ int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
         reportDebug("Failed to connect to remote peer." + string(strerror(errno)), 1);
         return(-1);
     }
-    reportDebug("Connected", 3);
+    MyAddr mad(*addr);
+    reportDebug("Connected to " + mad.get(), 6);
     return (sock);
 }
 
 void NetworkCommand::execute() {}
 
 void CmdAsk::execute() {
-            wscrl(DATA->status_win, -3);
-            wrefresh(DATA->status_win);
-  /*  struct sockaddr_storage addr;
-    struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
-    reportStatus("Connecting...");
-    addr4->sin_family = AF_INET;
-    addr4->sin_port = htons(25000);
-    char astr[] = "127.0.0.1";
-    inet_pton(AF_INET, astr, &(addr4->sin_addr));
-    handler->confirmNeighbor(addr);
-    */
+            wscrl(DATA->io_data.status_win, -3);
+            wrefresh(DATA->io_data.status_win);
 }
 
 void CmdRespond::execute() {
@@ -252,13 +250,13 @@ void CmdAskPeer::execute() {
     struct sockaddr_storage addr;
     sendCmd(fd, action);
     recvSth(peer_port, fd);
-    if (DATA->is_superpeer) {
-//        addr = getPeerAddr(fd);
-//        ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
+    if (DATA->config.is_superpeer) {
+        addr = getPeerAddr(fd);
+        MyAddr a(addr);
+        a.print();
+        ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
         count = 1;
-        addr = addr2storage("127.0.0.1", peer_port, AF_INET);
-        MyAddr mad(addr);
-        reportDebug(mad.get(),1);
+    //    addr = addr2storage("127.0.0.1", peer_port, AF_INET);
         handler->addNewNeighbor(false, addr);
         rand_n = rand() % handler->getNeighborCount();
         addr = handler->getNeighbors().at(rand_n).address;
@@ -280,15 +278,13 @@ void CmdAskPeer::execute() {
 
 void CmdAskHost::execute() {
     struct sockaddr_storage addr;
-     int count;
-     sendSth(DATA->intValues.at("LISTENING_PORT"), fd);
+    int count;
+    sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd);
     recvSth(count, fd);
-//    reportDebug("recvd", 1);
     for (int i = 0; i < count; ++i) {
         recvSth(addr, fd);
-        MyAddr mad(addr);
-        reportDebug(mad.get(), 3);
-        if (((sockaddr_in *) &addr)->sin_port != htons(DATA->intValues.at("LISTENING_PORT")))
+        addr.ss_family = AF_INET;
+        if (((sockaddr_in *) &addr)->sin_port != htons(DATA->config.intValues.at("LISTENING_PORT")))
             handler->addNewNeighbor(true, addr);
         else
             reportDebug("I dont want myself.", 4);
@@ -303,10 +299,10 @@ void CmdConfirmPeer::execute() {
     addr = getHostAddr(fd);
     /* if (DATA->IPv4_ONLY)
         addr = addr2storage("127.0.0.1",
-                                                DATA->intValues.at("LISTENING_PORT"), AF_INET);
+                                                DATA->config.intValues.at("LISTENING_PORT"), AF_INET);
     else
         addr = addr2storage("127.0.0.1",
-                                                DATA->intValues.at("LISTENING_PORT"), AF_INET6);
+                                                DATA->config.intValues.at("LISTENING_PORT"), AF_INET6);
     */
     sendCmd(fd, action);
     sendSth(ok, fd);
@@ -323,8 +319,10 @@ void CmdConfirmHost::execute() {
         return;
     }
     recvSth(addr, fd);
+    MyAddr ma(addr);
+    ma.print();
     handler->addNewNeighbor(false, addr);
     MyAddr mad(addr);
-    reportDebug("Neighbor confirmed." + mad.get(), 2);
+    reportDebug("Neighbor confirmed." + mad.get(), 4);
     close(fd);
 }

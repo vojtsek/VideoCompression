@@ -37,7 +37,7 @@ int parseOptions(int argc, char **argv) {
     while ((opt = getopt(argc, argv, "p:")) != -1) {
         switch (opt) {
         case 'p':
-            DATA->intValues.at("LISTENING_PORT") = atoi(optarg);
+            DATA->config.intValues.at("LISTENING_PORT") = atoi(optarg);
             break;
         case '?':
             usage();
@@ -58,7 +58,7 @@ int readConfiguration(const string &cf) {
         ss >> value;
         intvalue = atoi(value.c_str());
         try {
-            DATA->intValues.at(param) = intvalue;
+            DATA->config.intValues.at(param) = intvalue;
         } catch (...) {
             // read also strings - determine exceptions
             reportDebug("Failed to read parameter.", 3);
@@ -68,27 +68,27 @@ int readConfiguration(const string &cf) {
 }
 
 void superPeerRoutine(NetworkHandle &net_handler) {
-    net_handler.start_listening(DATA->intValues.at("SUPERPEER_PORT"));
+    net_handler.start_listening(DATA->config.intValues.at("SUPERPEER_PORT"));
 }
 
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
-    data->working_dir = ".";
-    data->IPv4_ONLY = false;
+    data->config.working_dir = ".";
+    data->config.IPv4_ONLY = true;
     int x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
-    data->status_win = derwin(stdscr, y_space / 2, x, y - (y_space / 2) - 3, 0);
-    data->info_win = derwin(stdscr, y_space / 2, 80, 3, 0);
-    data->status_handler.changeWin(data->status_win);
-    data->info_handler.changeWin(data->info_win);
-    data->superpeer_addr = SUPERPEER_ADDR;
-    data->intValues.emplace("NEIGHBOR_CHECK_TIMEOUT", NEIGHBOR_CHECK_TIMEOUT);
-    data->intValues.emplace("MIN_NEIGHBOR_COUNT", MIN_NEIGHBOR_COUNT);
-    data->intValues.emplace("LISTENING_PORT", LISTENING_PORT);
-    data->intValues.emplace("STATUS_LENGTH", y_space / 2);
-    data->intValues.emplace("CHUNK_SIZE", CHUNK_SIZE);
-    data->intValues.emplace("SUPERPEER_PORT", SUPERPEER_PORT);
+    data->io_data.status_win = derwin(stdscr, y_space / 2, x, y - (y_space / 2) - 3, 0);
+    data->io_data.info_win = derwin(stdscr, y_space / 2, 80, 3, 0);
+    data->io_data.status_handler.changeWin(data->io_data.status_win);
+    data->io_data.info_handler.changeWin(data->io_data.info_win);
+    data->config.superpeer_addr = SUPERPEER_ADDR;
+    data->config.intValues.emplace("NEIGHBOR_CHECK_TIMEOUT", NEIGHBOR_CHECK_TIMEOUT);
+    data->config.intValues.emplace("MIN_NEIGHBOR_COUNT", MIN_NEIGHBOR_COUNT);
+    data->config.intValues.emplace("LISTENING_PORT", LISTENING_PORT);
+    data->config.intValues.emplace("STATUS_LENGTH", y_space / 2);
+    data->config.intValues.emplace("CHUNK_SIZE", CHUNK_SIZE);
+    data->config.intValues.emplace("SUPERPEER_PORT", SUPERPEER_PORT);
 }
 
 void initCommands(VideoState &state, NetworkHandle &net_handler) {
@@ -97,7 +97,6 @@ void initCommands(VideoState &state, NetworkHandle &net_handler) {
     data->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
-    data->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new Command(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
     data->cmds.insert(make_pair<CMDS, Command *>(ASK, new CmdAsk(&state, 0, &net_handler)));
@@ -107,11 +106,19 @@ void initCommands(VideoState &state, NetworkHandle &net_handler) {
     data->cmds.insert(make_pair<CMDS, Command *>(CONFIRM_PEER, new CmdConfirmPeer(&state, 0, &net_handler)));
     data->cmds.insert(make_pair<CMDS, Command *>(ASK_PEER, new CmdAskPeer(&state, 0, &net_handler)));
     data->cmds.insert(make_pair<CMDS, Command *>(ASK_HOST, new CmdAskHost(&state, 0, &net_handler)));
+    data->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new CmdDef));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
     for (auto &c : cmds)
         delete c.second;
+}
+
+void getNeighbors(NetworkHandle &net_handler) {
+    while (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT) {
+        net_handler.confirmNeighbors(MIN_NEIGHBOR_COUNT);
+        sleep(DATA->config.intValues.at("NEIGHBOR_CHECK_TIMEOUT"));
+    }
 }
 
 int main(int argc, char **argv) {
@@ -138,21 +145,29 @@ int main(int argc, char **argv) {
     wrefresh(win);
     refresh();
     if (argsContains(argv + optidx, string("super").c_str())) {
-        DATA->is_superpeer = true;
-        superPeerRoutine(net_handler);
-    }
-    std::thread thr ([&]() {
-        net_handler.start_listening(DATA->intValues.at("LISTENING_PORT"));
-    });
-    thr.detach();
+        DATA->config.is_superpeer = true;
+        std::thread thr ([&]() {
+            superPeerRoutine(net_handler);
+        });
+        thr.detach();
+    } else {
+        std::thread thr ([&]() {
+        net_handler.start_listening(DATA->config.intValues.at("LISTENING_PORT"));
+        });
+        thr.detach();
     std::thread thr2 ([&]() {
-        for (;;) {
-            if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT)
-                net_handler.confirmNeighbors(MIN_NEIGHBOR_COUNT);
-            sleep(DATA->intValues.at("NEIGHBOR_CHECK_TIMEOUT"));
-       }
+        while (1) {
+            if (!DATA->config.is_superpeer)
+                getNeighbors(net_handler);
+            reportDebug("Confirming neighbors",3);
+            for (auto n : net_handler.getNeighbors()) {
+                net_handler.confirmNeighbor(n.address);
+            }
+            sleep(4);
+        }
     });
     thr2.detach();
+    }
     try {
         do{
         } while (!acceptCmd(DATA->cmds));

@@ -21,10 +21,10 @@
 #define INFO_LINES 15
 #define LINE_LENGTH 80
 #define MIN_NEIGHBOR_COUNT 2
-#define NEIGHBOR_CHECK_TIMEOUT 5
+#define NEIGHBOR_CHECK_TIMEOUT 8
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
-#define SUPERPEER_ADDR "::ffff:127.0.0.1"
+#define SUPERPEER_ADDR "127.0.0.1"
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -40,7 +40,7 @@
 #define BG_COL COLOR_BLACK
 #define ST_Y 10
 #define DATA Data::getInstance()
-#define show(x, y) wprintw(DATA->info_win, "%15s%35s\n", x, y);
+#define show(x, y) wprintw(DATA->io_data.info_win, "%15s%35s\n", x, y);
 
 template <typename Measure_inT = std::chrono::milliseconds>
 struct Measured {
@@ -73,6 +73,14 @@ enum CMDS { DEFCMD, SHOW, START, LOAD,
 class Command;
 typedef std::map<std::string, std::string> configuration_t;
 typedef std::map<CMDS, Command *> cmd_storage_t;
+
+struct MyAddr {
+    std::string addr;
+    int port;
+    void print();
+    std::string get();
+    MyAddr(struct sockaddr_storage &addr);
+};
 
 struct NeighborInfo {
     struct sockaddr_storage address;
@@ -134,34 +142,39 @@ public:
     void print();
 };
 
-struct MyAddr {
-    std::string addr;
-    int port;
-    void print();
-    std::string get();
-    MyAddr(struct sockaddr_storage &addr);
+
+struct IO_Data {
+    IO_Data(): info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),
+        status_handler(WindowPrinter::UP, true, WindowPrinter::BOTTOM) {}
+    WindowPrinter info_handler, status_handler;
+    int status_y = 0, perc_y = 0, question_y = 0;
+    WINDOW *status_win, *info_win;
+};
+
+struct Mutexes_Data {
+    std::mutex IO_mtx, report_mtx;
+    std::condition_variable cond;
+    bool using_IO = false;
+};
+
+struct Configuration {
+    bool is_superpeer = false, IPv4_ONLY;
+    std::map<std::string, int> intValues;
+    std::string working_dir, superpeer_addr;
 };
 
 struct Data {
-    Data(): status_handler(WindowPrinter::UP, true, WindowPrinter::BOTTOM),
-        info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),
-        status_y(0), perc_y(0), question_y(0) {}
-    std::mutex IO_mtx, report_mtx;
-
-    std::condition_variable cond;
-    bool using_IO = false, is_superpeer = false, IPv4_ONLY;
-    WindowPrinter status_handler, info_handler;
-    cmd_storage_t cmds;
-    WINDOW *status_win, *info_win;
-    std::map<std::string, int> intValues;
-    int status_y, perc_y, question_y;
-    std::string working_dir, superpeer_addr;
     static std::shared_ptr<Data> getInstance() {
         if(!inst) {
             inst = std::shared_ptr<Data>(new Data);
         }
         return inst;
     }
+
+    cmd_storage_t cmds;
+    IO_Data io_data;
+    Mutexes_Data m_data;
+    Configuration config;
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }

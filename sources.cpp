@@ -114,34 +114,34 @@ void VideoState::printVideoState() {
     char value[BUF_LENGTH];
     if (!finfo.fpath.empty())
         snprintf(value, BUF_LENGTH, "%15s%35s", "File:", finfo.fpath.c_str());
-        DATA->info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     if (!finfo.codec.empty())
         snprintf(value, BUF_LENGTH, "%15s%35s", "Codec:", finfo.codec.c_str());
-        DATA->info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     if (finfo.bitrate) {
         snprintf(value, BUF_LENGTH, "%15s%35f", "Bitrate:", finfo.bitrate);
-        DATA->info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     }
     if (finfo.duration) {
         snprintf(value, BUF_LENGTH, "%15s%35f", "Duration:", finfo.duration);
-        DATA->info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     }
     if (finfo.fsize) {
         snprintf(value, BUF_LENGTH, "%15s%35f", "Filesize:", finfo.fsize);
-        DATA->info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     }
     if (chunk_size) {
-        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->intValues.at("CHUNK_SIZE"));
-        DATA->info_handler.add(string(value), PLAIN);
+        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->config.intValues.at("CHUNK_SIZE"));
+        DATA->io_data.info_handler.add(string(value), PLAIN);
     }
-    DATA->info_handler.print();
+    DATA->io_data.info_handler.print();
 }
 
 void VideoState::loadFileInfo(finfo_t &finfo) {
     this->finfo = finfo;
     char dir_name[BUF_LENGTH];
     sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
-    dir_location = DATA->working_dir + "/" + std::string(dir_name);
+    dir_location = DATA->config.working_dir + "/" + std::string(dir_name);
     changeChunkSize(CHUNK_SIZE);
 }
 
@@ -216,7 +216,7 @@ void MyAddr::print() {
 
 MyAddr::MyAddr(struct sockaddr_storage &address) {
     char adr4[sizeof (struct sockaddr_in)], adr6[sizeof (struct sockaddr_in6)];
-    if (((struct sockaddr *)(&address))->sa_family == AF_INET) {
+    if (((struct sockaddr_in *)(&address))->sin_family == AF_INET) {
         struct sockaddr_in *addr = (struct sockaddr_in *) &address;
         inet_ntop(AF_INET, &addr->sin_addr,
               adr4, sizeof(struct sockaddr_in));
@@ -232,12 +232,12 @@ MyAddr::MyAddr(struct sockaddr_storage &address) {
 }
 
 void WindowPrinter::add(string str, MSG_T type) {
-    DATA->report_mtx.lock();
+    DATA->m_data.report_mtx.lock();
     if (direction == DOWN)
         q.push_back(make_pair(str, type));
     else
         q.push_front(make_pair(str, type));
-    DATA->report_mtx.unlock();
+    DATA->m_data.report_mtx.unlock();
 }
 
 void WindowPrinter::changeWin(WINDOW *nwin) {
@@ -245,19 +245,19 @@ void WindowPrinter::changeWin(WINDOW *nwin) {
 }
 
 void WindowPrinter::print() {
-    unique_lock<mutex> lck(DATA->IO_mtx, defer_lock);
+    unique_lock<mutex> lck(DATA->m_data.IO_mtx, defer_lock);
 
     lck.lock();
-    while (DATA->using_IO)
-        DATA->cond.wait(lck);
-    DATA->using_IO = true;
-    DATA->report_mtx.lock();
+    while (DATA->m_data.using_IO)
+        DATA->m_data.cond.wait(lck);
+    DATA->m_data.using_IO = true;
+    DATA->m_data.report_mtx.lock();
     wbkgd(win, COLOR_PAIR(BG));
     wmove(win, 0, 0);
     werase(win);
     int y, col;
     if (start == BOTTOM)
-        y = DATA->intValues.at("STATUS_LENGTH") - 1;
+        y = DATA->config.intValues.at("STATUS_LENGTH") - 1;
     else
         y = 0;
     bool first = true;
@@ -265,8 +265,8 @@ void WindowPrinter::print() {
     if (direction == UP) {
         s = q.begin();
     } else {
-        s = q.size() > (unsigned) DATA->intValues.at("STATUS_LENGTH") ?
-                    q.end() - DATA->intValues.at("STATUS_LENGTH") +1 : q.begin();
+        s = q.size() > (unsigned) DATA->config.intValues.at("STATUS_LENGTH") ?
+                    q.end() - DATA->config.intValues.at("STATUS_LENGTH") +1 : q.begin();
     }
     e = q.end();
     while (s != e) {
@@ -299,13 +299,13 @@ void WindowPrinter::print() {
     refresh();
     wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(win);
-    DATA->report_mtx.unlock();
-    DATA->using_IO = false;
+    DATA->m_data.report_mtx.unlock();
+    DATA->m_data.using_IO = false;
     lck.unlock();
-    DATA->cond.notify_one();
+    DATA->m_data.cond.notify_one();
 }
 
 void NeighborInfo::printInfo() {
     MyAddr mad(address);
-    reportStatus(mad.get());
+    reportSuccess(mad.get());
 }

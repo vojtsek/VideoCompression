@@ -1,6 +1,8 @@
 #include "networking.h"
 #include "common.h"
 #include "commands.h"
+#include "handle_IO.h"
+#include "network_helper.h"
 #include "defines.h"
 
 #include <mutex>
@@ -37,6 +39,7 @@ void handlePeer(int fd, NeighborInfo *peer, int idx, NetworkHandle *handler,
             if ((sendCmd(fd, cmd)) == -1) {
                 reportError("Failed to process the action.");
                 handler->closeConnection(conn, idx);
+                return;
             }
     }
 
@@ -150,19 +153,26 @@ int NetworkHandle::start_listening(int port) {
 void NetworkHandle::confirmNeighbor(struct sockaddr_storage addr) {
     int sock;
     NetworkCommand cmd(NULL, 0, NULL);
-    MyAddr mad(addr);
-    reportDebug("CONFIRMING " + mad.get(), 4);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
-        reportDebug("Failed to establish connection.", 2);
+        reportError("Failed to confirm neighbor.");
+        n_mtx.lock();
+        for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
+            if (cmpStorages((*it).address, addr)) {
+                neighbors.erase(it);
+                break;
+            }
+        }
+        n_mtx.unlock();
         return;
     }
     spawnConnection(OUTGOING, NULL, sock, CONFIRM_PEER, true);
 }
 
+//rename!
 void NetworkHandle::confirmNeighbors(unsigned int count) {
     // if nobody to ask to, try to earn some more addresses
     if (potential_neighbors.size() < count) {
-        reportDebug("Need to collect more potential neighbors", 3);
+        reportDebug("Need to collect more potential neighbors", 5);
         collectNeighbors(count);
     }
     struct sockaddr_storage addr;
@@ -177,13 +187,15 @@ void NetworkHandle::confirmNeighbors(unsigned int count) {
     n_mtx.unlock();
 }
 
+/* tries to collect more potential neighbors
+
+*/
 void NetworkHandle::collectNeighbors(unsigned int desired) {
     struct sockaddr_storage addr;
     if (neighbors.size()) {
         n_mtx.lock();
         std::vector<NeighborInfo> nghrs = neighbors;
         n_mtx.unlock();
-        reportDebug("Trying neighbors.", 4);
         for (NeighborInfo &n : nghrs) {
             addr = n.address;
             MyAddr mad(addr);
@@ -205,12 +217,12 @@ void NetworkHandle::collectNeighbors(unsigned int desired) {
                 break;
         }
     }
-    if (potential_neighbors.size() < desired){
+    if ((potential_neighbors.size() < desired) && (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
-        if (DATA->IPv4_ONLY)
-            addr = addr2storage(DATA->superpeer_addr.c_str(), DATA->intValues.at("SUPERPEER_PORT"), AF_INET);
+        if (DATA->config.IPv4_ONLY)
+            addr = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
         else
-            addr = addr2storage(DATA->superpeer_addr.c_str(), DATA->intValues.at("SUPERPEER_PORT"), AF_INET6);
+            addr = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
         askForAddresses(addr);
     }
 }
@@ -232,9 +244,12 @@ void NetworkHandle::addNewNeighbor(bool potential, struct sockaddr_storage &addr
     else {
         if (!addrIn(addr, neighbors)) {
             neighbors.emplace_back(addr);
-            reportDebug("Neighbor added.", 3);
+            MyAddr mad(addr);
+            reportDebug("Neighbor added; " + mad.get(), 3);
+            if (neighbors.size() == MIN_NEIGHBOR_COUNT)
+                reportSuccess("Enough neighbors gained.");
         } else
-            reportDebug("Already known neighbor.", 3);
+            reportDebug("Already known neighbor.", 4);
     }
     n_mtx.unlock();
 }

@@ -20,8 +20,14 @@ public:
     Command(VideoState *st) {
         state = st;
     }
-    virtual void execute();
+    virtual void execute() = 0;
     virtual ~Command() {}
+};
+
+class CmdDef: public Command {
+public:
+    CmdDef(): Command(nullptr) {}
+    virtual void execute();
 };
 
 class NetworkCommand: public Command {
