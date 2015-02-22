@@ -3,7 +3,6 @@
 #include "handle_IO.h"
 #include "commands.h"
 #include "defines.h"
-#include "network_helper.h"
 
 #include <iostream>
 #include <iomanip>
@@ -32,6 +31,8 @@
 #include <thread>
 #include <string.h>
 #include <sys/stat.h>
+#include <err.h>
+#include "network_helper.h"
 
 
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
@@ -87,6 +88,7 @@ struct sockaddr_storage getHostAddr(int fd) {
             return (in6);
     }
     reportDebug("Failed to get host's address.", 2);
+    throw new std::exception();
     return (in4);
 }
 
@@ -108,6 +110,7 @@ struct sockaddr_storage getPeerAddr(int fd) {
     } else
         return (in4);
     reportDebug("Failed to get host's address.", 2);
+    throw new std::exception();
     return (in4);
 }
 

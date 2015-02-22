@@ -15,16 +15,16 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 0
 #define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
 #define LINE_LENGTH 80
-#define MIN_NEIGHBOR_COUNT 2
-#define NEIGHBOR_CHECK_TIMEOUT 8
+#define MIN_NEIGHBOR_COUNT 4
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
 #define SUPERPEER_ADDR "127.0.0.1"
+#define CHECK_INTERVALS 20
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -65,14 +65,17 @@ typedef struct FileInfo {
 
 enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 enum CONN_T { OUTGOING, INCOMING };
-enum CMDS { DEFCMD, SHOW, START, LOAD,
+enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
             SET, SET_CODEC, SET_SIZE,
           ASK, RESPOND, REACT,
           ASK_PEER, ASK_HOST,
-          CONFIRM_PEER, CONFIRM_HOST };
+          CONFIRM_PEER, CONFIRM_HOST,
+          PING_PEER, PING_HOST};
 class Command;
+class NetworkCommand;
 typedef std::map<std::string, std::string> configuration_t;
 typedef std::map<CMDS, Command *> cmd_storage_t;
+typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 
 struct MyAddr {
     std::string addr;
@@ -85,6 +88,7 @@ struct MyAddr {
 struct NeighborInfo {
     struct sockaddr_storage address;
     time_t last_seen;
+    int intervals;
     //quality
     bool confirmed;
     bool active;
@@ -93,6 +97,7 @@ struct NeighborInfo {
 
     NeighborInfo(struct sockaddr_storage &addr) {
         address = addr;
+        intervals = CHECK_INTERVALS;
     }
 };
 
@@ -172,6 +177,7 @@ struct Data {
     }
 
     cmd_storage_t cmds;
+    net_cmd_storage_t net_cmds;
     IO_Data io_data;
     Mutexes_Data m_data;
     Configuration config;

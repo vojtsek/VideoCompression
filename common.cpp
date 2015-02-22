@@ -135,6 +135,20 @@ int common::checkFile(string &path) {
     return (0);
 }
 
+char * common::m_itoa(int n) {
+    char *res = (char *) malloc(10*sizeof(char)), *start, *rev;
+    start = res;
+    int nn;
+    while(n > 0) {
+        nn = n % 10;
+        n /= 10;
+        (*res) = '0' + nn;
+        res++;
+    }
+    *res = 0;
+    return start;
+}
+
 int common::rmrDir(const char *dir, bool recursive) {
   DIR *d, *t;
   struct dirent *entry;

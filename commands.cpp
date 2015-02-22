@@ -32,7 +32,7 @@ void CmdHelp::execute() {
 }
 
 void CmdDef::execute() {
-
+    reportSuccess("iiii");
 }
 
 void CmdShow::execute() {
@@ -212,91 +212,124 @@ int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
         reportDebug("Failed to create socket for connection." + string(strerror(errno)), 1);
         return (-1);
     }
+    struct linger so_linger;
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 10;
+    if (setsockopt(sock, SOL_SOCKET, SO_LINGER,
+            &so_linger, sizeof (so_linger)) == -1) {
+        reportDebug("Failed to set option to listening socket." + string(strerror(errno)), 1);
+        return (-1);
+   }
     if (connect(sock, (struct sockaddr *) addr, sizeof (*addr)) == -1) {
-        reportDebug("Failed to connect to remote peer." + string(strerror(errno)), 1);
+        reportDebug("Failed to connect to remote peer." + string(strerror(errno)) + MyAddr(*addr).get(), 1);
         return(-1);
     }
     MyAddr mad(*addr);
-    reportDebug("Connected to " + mad.get(), 6);
+    reportDebug("Connected to " + mad.get(), 5);
     return (sock);
 }
 
-void NetworkCommand::execute() {}
 
-void CmdAsk::execute() {
+bool CmdAsk::execute(int fd, struct sockaddr_storage &address) {
             wscrl(DATA->io_data.status_win, -3);
             wrefresh(DATA->io_data.status_win);
 }
 
-void CmdRespond::execute() {
+bool CmdRespond::execute(int fd, struct sockaddr_storage &address) {
     reportStatus("Responding");
     CMDS action = REACT;
     sendCmd(fd, action);
     sendSth("Hi\0", fd, 3);
 }
 
-void CmdReact::execute() {
+bool CmdReact::execute(int fd, struct sockaddr_storage &address) {
     char response[BUF_LENGTH];
     recvSth(response, fd, BUF_LENGTH);
     reportSuccess("Received: " + string(response));
     close(fd);
 }
 
-void CmdAskPeer::execute() {
+bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("ASKPEER", 5);
     CMDS action = ASK_HOST;
-    int peer_port, rand_n;
-    int count = (handler->getNeighborCount() < MIN_NEIGHBOR_COUNT) ?
-                handler->getNeighborCount() : MIN_NEIGHBOR_COUNT;
+    int rand_n;
+    vector<NeighborInfo> neighbors = handler->getNeighbors();
+    int count = (neighbors.size() < MIN_NEIGHBOR_COUNT) ?
+                neighbors.size() : MIN_NEIGHBOR_COUNT;
     struct sockaddr_storage addr;
-    sendCmd(fd, action);
-    recvSth(peer_port, fd);
+    if (sendCmd(fd, action) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
     if (DATA->config.is_superpeer) {
-        addr = getPeerAddr(fd);
-        MyAddr a(addr);
-        a.print();
-        ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
         count = 1;
-    //    addr = addr2storage("127.0.0.1", peer_port, AF_INET);
-        handler->addNewNeighbor(false, addr);
-        rand_n = rand() % handler->getNeighborCount();
-        addr = handler->getNeighbors().at(rand_n).address;
-        sendSth(count, fd);
-        sendSth(addr, fd);
+    if (!neighbors.size()) {
+        reportError("No neighbors yet");
+        return false;
+    }
+        rand_n = rand() % neighbors.size();
+        addr = neighbors.at(rand_n).address;
+        if (sendSth(count, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+        }
+        if (sendSth(addr, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+        }
     } else {
-        sendSth(count, fd);
-        handler->n_mtx.lock();
-        for (auto &neighbor : handler->getNeighbors()) {
+    if (!count) {
+        return false;
+    }
+        if (sendSth(count, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+        }
+        for (auto &neighbor : neighbors) {
             addr = neighbor.address;
-            sendSth(addr, fd);
+            if (sendSth(addr, fd) == -1) {
+                reportError("Error while communicating with peer." + MyAddr(address).get());
+                return false;
+            }
             if (!--count)
                 break;
         }
-        handler->n_mtx.unlock();
     }
-    close(fd);
+    return true;
 }
 
-void CmdAskHost::execute() {
+bool CmdAskHost::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("ASKHOST", 5);
     struct sockaddr_storage addr;
     int count;
-    sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd);
-    recvSth(count, fd);
-    for (int i = 0; i < count; ++i) {
-        recvSth(addr, fd);
+    if (recvSth(count, fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+        for (int i = 0; i < count; ++i) {
+            if (recvSth(addr, fd) == -1) {
+                reportError("Error while communicating with peer." + MyAddr(address).get());
+                return false;
+            }
         addr.ss_family = AF_INET;
         if (((sockaddr_in *) &addr)->sin_port != htons(DATA->config.intValues.at("LISTENING_PORT")))
             handler->addNewNeighbor(true, addr);
-        else
-            reportDebug("I dont want myself.", 4);
     }
-    close(fd);
+        reportDebug("ASKHOST END", 5);
+        return true;
 }
 
-void CmdConfirmPeer::execute() {
+bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("CONFPEER " + MyAddr(address).get() , 5);
     CMDS action = CONFIRM_HOST;
     bool ok = true;
     struct sockaddr_storage addr;
-    addr = getHostAddr(fd);
+    try {
+        addr = getHostAddr(fd);
+    } catch (std::exception *e) {
+        reportDebug(e->what(), 1);
+    }
+
     /* if (DATA->IPv4_ONLY)
         addr = addr2storage("127.0.0.1",
                                                 DATA->config.intValues.at("LISTENING_PORT"), AF_INET);
@@ -304,25 +337,91 @@ void CmdConfirmPeer::execute() {
         addr = addr2storage("127.0.0.1",
                                                 DATA->config.intValues.at("LISTENING_PORT"), AF_INET6);
     */
-    sendCmd(fd, action);
-    sendSth(ok, fd);
-    sendSth(addr, fd);
+    if (sendCmd(fd, action) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    if (sendSth(ok, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    if (sendSth(addr, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    return true;
 }
 
-void CmdConfirmHost::execute() {
+bool CmdConfirmHost::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("CONFHOST", 5);
     bool ok;
     struct sockaddr_storage addr;
-    recvSth(ok, fd);
-    if (!ok) {
-        reportError("Failed to confirm neighbor");
-        close(fd);
-        return;
+    if (recvSth(ok, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
     }
-    recvSth(addr, fd);
-    MyAddr ma(addr);
-    ma.print();
+    if (!ok) {
+        reportDebug("Failed to confirm neighbor " + MyAddr(address).get(), 1);
+        return false;
+    }
+    if (recvSth(addr, fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
     handler->addNewNeighbor(false, addr);
     MyAddr mad(addr);
     reportDebug("Neighbor confirmed." + mad.get(), 4);
-    close(fd);
+    return true;
+}
+
+bool CmdPingHost::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("PONG", 5);
+    bool ok;
+    if (recvSth(ok, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    if (!ok) {
+        reportError("Failed to confirm neighbor " + MyAddr(address).get());
+        handler->removeNeighbor(address);
+        return false;
+    }
+    if (sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    return true;
+}
+
+bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address) {
+    reportDebug("PING " + MyAddr(address).get() , 5);
+    struct sockaddr_storage addr;
+    CMDS action = PING_HOST;
+    int peer_port;
+    bool ok = true;
+    if (sendCmd(fd, action) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    if (sendSth(ok, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    if (recvSth(peer_port, fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+    try {
+        addr = getPeerAddr(fd);
+    } catch (std::exception *e) {
+        reportDebug(e->what(), 1);
+    }
+
+    ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
+
+    if (DATA->config.is_superpeer)
+        handler->addNewNeighbor(false, addr);
+    else
+        handler->addNewNeighbor(true, addr);
+    return true;
 }

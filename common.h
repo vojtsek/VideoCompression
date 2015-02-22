@@ -34,5 +34,6 @@ namespace common
     void listCmds();
     bool knownCodec(const std::string &cod);
     bool isAcceptable(char c);
+    char *m_itoa(int n);
 }
 #endif

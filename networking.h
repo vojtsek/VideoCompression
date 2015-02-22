@@ -3,6 +3,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <map>
 #include <curses.h>
 #include <sys/socket.h>
 #ifndef NETWORKING_H
@@ -11,25 +12,10 @@
 class NetworkHandle;
 
 int sendCmd(int fd, CMDS cmd);
-void handlePeer(int fd, NeighborInfo *peer,
-                int idx, NetworkHandle *handler, CONN_T conn, CMDS cmd);
-
-struct Connection {
-    NeighborInfo *peer;
-    std::thread handling_thread;
-    bool async;
-
-    Connection(int fd, NeighborInfo *neighbor,
-               int idx, NetworkHandle *handler, CONN_T conn, CMDS cmd, bool as):
-        handling_thread(handlePeer, fd, neighbor,
-                       idx, handler, conn, cmd), async(as) {
-        peer = neighbor;
-    }
-};
 
 class NetworkHandle {
     std::unique_lock<std::mutex> closed_conns_lck;
-    std::vector<Connection> connections_out, connections_in;
+    std::map<int, struct sockaddr_storage> connections;
     std::vector<NeighborInfo> neighbors;
     std::vector<struct sockaddr_storage> potential_neighbors;
     int listening_sock;
@@ -37,16 +23,23 @@ class NetworkHandle {
 public:
     std::mutex conns_mtx, n_mtx;
     NeighborInfo *lookupNeighbor(struct sockaddr_storage&);
-    void spawnConnection(CONN_T conn, NeighborInfo *neighbor, int fd, CMDS cmd, bool async);
+    void spawnOutgoingConnection(struct sockaddr_storage addr, int fd, std::vector<CMDS> cmds, bool async);
+    void spawnIncomingConnection(struct sockaddr_storage addr, int fd, bool async);
     int start_listening(int port);
-    void closeConnection(CONN_T conn, int idx);
+    void addConnection(int fd, struct sockaddr_storage addr);
+    void deleteConnection(int fd);
     void confirmNeighbor(struct sockaddr_storage addr);
-    void confirmNeighbors(unsigned int count);
-    void collectNeighbors(unsigned int desired);
+    void obtainNeighbors(unsigned int count);
+    void collectNeighbors();
+    void contactSuperPeer();
     void askForAddresses(struct sockaddr_storage &addr);
     int getNeighborCount() { return neighbors.size(); }
-    std::vector<NeighborInfo> getNeighbors() { return neighbors; }
+    std::vector<NeighborInfo> getNeighbors();
     void addNewNeighbor(bool potential, struct sockaddr_storage &addr);
+    int removeNeighbor(struct sockaddr_storage addr);
+    void setInterval(struct sockaddr_storage addr, int i);
+    void decrIntervals();
+    int checkNeighbor(struct sockaddr_storage addr);
 };
 
 #endif // NETWORKING_H

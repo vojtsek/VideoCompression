@@ -7,16 +7,21 @@ SOURCES += main.cpp \
     commands.cpp \
     common.cpp \
     networking.cpp \
-    sources.cpp
+    sources.cpp \
+    handle_IO.cpp \
+    network_helper.cpp
 
 HEADERS += \
     commands.h \
     common.h \
     defines.h \
-    networking.h
+    networking.h \
+    handle_IO.h \
+    network_helper.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
-    -pthread
+    -pthread \
+-fpermissive
 
 QMAKE_CFLAGS += -pthread
 
