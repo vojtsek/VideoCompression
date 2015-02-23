@@ -2,12 +2,15 @@
 #define NETWORK_HELPER_H
 
 #include <errno.h>
+#include <string>
 #include <error.h>
 #include <err.h>
 
 struct sockaddr_storage addr2storage(const char* addr, int port, int family);
 struct sockaddr_storage getHostAddr(int fd);
 struct sockaddr_storage getPeerAddr(int fd);
+int sendString(int fd, std::string str);
+std::string receiveString(int fd);
 bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo> list);
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);
 template<typename T>

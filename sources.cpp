@@ -18,7 +18,8 @@ using namespace common;
 
 void splitTransferRoutine(VideoState *st) {
     string *fn;
-    struct sockaddr_storage addr;
+    struct sockaddr_storage a;
+    NeighborInfo *ngh = new NeighborInfo(a);
     while (st->to_send) {
         unique_lock<mutex> lck(st->split_mtx, defer_lock);
         lck.lock();
@@ -30,10 +31,15 @@ void splitTransferRoutine(VideoState *st) {
         st->split_deq_used = false;
         lck.unlock();
         st->split_cond.notify_one();
-        st->net_handler->freeNeighbor(&addr);
-        int sock = st->net_handler->checkNeighbor(addr);
-        st->net_handler->spawnOutgoingConnection(addr, sock,
-        { TRANSFER_PEER }, false, (void *) fn);
+        if (st->net_handler->getFreeNeighbor(ngh) == -1) {
+            reportError("No free neighbor!");
+            st->pushChunk(*fn);
+            return;
+        }
+        int sock = st->net_handler->checkNeighbor(ngh->address);
+        reportError("GEEE" + MyAddr(ngh->address).get());
+        st->net_handler->spawnOutgoingConnection(ngh->address, sock,
+        { PING_PEER, TRANSFER_PEER }, true, (void *) fn);
         st->to_send--;
     }
 }

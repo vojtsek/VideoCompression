@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
                     if (!n.intervals) {
                         reportDebug("Confirming " + MyAddr(n.address).get(), 5);
                         sock = net_handler.checkNeighbor(n.address);
-                        net_handler.spawnOutgoingConnection(n.address, sock, { PING_PEER }, false, nullptr);
+                        net_handler.spawnOutgoingConnection(n.address, sock, { PING_PEER }, true, nullptr);
                     }
                 }
                 sleep(1);

@@ -15,7 +15,7 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 5
 #define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
@@ -66,7 +66,7 @@ typedef struct FileInfo {
 
 enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 enum CONN_T { OUTGOING, INCOMING };
-enum RESPONSE_T { ACK, AWAITING, ABORT };
+enum RESPONSE_T { ACK_FREE, ACK_BUSY, AWAITING, ABORT };
 enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
             SET, SET_CODEC, SET_SIZE,
           ASK, RESPOND, REACT,
@@ -90,18 +90,23 @@ struct MyAddr {
 
 struct NeighborInfo {
     struct sockaddr_storage address;
-    time_t last_seen;
     int intervals;
     //quality
     bool confirmed;
     bool active;
+    bool free;
 
     void printInfo();
 
-    NeighborInfo(struct sockaddr_storage &addr) {
+    NeighborInfo(struct sockaddr_storage &addr): intervals(CHECK_INTERVALS), free(true) {
         address = addr;
-        intervals = CHECK_INTERVALS;
     }
+};
+
+struct TransferInfo {
+    int chunk_count, chunk_size;
+    std::string job_id;
+    std::string output_format;
 };
 
 
@@ -109,13 +114,13 @@ struct VideoState {
     finfo_t finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, o_format, o_codec;
-    bool working = false, splitting_ongoing = false, split_deq_used;
+    bool working, splitting_ongoing = false, split_deq_used;
     int to_send;
     std::deque<std::string> chunks_to_process;
     std::mutex split_mtx;
     std::condition_variable split_cond;
     NetworkHandle *net_handler;
-    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
+    VideoState(NetworkHandle *nh): working(false), secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
     o_format("mkv"), o_codec("h264"), split_deq_used(false) {
         net_handler = nh;
     }

@@ -223,7 +223,6 @@ int NetworkHandle::removeNeighbor(sockaddr_storage addr) {
             neighbors.erase(it);
             n_mtx.unlock();
             return 1;
-            break;
         }
     }
     n_mtx.unlock();
@@ -325,10 +324,37 @@ void NetworkHandle::collectNeighbors() {
     }
 }
 
-void NetworkHandle::freeNeighbor(sockaddr_storage *st) {
+NeighborInfo *NetworkHandle::getNeighborInfo(sockaddr_storage &addr) {
+    NeighborInfo *res = nullptr;
     n_mtx.lock();
-    *st = neighbors.at(0).address;
+    for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
+        if (cmpStorages((*it).address, addr)) {
+            res = &(*it);
+            n_mtx.unlock();
+            break;
+        }
+    }
     n_mtx.unlock();
+    return res;
+}
+
+void NetworkHandle::setNeighborFree(sockaddr_storage &addr, bool free) {
+    NeighborInfo *ngh = getNeighborInfo(addr);
+    if (ngh != nullptr)
+        ngh->free = free;
+}
+
+int NetworkHandle::getFreeNeighbor(NeighborInfo *ngh) {
+    n_mtx.lock();
+    for (auto n : neighbors) {
+        if (n.free) {
+            *ngh = n;
+            n_mtx.unlock();
+            return 0;
+        }
+    }
+    n_mtx.unlock();
+    return -1;
 }
 
 void NetworkHandle::askForAddresses(struct sockaddr_storage &addr) {

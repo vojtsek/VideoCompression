@@ -129,3 +129,29 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
     }
     return addr;
 }
+
+int sendString(int fd, string str) {
+    if (sendSth(str.length(), fd) == -1)
+        return (-1);
+    for (char c : str) {
+        if (sendSth(c, fd) == -1)
+            return (-1);
+    }
+    return (0);
+}
+
+string receiveString(int fd) {
+    int len;
+    string res;
+    char c;
+    if (recvSth(len, fd) == -1)
+        return res;
+    for (int i = 0; i < len; ++i) {
+        if (recvSth(c, fd) == -1) {
+            res.clear();
+            return res;
+        }
+        res.push_back(c);
+    }
+    return res;
+}

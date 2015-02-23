@@ -40,7 +40,9 @@ public:
     int removeNeighbor(struct sockaddr_storage addr);
     void setInterval(struct sockaddr_storage addr, int i);
     void decrIntervals();
-    void freeNeighbor(struct sockaddr_storage *st);
+    NeighborInfo *getNeighborInfo(struct sockaddr_storage &addr);
+    void setNeighborFree(struct sockaddr_storage &addr, bool free);
+    int getFreeNeighbor(NeighborInfo *ngh);
     int checkNeighbor(struct sockaddr_storage addr);
 };
 
