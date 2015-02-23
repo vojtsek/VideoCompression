@@ -23,7 +23,8 @@ class NetworkHandle {
 public:
     std::mutex conns_mtx, n_mtx;
     NeighborInfo *lookupNeighbor(struct sockaddr_storage&);
-    void spawnOutgoingConnection(struct sockaddr_storage addr, int fd, std::vector<CMDS> cmds, bool async);
+    void spawnOutgoingConnection(struct sockaddr_storage addr, int fd,
+                                 std::vector<CMDS> cmds, bool async, void *data);
     void spawnIncomingConnection(struct sockaddr_storage addr, int fd, bool async);
     int start_listening(int port);
     void addConnection(int fd, struct sockaddr_storage addr);
@@ -39,6 +40,7 @@ public:
     int removeNeighbor(struct sockaddr_storage addr);
     void setInterval(struct sockaddr_storage addr, int i);
     void decrIntervals();
+    void freeNeighbor(struct sockaddr_storage *st);
     int checkNeighbor(struct sockaddr_storage addr);
 };
 

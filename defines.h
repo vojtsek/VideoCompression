@@ -15,7 +15,7 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 0
+#define DEBUG_LEVEL 1
 #define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
@@ -42,6 +42,7 @@
 #define DATA Data::getInstance()
 #define show(x, y) wprintw(DATA->io_data.info_win, "%15s%35s\n", x, y);
 
+class NetworkHandle;
 template <typename Measure_inT = std::chrono::milliseconds>
 struct Measured {
     template <typename FuncT, typename ... args>
@@ -65,12 +66,14 @@ typedef struct FileInfo {
 
 enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 enum CONN_T { OUTGOING, INCOMING };
+enum RESPONSE_T { ACK, AWAITING, ABORT };
 enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
             SET, SET_CODEC, SET_SIZE,
           ASK, RESPOND, REACT,
           ASK_PEER, ASK_HOST,
           CONFIRM_PEER, CONFIRM_HOST,
-          PING_PEER, PING_HOST};
+          PING_PEER, PING_HOST,
+          TRANSFER_PEER, TRANSFER_HOST };
 class Command;
 class NetworkCommand;
 typedef std::map<std::string, std::string> configuration_t;
@@ -101,13 +104,21 @@ struct NeighborInfo {
     }
 };
 
-class VideoState {
-public:
+
+struct VideoState {
     finfo_t finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, o_format, o_codec;
-    VideoState(): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
-    o_format("mkv"), o_codec("h264") {}
+    bool working = false, splitting_ongoing = false, split_deq_used;
+    int to_send;
+    std::deque<std::string> chunks_to_process;
+    std::mutex split_mtx;
+    std::condition_variable split_cond;
+    NetworkHandle *net_handler;
+    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
+    o_format("mkv"), o_codec("h264"), split_deq_used(false) {
+        net_handler = nh;
+    }
 
     int split();
     int join();
@@ -115,7 +126,12 @@ public:
     void changeChunkSize(size_t nsize);
     void loadFileInfo(finfo_t &finfo);
     void resetFileInfo();
+    void abort();
+    void pushChunk(std::string path);
+    void transferChunk();
 };
+
+void splitTransferRoutine(VideoState *st);
 
 class HistoryStorage {
     std::vector<std::string> history;
@@ -147,6 +163,10 @@ public:
     void print();
 };
 
+struct State {
+    bool enough_neighbors = false;
+
+};
 
 struct IO_Data {
     IO_Data(): info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),

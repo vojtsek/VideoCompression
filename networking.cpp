@@ -50,14 +50,13 @@ void NetworkHandle::deleteConnection(int fd) {
 }
 
 void NetworkHandle::spawnOutgoingConnection(struct sockaddr_storage addri,
-                                    int fdi, vector<CMDS> cmds, bool async) {
+                                    int fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
         int fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
         for (auto cmd : cmds) {
-            reportDebug("OUT", 1);
             if ((sendCmd(fd, cmd)) == -1) {
                 reportError("Failed to process the action.");
                 break;
@@ -92,7 +91,7 @@ void NetworkHandle::spawnOutgoingConnection(struct sockaddr_storage addri,
                    reportDebug("Error while processing cmd.", 1);
                    break;
                }
-               if (!command->execute(fd, addr))
+               if (!command->execute(fd, addr, data))
                    throw exception();
             }catch (exception e) {
                reportDebug("Error while communicating: Unrecognized command." + string(e.what()), 1);
@@ -138,7 +137,7 @@ void NetworkHandle::spawnIncomingConnection(struct sockaddr_storage addri,
                reportDebug("Error while processing cmd.", 1);
                break;
            }
-           if (!cmd->execute(fd, addr)) {
+           if (!cmd->execute(fd, addr, nullptr)) {
                throw exception();
            }
         }catch (exception e) {
@@ -261,7 +260,7 @@ void NetworkHandle::contactSuperPeer() {
         addr = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
     int sock =  checkNeighbor(addr);
     if (sock == -1) return;
-    spawnOutgoingConnection(addr, sock, { PING_PEER }, false);
+    spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
 }
 
 int NetworkHandle::checkNeighbor(struct sockaddr_storage addr) {
@@ -279,7 +278,7 @@ int NetworkHandle::checkNeighbor(struct sockaddr_storage addr) {
 void NetworkHandle::confirmNeighbor(struct sockaddr_storage addr) {
     int sock =  checkNeighbor(addr);
     if (sock == -1) return;
-    spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false);
+    spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false, nullptr);
 }
 
 void NetworkHandle::obtainNeighbors(unsigned int count) {
@@ -326,6 +325,12 @@ void NetworkHandle::collectNeighbors() {
     }
 }
 
+void NetworkHandle::freeNeighbor(sockaddr_storage *st) {
+    n_mtx.lock();
+    *st = neighbors.at(0).address;
+    n_mtx.unlock();
+}
+
 void NetworkHandle::askForAddresses(struct sockaddr_storage &addr) {
     int sock;
     CmdAsk cmd(nullptr, nullptr);
@@ -333,7 +338,7 @@ void NetworkHandle::askForAddresses(struct sockaddr_storage &addr) {
         reportDebug("Failed to establish connection.", 1);
         return;
     }
-    spawnOutgoingConnection(addr, sock, { PING_PEER, ASK_PEER }, false);
+    spawnOutgoingConnection(addr, sock, { PING_PEER, ASK_PEER }, false, nullptr);
 }
 
 void NetworkHandle::addNewNeighbor(bool potential, struct sockaddr_storage &addr) {

@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <vector>
 
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -15,7 +16,30 @@
 using namespace std;
 using namespace common;
 
+void splitTransferRoutine(VideoState *st) {
+    string *fn;
+    struct sockaddr_storage addr;
+    while (st->to_send) {
+        unique_lock<mutex> lck(st->split_mtx, defer_lock);
+        lck.lock();
+        while (st->split_deq_used || !st->chunks_to_process.size())
+            st->split_cond.wait(lck);
+        st->split_deq_used = true;
+        fn = new string(st->chunks_to_process.front());
+        st->chunks_to_process.pop_front();
+        st->split_deq_used = false;
+        lck.unlock();
+        st->split_cond.notify_one();
+        st->net_handler->freeNeighbor(&addr);
+        int sock = st->net_handler->checkNeighbor(addr);
+        st->net_handler->spawnOutgoingConnection(addr, sock,
+        { TRANSFER_PEER }, false, (void *) fn);
+        st->to_send--;
+    }
+}
+
 int VideoState::split() {
+    working = true;
     string out, err;
     double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
@@ -25,9 +49,12 @@ int VideoState::split() {
         reportError("Failed to create the job directory.");
         return (-1);
     }
+
     mins = secs_per_chunk / 60;
     secs = secs_per_chunk % 60;
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
+    to_send = c_chunks;
+    thread split_thr(splitTransferRoutine, this);
     reportStatus("Splitting file: " + finfo.fpath);
     for (unsigned int i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
@@ -55,10 +82,13 @@ int VideoState::split() {
                 "-t", chunk_duration,
                 output);
             reportError(msg);
-            clearProgress();
+            abort();
+            split_thr.detach();
             return (-1);
         }
+        pushChunk(string(output));
     }
+    split_thr.join();
     printProgress(1);
     reportSuccess("File successfuly splitted.");
     reportTime("/splitting.sp", sum / 1000);
@@ -66,6 +96,24 @@ int VideoState::split() {
     return (0);
 }
 
+void VideoState::abort() {
+    clearProgress();
+    working = false;
+
+}
+
+void VideoState::pushChunk(string path) {
+    unique_lock<mutex> lck(split_mtx, defer_lock);
+
+    lck.lock();
+    while (split_deq_used)
+        split_cond.wait(lck);
+    split_deq_used = true;
+    chunks_to_process.push_back(path);
+    split_deq_used = false;
+    lck.unlock();
+    split_cond.notify_one();
+}
 
 int VideoState::join() {
     string out, err, list_loc(dir_location + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);

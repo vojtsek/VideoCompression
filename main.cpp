@@ -79,14 +79,14 @@ void initConfiguration() {
     int x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
-    data->io_data.status_win = derwin(stdscr, y_space / 6 * 5, x, 3, 0);
-    data->io_data.info_win = derwin(stdscr, y_space, 80, 3, 0);
+    data->io_data.status_win = derwin(stdscr, y_space / 2 - 1, x, 3 + y_space / 2, 0);
+    data->io_data.info_win = derwin(stdscr, y_space/ 2, 80, 3, 0);
     data->io_data.status_handler.changeWin(data->io_data.status_win);
     data->io_data.info_handler.changeWin(data->io_data.info_win);
     data->config.superpeer_addr = SUPERPEER_ADDR;
     data->config.intValues.emplace("MIN_NEIGHBOR_COUNT", MIN_NEIGHBOR_COUNT);
     data->config.intValues.emplace("LISTENING_PORT", LISTENING_PORT);
-    data->config.intValues.emplace("STATUS_LENGTH", y_space / 6 * 5);
+    data->config.intValues.emplace("STATUS_LENGTH", y_space / 2 - 1);
     data->config.intValues.emplace("CHUNK_SIZE", CHUNK_SIZE);
     data->config.intValues.emplace("SUPERPEER_PORT", SUPERPEER_PORT);
 }
@@ -108,6 +108,8 @@ void initCommands(VideoState &state, NetworkHandle &net_handler) {
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_HOST, new CmdAskHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_PEER, new CmdPingPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_HOST, new CmdPingHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(TRANSFER_PEER, new CmdTransferPeer(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(TRANSFER_HOST, new CmdTransferHost(&state, &net_handler)));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
@@ -133,8 +135,8 @@ int main(int argc, char **argv) {
         return (1);
     }
     int optidx = parseOptions(argc, argv);
-    VideoState state;
     NetworkHandle net_handler;
+    VideoState state(&net_handler);
     initCommands(state, net_handler);
     WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
     wmove(win, 0,0);
@@ -165,7 +167,7 @@ int main(int argc, char **argv) {
                     if (!n.intervals) {
                         reportDebug("Confirming " + MyAddr(n.address).get(), 5);
                         sock = net_handler.checkNeighbor(n.address);
-                        net_handler.spawnOutgoingConnection(n.address, sock, { PING_PEER }, false);
+                        net_handler.spawnOutgoingConnection(n.address, sock, { PING_PEER }, false, nullptr);
                     }
                 }
                 sleep(1);
