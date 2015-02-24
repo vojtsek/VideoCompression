@@ -20,11 +20,14 @@ void splitTransferRoutine(VideoState *st) {
     string *fn;
     struct sockaddr_storage a;
     NeighborInfo *ngh = new NeighborInfo(a);
-    while (st->to_send) {
+    while (st->to_send > 0) {
         unique_lock<mutex> lck(st->split_mtx, defer_lock);
         lck.lock();
-        while (st->split_deq_used || !st->chunks_to_process.size())
+        while (st->split_deq_used || !st->chunks_to_process.size()) {
+            if (!st->to_send)
+                return;
             st->split_cond.wait(lck);
+        }
         st->split_deq_used = true;
         fn = new string(st->chunks_to_process.front());
         st->chunks_to_process.pop_front();
@@ -34,13 +37,11 @@ void splitTransferRoutine(VideoState *st) {
         if (st->net_handler->getFreeNeighbor(ngh) == -1) {
             reportError("No free neighbor!");
             st->pushChunk(*fn);
-            return;
+            continue;
         }
         int sock = st->net_handler->checkNeighbor(ngh->address);
-        reportError("GEEE" + MyAddr(ngh->address).get());
         st->net_handler->spawnOutgoingConnection(ngh->address, sock,
         { PING_PEER, TRANSFER_PEER }, true, (void *) fn);
-        st->to_send--;
     }
 }
 
@@ -94,7 +95,9 @@ int VideoState::split() {
         }
         pushChunk(string(output));
     }
+    reportDebug("Waiting for chunks to distribute....", 1);
     split_thr.join();
+    reportDebug("Distributed.", 1);
     printProgress(1);
     reportSuccess("File successfuly splitted.");
     reportTime("/splitting.sp", sum / 1000);
@@ -299,12 +302,12 @@ void WindowPrinter::changeWin(WINDOW *nwin) {
 }
 
 void WindowPrinter::print() {
-    unique_lock<mutex> lck(DATA->m_data.IO_mtx, defer_lock);
+    unique_lock<mutex> lck(DATA->m_data.O_mtx, defer_lock);
 
     lck.lock();
-    while (DATA->m_data.using_IO)
+    while (DATA->m_data.using_O)
         DATA->m_data.cond.wait(lck);
-    DATA->m_data.using_IO = true;
+    DATA->m_data.using_O = true;
     DATA->m_data.report_mtx.lock();
     wbkgd(win, COLOR_PAIR(BG));
     wmove(win, 0, 0);
@@ -354,7 +357,7 @@ void WindowPrinter::print() {
     wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(win);
     DATA->m_data.report_mtx.unlock();
-    DATA->m_data.using_IO = false;
+    DATA->m_data.using_O = false;
     lck.unlock();
     DATA->m_data.cond.notify_one();
 }

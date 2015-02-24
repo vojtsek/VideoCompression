@@ -39,14 +39,14 @@ std::shared_ptr<Data> Data::inst = nullptr;
 
 int common::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
-    std::unique_lock<std::mutex> lck(DATA->m_data.IO_mtx, std::defer_lock);
+    std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     do {
         lck.lock();
-        while (DATA->m_data.using_IO)
+        while (DATA->m_data.using_I)
             DATA->m_data.cond.wait(lck);
-        DATA->m_data.using_IO = true;
+        DATA->m_data.using_I = true;
         c = getch();
-        DATA->m_data.using_IO = false;
+        DATA->m_data.using_I = false;
         lck.unlock();
         DATA->m_data.cond.notify_one();
         usleep(10000);
@@ -135,18 +135,15 @@ int common::checkFile(string &path) {
     return (0);
 }
 
-char * common::m_itoa(int n) {
-    char *res = (char *) malloc(10*sizeof(char)), *start, *rev;
-    start = res;
+string common::m_itoa(int n) {
+    string res;
     int nn;
     while(n > 0) {
         nn = n % 10;
         n /= 10;
-        (*res) = '0' + nn;
-        res++;
+        res.push_back('0' + nn);
     }
-    *res = 0;
-    return start;
+    return res;
 }
 
 int common::rmrDir(const char *dir, bool recursive) {

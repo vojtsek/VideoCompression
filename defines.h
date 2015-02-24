@@ -15,7 +15,7 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 6
 #define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
@@ -24,7 +24,7 @@
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
 #define SUPERPEER_ADDR "127.0.0.1"
-#define CHECK_INTERVALS 20
+#define CHECK_INTERVALS 10
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -114,14 +114,14 @@ struct VideoState {
     finfo_t finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, o_format, o_codec;
-    bool working, splitting_ongoing = false, split_deq_used;
+    bool working, splitting_ongoing, split_deq_used;
     int to_send;
     std::deque<std::string> chunks_to_process;
     std::mutex split_mtx;
     std::condition_variable split_cond;
     NetworkHandle *net_handler;
     VideoState(NetworkHandle *nh): working(false), secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
-    o_format("mkv"), o_codec("h264"), split_deq_used(false) {
+    o_format("mkv"), o_codec("h264"), splitting_ongoing(false), split_deq_used(false) {
         net_handler = nh;
     }
 
@@ -182,9 +182,9 @@ struct IO_Data {
 };
 
 struct Mutexes_Data {
-    std::mutex IO_mtx, report_mtx;
+    std::mutex I_mtx, O_mtx, report_mtx;
     std::condition_variable cond;
-    bool using_IO = false;
+    bool using_I = false, using_O = false;
 };
 
 struct Configuration {

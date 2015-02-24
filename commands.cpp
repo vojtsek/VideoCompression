@@ -437,12 +437,31 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
 bool CmdTransferPeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = TRANSFER_HOST;
     string fn;
+    RESPONSE_T resp = state->working ? ACK_BUSY : ACK_FREE;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    string answer = loadInput("", "Accept transfer?", false);
-    reportError(answer);
+    if (resp == ACK_FREE) {
+        string answer;
+        while (true) {
+            answer = loadInput("", "Accept transfer?(y/n)", false);
+            if ((answer == "y") || (answer == "n"))
+                break;
+        }
+        if (answer == "n")
+            resp = ACK_BUSY;
+    }
+
+    if (sendSth(resp, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+
+    if (resp == ACK_BUSY)
+        return true;
+    reportStatus("Allowing transfer. " + MyAddr(address).get());
+
     if (!(fn = receiveString(fd)).size()) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -452,11 +471,30 @@ bool CmdTransferPeer::execute(int fd, sockaddr_storage &address, void *) {
 }
 
 bool CmdTransferHost::execute(int fd, sockaddr_storage &address, void *data) {
+    RESPONSE_T resp;
     string fn = getBasename(*(string *) data);
-    reportSuccess(fn);
+
+    if (recvSth(resp, fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+
+    if (resp == ACK_BUSY) {
+        reportError("Peer is busy. " + MyAddr(address).get());
+        handler->setNeighborFree(address, false);
+        state->pushChunk(fn);
+        return true;
+    }
+
     if (sendString(fd, fn) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
+    state->to_send--;
+    unique_lock<mutex> lck(state->split_mtx, defer_lock);
+    lck.lock();
+    lck.unlock();
+    state->split_cond.notify_one();
+    reportDebug("Chunk transferred. " + m_itoa(state->to_send), 1);
     return true;
 }
