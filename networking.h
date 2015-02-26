@@ -16,7 +16,7 @@ int sendCmd(int fd, CMDS cmd);
 class NetworkHandle {
     std::unique_lock<std::mutex> closed_conns_lck;
     std::map<int, struct sockaddr_storage> connections;
-    std::vector<NeighborInfo> neighbors;
+    std::vector<NeighborInfo *> neighbors; //must be pointesr??
     std::vector<struct sockaddr_storage> potential_neighbors;
     int listening_sock;
 
@@ -34,8 +34,9 @@ public:
     void collectNeighbors();
     void contactSuperPeer();
     void askForAddresses(struct sockaddr_storage &addr);
-    int getNeighborCount() { return neighbors.size(); }
-    std::vector<NeighborInfo> getNeighbors();
+    void applyToNeighbors(void (*op)(NeighborInfo *));
+    int getNeighborCount();
+    std::vector<NeighborInfo *> getNeighbors();
     void addNewNeighbor(bool potential, struct sockaddr_storage &addr);
     int removeNeighbor(struct sockaddr_storage addr);
     void setInterval(struct sockaddr_storage addr, int i);

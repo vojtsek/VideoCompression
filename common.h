@@ -31,9 +31,11 @@ namespace common
     std::string getTimestamp();
     std::string getExtension(const std::string &str);
     std::string getBasename(const std::string &str);
+    std::string m_itoa(int n);
+    std::string getHash(NeighborInfo &n);
     void listCmds();
     bool knownCodec(const std::string &cod);
     bool isAcceptable(char c);
-    string m_itoa(int n);
+
 }
 #endif

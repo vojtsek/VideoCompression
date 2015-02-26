@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <thread>
+#include <algorithm>
 #include <sys/fcntl.h>
 #include <errno.h>
 #include <unistd.h>
@@ -154,9 +155,17 @@ void NetworkHandle::spawnIncomingConnection(struct sockaddr_storage addri,
     handling_thread.join();
 }
 
-std::vector<NeighborInfo> NetworkHandle::getNeighbors() {
+int NetworkHandle::getNeighborCount() {
+    int size;
     n_mtx.lock();
-    std::vector<NeighborInfo> n = neighbors;
+    size = neighbors.size();
+    n_mtx.unlock();
+    return size;
+}
+
+std::vector<NeighborInfo *> NetworkHandle::getNeighbors() {
+    n_mtx.lock();
+    std::vector<NeighborInfo *> n = neighbors;
     n_mtx.unlock();
     return n;
 }
@@ -219,7 +228,7 @@ int NetworkHandle::start_listening(int port) {
 int NetworkHandle::removeNeighbor(sockaddr_storage addr) {
     n_mtx.lock();
     for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it).address, addr)) {
+        if (cmpStorages((*it)->address, addr)) {
             neighbors.erase(it);
             n_mtx.unlock();
             return 1;
@@ -232,8 +241,8 @@ int NetworkHandle::removeNeighbor(sockaddr_storage addr) {
 void NetworkHandle::setInterval(sockaddr_storage addr, int i) {
     n_mtx.lock();
     for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it).address, addr)) {
-            it->intervals = i;
+        if (cmpStorages((*it)->address, addr)) {
+            (*it)->intervals = i;
             n_mtx.unlock();
             break;
         }
@@ -245,7 +254,7 @@ void NetworkHandle::setInterval(sockaddr_storage addr, int i) {
 void NetworkHandle::decrIntervals() {
     n_mtx.lock();
     for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        it->intervals--;
+        (*it)->intervals--;
     }
     n_mtx.unlock();
     return;
@@ -305,8 +314,8 @@ void NetworkHandle::obtainNeighbors(unsigned int count) {
 void NetworkHandle::collectNeighbors() {
     struct sockaddr_storage addr;
     if (neighbors.size()) {
-        for (NeighborInfo &n : getNeighbors()) {
-            addr = n.address;
+        for (auto n : getNeighbors()) {
+            addr = n->address;
             MyAddr mad(addr);
             reportDebug("Trying neighbor. " + mad.get(), 4);
             askForAddresses(addr);
@@ -328,14 +337,20 @@ NeighborInfo *NetworkHandle::getNeighborInfo(sockaddr_storage &addr) {
     NeighborInfo *res = nullptr;
     n_mtx.lock();
     for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it).address, addr)) {
-            res = &(*it);
+        if (cmpStorages((*it)->address, addr)) {
+            res = *it;
             n_mtx.unlock();
             break;
         }
     }
     n_mtx.unlock();
     return res;
+}
+
+void NetworkHandle::applyToNeighbors(void (*op)(NeighborInfo *)) {
+    n_mtx.lock();
+    applyToVector(neighbors, op);
+    n_mtx.unlock();
 }
 
 void NetworkHandle::setNeighborFree(sockaddr_storage &addr, bool free) {
@@ -347,8 +362,8 @@ void NetworkHandle::setNeighborFree(sockaddr_storage &addr, bool free) {
 int NetworkHandle::getFreeNeighbor(NeighborInfo *ngh) {
     n_mtx.lock();
     for (auto n : neighbors) {
-        if (n.free) {
-            *ngh = n;
+        if (n->free) {
+            *ngh = *n;
             n_mtx.unlock();
             return 0;
         }
@@ -373,11 +388,14 @@ void NetworkHandle::addNewNeighbor(bool potential, struct sockaddr_storage &addr
         potential_neighbors.push_back(addr);
     else {
         if (!addrIn(addr, neighbors)) {
-            neighbors.emplace_back(addr);
+            NeighborInfo *ngh = new NeighborInfo(addr);
+            neighbors.push_back(ngh);
+            DATA->periodic_listeners.insert(make_pair<string, Listener *>(getHash(*ngh),ngh));
             MyAddr mad(addr);
             reportDebug("Neighbor added; " + mad.get(), 3);
-            if (neighbors.size() == MIN_NEIGHBOR_COUNT)
+            if (neighbors.size() == MIN_NEIGHBOR_COUNT) {
                 reportSuccess("Enough neighbors gained.");
+            }
         } else
             reportDebug("Already known neighbor.", 4);
     }

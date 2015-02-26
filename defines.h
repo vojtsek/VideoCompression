@@ -6,6 +6,7 @@
 #include <chrono>
 #include <vector>
 #include <deque>
+#include <algorithm>
 #include <mutex>
 #include <condition_variable>
 #include <sys/socket.h>
@@ -15,12 +16,12 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 6
+#define DEBUG_LEVEL 0
 #define STATUS_LENGTH 10
 #define CHUNK_SIZE 40048576
 #define INFO_LINES 15
 #define LINE_LENGTH 80
-#define MIN_NEIGHBOR_COUNT 4
+#define MIN_NEIGHBOR_COUNT 1
 #define LISTENING_PORT 25000
 #define SUPERPEER_PORT 26000
 #define SUPERPEER_ADDR "127.0.0.1"
@@ -55,6 +56,11 @@ struct Measured {
     }
 };
 
+template <typename T>
+void applyToVector(std::vector<T *> vec, void (*op)(T *)) {
+    std::for_each(vec.begin(), vec.end(), op);
+}
+
 namespace common {
     std::string getTimestamp();
 }
@@ -80,6 +86,11 @@ typedef std::map<std::string, std::string> configuration_t;
 typedef std::map<CMDS, Command *> cmd_storage_t;
 typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 
+class Listener {
+public:
+    virtual void invoke(NetworkHandle &handler) = 0;
+};
+
 struct MyAddr {
     std::string addr;
     int port;
@@ -88,7 +99,7 @@ struct MyAddr {
     MyAddr(struct sockaddr_storage &addr);
 };
 
-struct NeighborInfo {
+struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
     int intervals;
     //quality
@@ -97,16 +108,25 @@ struct NeighborInfo {
     bool free;
 
     void printInfo();
+    virtual void invoke(NetworkHandle &handler);
 
     NeighborInfo(struct sockaddr_storage &addr): intervals(CHECK_INTERVALS), free(true) {
         address = addr;
     }
 };
 
-struct TransferInfo {
+struct TransferInfo : public Listener {
     int chunk_count, chunk_size;
+    time_t sent_time;
+    NeighborInfo *peer;
     std::string job_id;
     std::string output_format;
+
+    virtual void invoke(NetworkHandle &handler);
+    TransferInfo(NeighborInfo *p, std::string ji, std::string of):
+        job_id(ji), output_format(of) {
+        peer = p;
+    }
 };
 
 
@@ -120,8 +140,8 @@ struct VideoState {
     std::mutex split_mtx;
     std::condition_variable split_cond;
     NetworkHandle *net_handler;
-    VideoState(NetworkHandle *nh): working(false), secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
-    o_format("mkv"), o_codec("h264"), splitting_ongoing(false), split_deq_used(false) {
+    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
+    o_format("mkv"), o_codec("h264"), working(false), splitting_ongoing(false), split_deq_used(false) {
         net_handler = nh;
     }
 
@@ -206,6 +226,8 @@ struct Data {
     IO_Data io_data;
     Mutexes_Data m_data;
     Configuration config;
+    std::map<std::string, TransferInfo *> waiting_chunks;
+    std::map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }

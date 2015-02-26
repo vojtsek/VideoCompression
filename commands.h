@@ -50,7 +50,7 @@ public:
 class CmdShow: public NetworkCommand {
 public:
     CmdShow(VideoState *st, NetworkHandle *hndl): NetworkCommand(st, hndl) {}
-    virtual bool execute(int fd, struct sockaddr_storage &address, void *data) {}
+    virtual bool execute(int, struct sockaddr_storage &, void *) { return true;}
     virtual void execute();
 };
 

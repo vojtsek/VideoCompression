@@ -117,9 +117,12 @@ void cleanCommands(cmd_storage_t &cmds) {
         delete c.second;
 }
 
-void getNeighbors(NetworkHandle &net_handler) {
-    if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT) {
+void periodicActions(NetworkHandle &net_handler) {
+    if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT)
         net_handler.obtainNeighbors(MIN_NEIGHBOR_COUNT);
+    net_handler.contactSuperPeer();
+    for (auto l : DATA->periodic_listeners) {
+        l.second->invoke(net_handler);
     }
 }
 
@@ -158,18 +161,8 @@ int main(int argc, char **argv) {
         });
         thr.detach();
         std::thread thr2 ([&]() {
-            int sock;
             while (1) {
-                net_handler.contactSuperPeer();
-                getNeighbors(net_handler);
-                net_handler.decrIntervals();
-                for (auto n : net_handler.getNeighbors()) {
-                    if (!n.intervals) {
-                        reportDebug("Confirming " + MyAddr(n.address).get(), 5);
-                        sock = net_handler.checkNeighbor(n.address);
-                        net_handler.spawnOutgoingConnection(n.address, sock, { PING_PEER }, true, nullptr);
-                    }
-                }
+                periodicActions(net_handler);
                 sleep(1);
             }
         });

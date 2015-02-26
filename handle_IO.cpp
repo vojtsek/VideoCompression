@@ -38,7 +38,6 @@ string loadInput(const string &histf, const string &msg, bool save) {
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     std::unique_lock<std::mutex> lck2(DATA->m_data.O_mtx, std::defer_lock);
 
-    //DATA->m_data.ask_mtx.lock();
     lck.lock();
     lck2.lock();
     DATA->m_data.using_O = true;
@@ -52,8 +51,6 @@ string loadInput(const string &histf, const string &msg, bool save) {
     DATA->m_data.using_O = false;
     lck2.unlock();
 
-    while (DATA->m_data.using_I)
-        DATA->m_data.cond.wait(lck);
     DATA->m_data.using_I = true;
     getLine(line, LINE_LENGTH, histf, save);
     curs_set(0);
@@ -65,7 +62,6 @@ string loadInput(const string &histf, const string &msg, bool save) {
     DATA->m_data.using_I = false;
     lck.unlock();
     DATA->m_data.cond.notify_one();
-   // DATA->m_data.ask_mtx.unlock();
     return string(line);
 }
 
@@ -137,8 +133,6 @@ void initCurses() {
 void printProgress(double percent) {
     unique_lock<mutex> lck(DATA->m_data.O_mtx, defer_lock);
     lck.lock();
-    while (DATA->m_data.using_O)
-        DATA->m_data.cond.wait(lck);
     DATA->m_data.using_O = true;
     cursToPerc();
     clrtoeol();
@@ -150,7 +144,6 @@ void printProgress(double percent) {
     refresh();
     DATA->m_data.using_O = false;
     lck.unlock();
-    DATA->m_data.cond.notify_one();
 }
 
 void cursToCmd() {

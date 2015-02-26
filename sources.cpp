@@ -364,5 +364,13 @@ void WindowPrinter::print() {
 
 void NeighborInfo::printInfo() {
     MyAddr mad(address);
-    reportSuccess(mad.get());
+    reportSuccess(mad.get() + "; " + m_itoa(intervals));
+}
+
+void NeighborInfo::invoke(NetworkHandle &net_handler) {
+    int sock;
+    if (!--intervals) {
+        sock = net_handler.checkNeighbor(address);
+        net_handler.spawnOutgoingConnection(address, sock, { PING_PEER }, true, nullptr);
+    }
 }

@@ -2,6 +2,7 @@
 #include "common.h"
 #include "handle_IO.h"
 #include "commands.h"
+#include "network_helper.h"
 #include "defines.h"
 
 #include <iostream>
@@ -115,6 +116,11 @@ void clearNlines(int n) {
     move(orig_y, orig_x);
 }
 
+string common::getHash(NeighborInfo &n) {
+    string hash(storage2addr(n.address) + m_itoa(((struct sockaddr_in *)&n.address)->sin_port));
+    return hash;
+}
+
 int common::checkFile(string &path) {
     struct stat info;
 
@@ -143,6 +149,7 @@ string common::m_itoa(int n) {
         n /= 10;
         res.push_back('0' + nn);
     }
+    reverse(res.begin(), res.end());
     return res;
 }
 

@@ -56,10 +56,10 @@ bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
     return false;
 }
 
-bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo> list) {
+bool addrIn(struct sockaddr_storage &addr, std::vector<NeighborInfo *> &list) {
 
-    for (NeighborInfo &n : list) {
-        if (cmpStorages(n.address, st))
+    for (auto n : list) {
+        if (cmpStorages(n->address, addr))
             return true;
     }
     return false;
@@ -128,6 +128,18 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
         inet_pton(family, addrstr, &(addr6->sin6_addr));
     }
     return addr;
+}
+
+string storage2addr(sockaddr_storage &addr) {
+    if (addr.ss_family == AF_INET) {
+        char buf[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &addr, buf, INET_ADDRSTRLEN);
+        return string(buf);
+    } else {
+        char buf[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &addr, buf, INET6_ADDRSTRLEN);
+        return string(buf);
+    }
 }
 
 int sendString(int fd, string str) {
