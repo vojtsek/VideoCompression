@@ -16,6 +16,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <stdexcept>
+
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
@@ -32,6 +33,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <err.h>
+#include <fcntl.h>
 #include "network_helper.h"
 
 
@@ -150,6 +152,92 @@ int sendString(int fd, string str) {
             return (-1);
     }
     return (0);
+}
+
+int receiveFile(int fd, string fn) {
+    off_t fsize, received = 0, r, w;
+    int o_file;
+    char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
+    try {
+        if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC)) == -1) {
+            reportDebug(fn + ": Failed to open the output file. ", 2);
+            throw 1;
+        }
+
+        if (recvSth(fsize, fd) == -1) {
+            reportDebug(fn + ": Failed to get file size. ", 2);
+            throw 1;
+        }
+        //check the size
+        while ((r = read(fd, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
+            //reportError(common::m1_itoa(r));
+            received += r;
+            if ((w = write(o_file, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) != -1) {
+                //reportSuccess(fn + ": " + common::m_itoa(r) + " bytes received.");
+            } else {
+                reportDebug("Error; received " + common::m_itoa(received), 2);
+                throw 1;
+            }
+        }
+        if (received != fsize) {
+            reportDebug("Received bytes and expected fsize does not equal. ", 2);
+            reportDebug("EXP: " + common::m_itoa(fsize), 1);
+            reportDebug("REC: " + common::m_itoa(received), 1);
+            throw 1;
+        }
+    } catch (int) {
+        reportError("Bad transfer");
+        close(o_file);
+        return -1;
+    }
+    reportDebug("received " + common::m_itoa(received), 2);
+    close(o_file);
+    return 0;
+}
+
+int sendFile(int fd, string fn) {
+    int file;
+    off_t fsize, sent = 0, r, w;
+    char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
+    try {
+        if ((file = open(fn.c_str(), O_RDONLY)) == -1) {
+            reportDebug(fn + ": Failed to open.", 2);
+            throw 1;
+        }
+        if ((fsize = lseek(file, 0, SEEK_END)) == -1) {
+            reportDebug(fn + ": Failed to get file size", 2);
+            throw 1;
+        }
+        if (lseek(file, 0, SEEK_SET) == -1) {
+            reportDebug(fn + ": Failed to get file size", 2);
+            throw 1;
+        }
+
+        if (sendSth(fsize, fd) == -1) {
+            reportDebug(fn + ": Failed to send file size", 2);
+            throw 1;
+        }
+
+        sent = fsize;
+        while ((r = read(file, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
+            if ((w = write(fd, buf, r)) != -1) {
+                sent -= w;
+            } else {
+                reportDebug("Error; sent " + common::m_itoa(w), 2);
+                throw 1;
+            }
+        }
+
+        if (sent) {
+            reportDebug("Sent bytes and filesize does not equal", 2);
+            throw 1;
+        }
+    } catch (int) {
+        close(file);
+        return -1;
+    }
+    close(file);
+    return 0;
 }
 
 string receiveString(int fd) {

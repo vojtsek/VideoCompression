@@ -43,7 +43,7 @@ public:
     void decrIntervals();
     NeighborInfo *getNeighborInfo(struct sockaddr_storage &addr);
     void setNeighborFree(struct sockaddr_storage &addr, bool free);
-    int getFreeNeighbor(NeighborInfo *ngh);
+    int getFreeNeighbor(NeighborInfo  *&ngh);
     int checkNeighbor(struct sockaddr_storage addr);
 };
 

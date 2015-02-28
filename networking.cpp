@@ -229,6 +229,7 @@ int NetworkHandle::removeNeighbor(sockaddr_storage addr) {
     n_mtx.lock();
     for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
         if (cmpStorages((*it)->address, addr)) {
+            delete (*it);
             neighbors.erase(it);
             n_mtx.unlock();
             return 1;
@@ -279,7 +280,7 @@ int NetworkHandle::checkNeighbor(struct sockaddr_storage addr) {
         removeNeighbor(addr);
         return -1;
     }
-    setInterval(addr, CHECK_INTERVALS);
+    setInterval(addr, DATA->config.getValue("CHECK_INTERVALS"));
     return sock;
 }
 
@@ -340,7 +341,7 @@ NeighborInfo *NetworkHandle::getNeighborInfo(sockaddr_storage &addr) {
         if (cmpStorages((*it)->address, addr)) {
             res = *it;
             n_mtx.unlock();
-            break;
+            return res;
         }
     }
     n_mtx.unlock();
@@ -359,17 +360,17 @@ void NetworkHandle::setNeighborFree(sockaddr_storage &addr, bool free) {
         ngh->free = free;
 }
 
-int NetworkHandle::getFreeNeighbor(NeighborInfo *ngh) {
+int NetworkHandle::getFreeNeighbor(NeighborInfo *&ngh) {
     n_mtx.lock();
     for (auto n : neighbors) {
         if (n->free) {
-            *ngh = *n;
+            ngh = n;
             n_mtx.unlock();
-            return 0;
+            return 1;
         }
     }
     n_mtx.unlock();
-    return -1;
+    return 0;
 }
 
 void NetworkHandle::askForAddresses(struct sockaddr_storage &addr) {
@@ -390,10 +391,10 @@ void NetworkHandle::addNewNeighbor(bool potential, struct sockaddr_storage &addr
         if (!addrIn(addr, neighbors)) {
             NeighborInfo *ngh = new NeighborInfo(addr);
             neighbors.push_back(ngh);
-            DATA->periodic_listeners.insert(make_pair<string, Listener *>(getHash(*ngh),ngh));
+            DATA->periodic_listeners.insert(make_pair(ngh->getHash(), ngh));
             MyAddr mad(addr);
             reportDebug("Neighbor added; " + mad.get(), 3);
-            if (neighbors.size() == MIN_NEIGHBOR_COUNT) {
+            if (neighbors.size() == (unsigned) DATA->config.getValue("MIN_NEIGHBOR_COUNT")) {
                 reportSuccess("Enough neighbors gained.");
             }
         } else

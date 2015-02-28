@@ -16,16 +16,12 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 0
+#define DEBUG_LEVEL 1
 #define STATUS_LENGTH 10
-#define CHUNK_SIZE 40048576
+#define WD "/home/vojcek/WD"
 #define INFO_LINES 15
-#define LINE_LENGTH 80
-#define MIN_NEIGHBOR_COUNT 1
-#define LISTENING_PORT 25000
-#define SUPERPEER_PORT 26000
 #define SUPERPEER_ADDR "127.0.0.1"
-#define CHECK_INTERVALS 10
+#define LINE_LENGTH 80
 #define BUF_LENGTH 256
 #define DEFAULT 1
 #define RED 2
@@ -89,6 +85,7 @@ typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 class Listener {
 public:
     virtual void invoke(NetworkHandle &handler) = 0;
+    virtual std::string getHash() = 0;
 };
 
 struct MyAddr {
@@ -98,65 +95,6 @@ struct MyAddr {
     std::string get();
     MyAddr(struct sockaddr_storage &addr);
 };
-
-struct NeighborInfo : public Listener {
-    struct sockaddr_storage address;
-    int intervals;
-    //quality
-    bool confirmed;
-    bool active;
-    bool free;
-
-    void printInfo();
-    virtual void invoke(NetworkHandle &handler);
-
-    NeighborInfo(struct sockaddr_storage &addr): intervals(CHECK_INTERVALS), free(true) {
-        address = addr;
-    }
-};
-
-struct TransferInfo : public Listener {
-    int chunk_count, chunk_size;
-    time_t sent_time;
-    NeighborInfo *peer;
-    std::string job_id;
-    std::string output_format;
-
-    virtual void invoke(NetworkHandle &handler);
-    TransferInfo(NeighborInfo *p, std::string ji, std::string of):
-        job_id(ji), output_format(of) {
-        peer = p;
-    }
-};
-
-
-struct VideoState {
-    finfo_t finfo;
-    size_t secs_per_chunk, c_chunks, chunk_size;
-    std::string dir_location, o_format, o_codec;
-    bool working, splitting_ongoing, split_deq_used;
-    int to_send;
-    std::deque<std::string> chunks_to_process;
-    std::mutex split_mtx;
-    std::condition_variable split_cond;
-    NetworkHandle *net_handler;
-    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(CHUNK_SIZE),
-    o_format("mkv"), o_codec("h264"), working(false), splitting_ongoing(false), split_deq_used(false) {
-        net_handler = nh;
-    }
-
-    int split();
-    int join();
-    void printVideoState();
-    void changeChunkSize(size_t nsize);
-    void loadFileInfo(finfo_t &finfo);
-    void resetFileInfo();
-    void abort();
-    void pushChunk(std::string path);
-    void transferChunk();
-};
-
-void splitTransferRoutine(VideoState *st);
 
 class HistoryStorage {
     std::vector<std::string> history;
@@ -190,8 +128,9 @@ public:
 
 struct State {
     bool enough_neighbors = false;
-
+    bool working = false;
 };
+
 
 struct IO_Data {
     IO_Data(): info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),
@@ -202,17 +141,19 @@ struct IO_Data {
 };
 
 struct Mutexes_Data {
-    std::mutex I_mtx, O_mtx, report_mtx;
-    std::condition_variable cond;
-    bool using_I = false, using_O = false;
+    std::mutex I_mtx, O_mtx, report_mtx, chunk_mtx;
+    std::condition_variable IO_cond, chunk_cond;
+    bool using_I = false, using_O = false, process_deq_used = false;
 };
 
 struct Configuration {
     bool is_superpeer = false, IPv4_ONLY;
     std::map<std::string, int> intValues;
     std::string working_dir, superpeer_addr;
+    int getValue(std::string key);
 };
 
+struct TransferInfo;
 struct Data {
     static std::shared_ptr<Data> getInstance() {
         if(!inst) {
@@ -226,7 +167,9 @@ struct Data {
     IO_Data io_data;
     Mutexes_Data m_data;
     Configuration config;
+    State state;
     std::map<std::string, TransferInfo *> waiting_chunks;
+    std::deque<TransferInfo *> chunks_to_encode;
     std::map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
@@ -242,6 +185,72 @@ struct Data {
 
 private:
     static std::shared_ptr<Data> inst;
+};
+
+struct VideoState {
+    finfo_t finfo;
+    size_t secs_per_chunk, c_chunks, chunk_size;
+    std::string dir_location, job_id, o_format, o_codec;
+    bool working, splitting_ongoing, split_deq_used;
+    int to_send;
+    std::deque<std::string> chunks_to_process;
+    std::mutex split_mtx;
+    std::condition_variable split_cond;
+    NetworkHandle *net_handler;
+    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(DATA->config.getValue("CHUNK_SIZE")),
+    dir_location(DATA->config.working_dir), o_format("mkv"), o_codec("h264"),
+      working(false), splitting_ongoing(false), split_deq_used(false) {
+        net_handler = nh;
+    }
+
+    int split();
+    int join();
+    void printVideoState();
+    void changeChunkSize(size_t nsize);
+    void loadFileInfo(finfo_t &finfo);
+    void resetFileInfo();
+    void abort();
+    void pushChunk(std::string path);
+    void transferChunk();
+};
+
+void splitTransferRoutine(VideoState *st);
+void chunkProcessRoutine();
+void pushChunkProcess(TransferInfo *ti);
+
+struct NeighborInfo : public Listener {
+    struct sockaddr_storage address;
+    int intervals;
+    //quality
+    bool confirmed;
+    bool active;
+    bool free;
+
+    void printInfo();
+    virtual void invoke(NetworkHandle &handler);
+    virtual std::string getHash();
+    virtual ~NeighborInfo() {}
+
+    NeighborInfo(struct sockaddr_storage &addr): intervals(DATA->config.getValue("CHECK_INTERVALS")), free(true) {
+        address = addr;
+    }
+};
+
+struct TransferInfo : public Listener {
+    int chunk_count, chunk_size, time_left;
+    time_t sent_time;
+    struct sockaddr_storage address;
+    std::string job_id;
+    std::string name;
+    std::string output_format;
+
+    virtual void invoke(NetworkHandle &handler);
+    virtual std::string getHash();
+    TransferInfo(struct sockaddr_storage addr, std::string ji, std::string of, std::string n):
+        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
+        name(n), output_format(of) {
+        address = addr;
+    }
 };
 
 

@@ -59,10 +59,10 @@ int readConfiguration(const string &cf) {
         ss >> value;
         intvalue = atoi(value.c_str());
         try {
-            DATA->config.intValues.at(param) = intvalue;
+            DATA->config.intValues.insert(make_pair(param, intvalue));
         } catch (...) {
             // read also strings - determine exceptions
-            reportDebug("Failed to read parameter.", 3);
+            reportError("Failed to read parameter " + param);
         }
     }
    return (0);
@@ -74,7 +74,14 @@ void superPeerRoutine(NetworkHandle &net_handler) {
 
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
-    data->config.working_dir = ".";
+    data->config.working_dir = WD;
+    if (data->config.working_dir == "") {
+        char dirp[BUF_LENGTH];
+        if (getcwd(dirp, BUF_LENGTH) == NULL)
+            data->config.working_dir = string(dirp);
+        else
+            data->config.working_dir = ".";
+    }
     data->config.IPv4_ONLY = true;
     int x,y, y_space;
     getmaxyx(stdscr, y, x);
@@ -84,11 +91,7 @@ void initConfiguration() {
     data->io_data.status_handler.changeWin(data->io_data.status_win);
     data->io_data.info_handler.changeWin(data->io_data.info_win);
     data->config.superpeer_addr = SUPERPEER_ADDR;
-    data->config.intValues.emplace("MIN_NEIGHBOR_COUNT", MIN_NEIGHBOR_COUNT);
-    data->config.intValues.emplace("LISTENING_PORT", LISTENING_PORT);
     data->config.intValues.emplace("STATUS_LENGTH", y_space / 2 - 1);
-    data->config.intValues.emplace("CHUNK_SIZE", CHUNK_SIZE);
-    data->config.intValues.emplace("SUPERPEER_PORT", SUPERPEER_PORT);
 }
 
 void initCommands(VideoState &state, NetworkHandle &net_handler) {
@@ -118,12 +121,13 @@ void cleanCommands(cmd_storage_t &cmds) {
 }
 
 void periodicActions(NetworkHandle &net_handler) {
-    if (net_handler.getNeighborCount() < MIN_NEIGHBOR_COUNT)
-        net_handler.obtainNeighbors(MIN_NEIGHBOR_COUNT);
+    if (net_handler.getNeighborCount() < DATA->config.getValue("MIN_NEIGHBOR_COUNT"))
+        net_handler.obtainNeighbors(DATA->config.getValue("MIN_NEIGHBOR_COUNT"));
     net_handler.contactSuperPeer();
     for (auto l : DATA->periodic_listeners) {
         l.second->invoke(net_handler);
     }
+    //applyToVector(DATA->periodic_listeners, [=](Listener *obj) { obj->invoke(net_handler); });
 }
 
 int main(int argc, char **argv) {

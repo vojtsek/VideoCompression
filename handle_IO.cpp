@@ -61,7 +61,7 @@ string loadInput(const string &histf, const string &msg, bool save) {
     refresh();
     DATA->m_data.using_I = false;
     lck.unlock();
-    DATA->m_data.cond.notify_one();
+    DATA->m_data.IO_cond.notify_one();
     return string(line);
 }
 

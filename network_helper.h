@@ -11,6 +11,8 @@ std::string storage2addr(struct sockaddr_storage &addr);
 struct sockaddr_storage getHostAddr(int fd);
 struct sockaddr_storage getPeerAddr(int fd);
 int sendString(int fd, std::string str);
+int sendFile(int fd, std::string str);
+int receiveFile(int fd, std::string fn);
 std::string receiveString(int fd);
 bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo *> &list);
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);

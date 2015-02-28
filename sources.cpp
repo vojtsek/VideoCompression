@@ -1,5 +1,6 @@
 #include "defines.h"
 #include "common.h"
+#include "network_helper.h"
 
 #include <string>
 #include <fstream>
@@ -18,8 +19,7 @@ using namespace common;
 
 void splitTransferRoutine(VideoState *st) {
     string *fn;
-    struct sockaddr_storage a;
-    NeighborInfo *ngh = new NeighborInfo(a);
+    NeighborInfo *ngh;
     while (st->to_send > 0) {
         unique_lock<mutex> lck(st->split_mtx, defer_lock);
         lck.lock();
@@ -34,14 +34,36 @@ void splitTransferRoutine(VideoState *st) {
         st->split_deq_used = false;
         lck.unlock();
         st->split_cond.notify_one();
-        if (st->net_handler->getFreeNeighbor(ngh) == -1) {
+        if (st->net_handler->getFreeNeighbor(ngh) == 0) {
             reportError("No free neighbor!");
             st->pushChunk(*fn);
+            delete fn;
+            sleep(1);
             continue;
         }
         int sock = st->net_handler->checkNeighbor(ngh->address);
         st->net_handler->spawnOutgoingConnection(ngh->address, sock,
         { PING_PEER, TRANSFER_PEER }, true, (void *) fn);
+
+    }
+}
+
+void processChunkRoutine() {
+    TransferInfo *ti;
+    while (1) {
+        unique_lock<mutex> lck(DATA->m_data.chunk_mtx, defer_lock);
+        lck.lock();
+        while (DATA->m_data.process_deq_used ||
+               !DATA->chunks_to_encode.size() ||
+               DATA->state.working)
+            DATA->m_data.chunk_cond.wait(lck);
+        DATA->m_data.process_deq_used = true;
+        ti = DATA->chunks_to_encode.front();
+        encodeChunk(ti);
+        DATA->chunks_to_encode.pop_front();
+        DATA->m_data.process_deq_used = false;
+        lck.unlock();
+        DATA->m_data.chunk_cond.notify_one();
     }
 }
 
@@ -50,9 +72,13 @@ int VideoState::split() {
     string out, err;
     double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
-    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
-
-    if (prepareDir(dir_location) == -1) {
+    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], chunk_id[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
+    char dir_name[BUF_LENGTH];
+    sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
+    job_id = std::string(dir_name);
+    std::string path(dir_location + std::string("/") + job_id);
+    reportStatus(path);
+    if (prepareDir(path) == -1) {
         reportError("Failed to create the job directory.");
         return (-1);
     }
@@ -65,6 +91,7 @@ int VideoState::split() {
     reportStatus("Splitting file: " + finfo.fpath);
     for (unsigned int i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
+
         printProgress(percent);
         elapsed = i * secs_per_chunk;
         hours = elapsed / 3600;
@@ -72,7 +99,11 @@ int VideoState::split() {
         mins = elapsed / 60;
         secs = elapsed % 60;
         snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
-        snprintf(output, BUF_LENGTH, "%s/%03d_splitted.avi", dir_location.c_str(), i);
+        snprintf(output, BUF_LENGTH, "%s/%s/%03d_splitted.avi",
+                 //TODO check if exists
+                 dir_location.c_str(), job_id.c_str(), i);
+        snprintf(chunk_id, BUF_LENGTH, "%s/%03d_splitted.avi",
+                 job_id.c_str(), i);
         snprintf(cmd, BUF_LENGTH, "ffmpeg");
         cursToStatus();
         sum += Measured<>::exec_measure(runExternal, out, err, cmd, 12, cmd,
@@ -93,7 +124,7 @@ int VideoState::split() {
             split_thr.detach();
             return (-1);
         }
-        pushChunk(string(output));
+        pushChunk(string(chunk_id));
     }
     reportDebug("Waiting for chunks to distribute....", 1);
     split_thr.join();
@@ -124,8 +155,21 @@ void VideoState::pushChunk(string path) {
     split_cond.notify_one();
 }
 
+void pushChunkProcess(TransferInfo * ti) {
+    unique_lock<mutex> lck(DATA->m_data.chunk_mtx, defer_lock);
+
+    lck.lock();
+    while (DATA->m_data.process_deq_used)
+        DATA->m_data.chunk_cond.wait(lck);
+    DATA->m_data.process_deq_used = true;
+    DATA->chunks_to_encode.push_back(ti);
+    DATA->m_data.process_deq_used = false;
+    lck.unlock();
+    DATA->m_data.chunk_cond.notify_one();
+}
+
 int VideoState::join() {
-    string out, err, list_loc(dir_location + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
+    string out, err, list_loc(dir_location + "/" + job_id + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
     ofstream ofs(list_loc);
     stringstream ss;
     char file[BUF_LENGTH], cmd[BUF_LENGTH];
@@ -140,7 +184,7 @@ int VideoState::join() {
         try {
             ss.clear();
             ss.str("");
-            ss << dir_location << "/" << setfill('0') << setw(3) << i << "_splitted.avi";
+            ss << dir_location << "/" << job_id << "/" << setfill('0') << setw(3) << i << "_splitted.avi";
             sum_size += getFileSize(ss.str());
             ofs << file << endl;
         } catch (...) {} // TODO: handle exception
@@ -196,10 +240,7 @@ void VideoState::printVideoState() {
 
 void VideoState::loadFileInfo(finfo_t &finfo) {
     this->finfo = finfo;
-    char dir_name[BUF_LENGTH];
-    sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
-    dir_location = DATA->config.working_dir + "/" + std::string(dir_name);
-    changeChunkSize(CHUNK_SIZE);
+    changeChunkSize(DATA->config.getValue("CHUNK_SIZE"));
 }
 
 void VideoState::resetFileInfo() {
@@ -306,7 +347,7 @@ void WindowPrinter::print() {
 
     lck.lock();
     while (DATA->m_data.using_O)
-        DATA->m_data.cond.wait(lck);
+        DATA->m_data.IO_cond.wait(lck);
     DATA->m_data.using_O = true;
     DATA->m_data.report_mtx.lock();
     wbkgd(win, COLOR_PAIR(BG));
@@ -359,7 +400,7 @@ void WindowPrinter::print() {
     DATA->m_data.report_mtx.unlock();
     DATA->m_data.using_O = false;
     lck.unlock();
-    DATA->m_data.cond.notify_one();
+    DATA->m_data.IO_cond.notify_one();
 }
 
 void NeighborInfo::printInfo() {
@@ -372,5 +413,31 @@ void NeighborInfo::invoke(NetworkHandle &net_handler) {
     if (!--intervals) {
         sock = net_handler.checkNeighbor(address);
         net_handler.spawnOutgoingConnection(address, sock, { PING_PEER }, true, nullptr);
+    }
+}
+
+void TransferInfo::invoke(NetworkHandle &handler) {
+    if (--time_left < 0) {
+        try {
+            DATA->waiting_chunks.at(name);
+            reportError(name + ": Still in queue.");
+        } catch (...) {}
+    }
+}
+
+string NeighborInfo::getHash() {
+    string hash(storage2addr(address) + m_itoa(((struct sockaddr_in *)&address)->sin_port));
+    return hash;
+}
+
+string TransferInfo::getHash() {
+    return job_id;
+}
+
+int Configuration::getValue(string key) {
+    try {
+        return intValues.at(key);
+    } catch (std::out_of_range e) {
+        return 0;
     }
 }

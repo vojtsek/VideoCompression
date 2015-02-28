@@ -24,7 +24,7 @@ namespace common
     int prepareDir(std::string &loc);
     int rmrDir(const char *loc, bool rec);
     int runExternal(std::string &o, std::string &e, char *cmd, int numargs, ...);
-    int encodeChunk(std::string &path, std::string &codec, std::string &extension);
+    int encodeChunk(TransferInfo *ti);
     long getFileSize(const std::string &file);
     std::vector<std::string> extract(const std::string text, const std::string from, int count);
     std::vector<std::string> split(const std::string &content, char sep);

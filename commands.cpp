@@ -15,6 +15,7 @@
 #include <thread>
 #include <algorithm>
 #include <map>
+#include <utility>
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -94,7 +95,7 @@ void CmdSetCodec::execute() {
 
 void CmdSetChSize::execute() {
     string in = loadInput("", "Enter new chunk size (kB):", false);
-    size_t nsize = CHUNK_SIZE;
+    size_t nsize = DATA->config.getValue("CHUNK_SIZE");
     stringstream ss(in), msg;
     ss >> nsize;
     state->changeChunkSize(nsize * 1024);
@@ -254,7 +255,7 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     CMDS action = ASK_HOST;
     int rand_n;
     int size = handler->getNeighborCount();
-    int count = (size < MIN_NEIGHBOR_COUNT) ? size : MIN_NEIGHBOR_COUNT;
+    int count = (size < DATA->config.getValue("MIN_NEIGHBOR_COUNT")) ? size : DATA->config.getValue("MIN_NEIGHBOR_COUNT");
     struct sockaddr_storage addr;
     if (sendCmd(fd, action) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -435,7 +436,7 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
 
 bool CmdTransferPeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = TRANSFER_HOST;
-    string fn;
+    string fn, job_id, chunk_name;
     RESPONSE_T resp = state->working ? ACK_BUSY : ACK_FREE;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -465,16 +466,35 @@ bool CmdTransferPeer::execute(int fd, sockaddr_storage &address, void *) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    reportSuccess(fn);
+
+    job_id = fn.substr(0, fn.find("/"));
+    chunk_name = getBasename(fn);
+    string dir(DATA->config.working_dir + "/to_process/" + job_id);
+    if (prepareDir(dir) == -1) {
+        reportError(fn + ": Error receiving chunk.");
+        return false;
+    }
+
+    if (receiveFile(fd, dir + "/" + chunk_name) == -1) {
+        reportError(fn + ": Failed to transfer file.");
+        return false;
+    }
+
+    reportDebug("Pushing chunk " + fn + " to process.", 2);
+    //pushChunkProcess(new TransferInfo(address, job_id, "libx264", fn));
     return true;
 }
 
 bool CmdTransferHost::execute(int fd, sockaddr_storage &address, void *data) {
     RESPONSE_T resp;
-    string fn = getBasename(*(string *) data);
+    string fn = (*(string *) data);
+    delete (string *) data;
+    string job_id = fn.substr(0, fn.find("/"));
+    string chunk_name = getBasename(fn);
 
     if (recvSth(resp, fd) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
+        state->pushChunk(fn);
         return false;
     }
 
@@ -486,14 +506,27 @@ bool CmdTransferHost::execute(int fd, sockaddr_storage &address, void *data) {
     }
 
     if (sendString(fd, fn) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
+        reportError(fn + ": Failed to send filename.");
+        state->pushChunk(fn);
+        return false;
     }
+
+    if (sendFile(fd, DATA->config.working_dir + "/" + fn) == -1) {
+        reportError(fn + ": Failed to send.");
+        state->pushChunk(fn);
+        return false;
+    }
+
     state->to_send--;
     unique_lock<mutex> lck(state->split_mtx, defer_lock);
     lck.lock();
     lck.unlock();
     state->split_cond.notify_one();
-    reportDebug("Chunk transferred. " + m_itoa(state->to_send), 1);
+    TransferInfo *ti = new TransferInfo(address, fn, "", fn);
+    DATA->periodic_listeners.insert(std::make_pair(fn, ti));
+    DATA->waiting_chunks.insert(std::make_pair(fn, ti));
+    reportSuccess("Chunk transferred. " + m_itoa(state->to_send) + " remaining.");
+    handler->setNeighborFree(address, false);
+    DATA->waiting_chunks.erase(fn);
     return true;
 }

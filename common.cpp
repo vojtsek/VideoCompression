@@ -44,12 +44,12 @@ int common::acceptCmd(cmd_storage_t &cmds) {
     do {
         lck.lock();
         while (DATA->m_data.using_I)
-            DATA->m_data.cond.wait(lck);
+            DATA->m_data.IO_cond.wait(lck);
         DATA->m_data.using_I = true;
         c = getch();
         DATA->m_data.using_I = false;
         lck.unlock();
-        DATA->m_data.cond.notify_one();
+        DATA->m_data.IO_cond.notify_one();
         usleep(10000);
     } while(c == ERR);
     if (c == KEY_F(12))
@@ -116,10 +116,6 @@ void clearNlines(int n) {
     move(orig_y, orig_x);
 }
 
-string common::getHash(NeighborInfo &n) {
-    string hash(storage2addr(n.address) + m_itoa(((struct sockaddr_in *)&n.address)->sin_port));
-    return hash;
-}
 
 int common::checkFile(string &path) {
     struct stat info;
@@ -186,10 +182,11 @@ int common::prepareDir(string &location) {
     if (mkdir(location.c_str(), 0700) == -1) {
         switch (errno) {
         case EEXIST:
-            if (rmrDir(location.c_str(), false) == -1)
+/*            if (rmrDir(location.c_str(), false) == -1)
                 return (-1);
             if (mkdir(location.c_str(), 0700) == -1)
                 return (-1);
+*/
             break;
         default:
             return (-1);
@@ -199,15 +196,17 @@ int common::prepareDir(string &location) {
     return (0);
 }
 
-int common::encodeChunk(string &path, string &codec, string &extension) {
+int common::encodeChunk(TransferInfo *ti) {
     string out, err;
     char cmd[BUF_LENGTH];
-    string file_out = common::getBasename(path) + "." + extension;
+    string file_out = DATA->config.working_dir + "/processed/" + ti->job_id + "/" + ti->name;
+    string file_in = DATA->config.working_dir + "/" + ti->job_id + "/" + ti->name;
     Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
-             "-i", path.c_str(),
-             "-vcodec", codec.c_str(),
+             "-i", file_in.c_str(),
+             "-vcodec", ti->output_format.c_str(),
              "-acodec", "copy",
              file_out.c_str());
+    delete ti;
     return (0);
 }
 
@@ -337,4 +336,3 @@ bool common::knownCodec(const string &cod) {
     }
     return (false);
 }
-
