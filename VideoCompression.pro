@@ -5,19 +5,26 @@ CONFIG -= qt
 
 SOURCES += main.cpp \
     commands.cpp \
-    common.cpp \
-    networking.cpp \
+    utilities.cpp \
     sources.cpp \
     handle_IO.cpp \
-    network_helper.cpp
+    network_helper.cpp \
+    networkhandler.cpp \
+    commands/interactive.cpp \
+    commands/maintanance.cpp \
+    commands/transfer.cpp
 
 HEADERS += \
     commands.h \
-    common.h \
+    include_list.h \
     defines.h \
-    networking.h \
+    networkhandler.h \
     handle_IO.h \
-    network_helper.h
+    network_helper.h \
+    commands/interactive.h \
+    include_list.h \
+    commands/maintanance.h \
+    commands/transfer.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

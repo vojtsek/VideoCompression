@@ -16,7 +16,7 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 2
 #define STATUS_LENGTH 10
 #define WD "/home/vojcek/WD"
 #define INFO_LINES 15
@@ -39,7 +39,7 @@
 #define DATA Data::getInstance()
 #define show(x, y) wprintw(DATA->io_data.info_win, "%15s%35s\n", x, y);
 
-class NetworkHandle;
+class NetworkHandler;
 template <typename Measure_inT = std::chrono::milliseconds>
 struct Measured {
     template <typename FuncT, typename ... args>
@@ -57,7 +57,7 @@ void applyToVector(std::vector<T *> vec, void (*op)(T *)) {
     std::for_each(vec.begin(), vec.end(), op);
 }
 
-namespace common {
+namespace utilities {
     std::string getTimestamp();
 }
 
@@ -84,7 +84,7 @@ typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 
 class Listener {
 public:
-    virtual void invoke(NetworkHandle &handler) = 0;
+    virtual void invoke(NetworkHandler &handler) = 0;
     virtual std::string getHash() = 0;
 };
 
@@ -196,8 +196,8 @@ struct VideoState {
     std::deque<std::string> chunks_to_process;
     std::mutex split_mtx;
     std::condition_variable split_cond;
-    NetworkHandle *net_handler;
-    VideoState(NetworkHandle *nh): secs_per_chunk(0), c_chunks(0), chunk_size(DATA->config.getValue("CHUNK_SIZE")),
+    NetworkHandler *net_handler;
+    VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0), chunk_size(DATA->config.getValue("CHUNK_SIZE")),
     dir_location(DATA->config.working_dir), o_format("mkv"), o_codec("h264"),
       working(false), splitting_ongoing(false), split_deq_used(false) {
         net_handler = nh;
@@ -227,7 +227,7 @@ struct NeighborInfo : public Listener {
     bool free;
 
     void printInfo();
-    virtual void invoke(NetworkHandle &handler);
+    virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
     virtual ~NeighborInfo() {}
 
@@ -244,13 +244,14 @@ struct TransferInfo : public Listener {
     std::string name;
     std::string output_format;
 
-    virtual void invoke(NetworkHandle &handler);
+    virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
     TransferInfo(struct sockaddr_storage addr, std::string ji, std::string of, std::string n):
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
         name(n), output_format(of) {
         address = addr;
     }
+    virtual ~TransferInfo() {}
 };
 
 

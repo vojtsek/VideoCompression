@@ -1,7 +1,7 @@
-#include "common.h"
+#include "include_list.h"
 #include "defines.h"
 #include "commands.h"
-#include "networking.h"
+#include "networkhandler.h"
 #include "network_helper.h"
 
 #include <iostream>
@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 using namespace std;
-using namespace common;
+using namespace utilities;
 
 void usage() {
 }
@@ -48,27 +48,27 @@ int parseOptions(int argc, char **argv) {
     return (optind);
 }
 
-int readConfiguration(const string &cf) {
+int readConfiguration(const std::string &cf) {
     ifstream ifs(cf);
-    string param, value, line;
+    std::string param, value, line;
     int intvalue;
     while(ifs.good()) {
         getline(ifs, line);
-        stringstream ss(line);
+        std::stringstream ss(line);
         ss >> param;
         ss >> value;
         intvalue = atoi(value.c_str());
         try {
             DATA->config.intValues.insert(make_pair(param, intvalue));
         } catch (...) {
-            // read also strings - determine exceptions
+            // read also std::strings - determine exceptions
             reportError("Failed to read parameter " + param);
         }
     }
    return (0);
 }
 
-void superPeerRoutine(NetworkHandle &net_handler) {
+void superPeerRoutine(NetworkHandler &net_handler) {
     net_handler.start_listening(DATA->config.intValues.at("SUPERPEER_PORT"));
 }
 
@@ -78,7 +78,7 @@ void initConfiguration() {
     if (data->config.working_dir == "") {
         char dirp[BUF_LENGTH];
         if (getcwd(dirp, BUF_LENGTH) == NULL)
-            data->config.working_dir = string(dirp);
+            data->config.working_dir = std::string(dirp);
         else
             data->config.working_dir = ".";
     }
@@ -94,7 +94,7 @@ void initConfiguration() {
     data->config.intValues.emplace("STATUS_LENGTH", y_space / 2 - 1);
 }
 
-void initCommands(VideoState &state, NetworkHandle &net_handler) {
+void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new CmdDef));
     DATA->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state, &net_handler)));
     DATA->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
@@ -120,7 +120,7 @@ void cleanCommands(cmd_storage_t &cmds) {
         delete c.second;
 }
 
-void periodicActions(NetworkHandle &net_handler) {
+void periodicActions(NetworkHandler &net_handler) {
     if (net_handler.getNeighborCount() < DATA->config.getValue("MIN_NEIGHBOR_COUNT"))
         net_handler.obtainNeighbors(DATA->config.getValue("MIN_NEIGHBOR_COUNT"));
     net_handler.contactSuperPeer();
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
         return (1);
     }
     int optidx = parseOptions(argc, argv);
-    NetworkHandle net_handler;
+    NetworkHandler net_handler;
     VideoState state(&net_handler);
     initCommands(state, net_handler);
     WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
     curs_set(0);
     wrefresh(win);
     refresh();
-    if (argsContains(argv + optidx, string("super").c_str())) {
+    if (argsContains(argv + optidx, std::string("super").c_str())) {
         DATA->config.is_superpeer = true;
         std::thread thr ([&]() {
             superPeerRoutine(net_handler);

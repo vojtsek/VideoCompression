@@ -1,5 +1,5 @@
 #define _FILE_OFFSET_BITS 64
-#include "common.h"
+#include "include_list.h"
 #include "handle_IO.h"
 #include "commands.h"
 #include "network_helper.h"
@@ -38,7 +38,7 @@ using namespace std;
 
 std::shared_ptr<Data> Data::inst = nullptr;
 
-int common::acceptCmd(cmd_storage_t &cmds) {
+int utilities::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     do {
@@ -66,7 +66,7 @@ int common::acceptCmd(cmd_storage_t &cmds) {
     return(0);
 }
 
-void common::listCmds() {
+void utilities::listCmds() {
     printw("List of available commands:\n");
     show("help", "[command_name]");
     show("show", "parametres|jobs|neighbors");
@@ -76,28 +76,28 @@ void common::listCmds() {
     show("quit", "");
 }
 
-string common::getExtension(const string &str) {
+string utilities::getExtension(const std::string &str) {
     size_t pos = str.rfind('.');
-    string extension("");
-    if (pos != string::npos)
+    std::string extension("");
+    if (pos != std::string::npos)
         extension = str.substr(pos + 1);
     return extension;
 }
 
-string common::getBasename(const string &str) {
+string utilities::getBasename(const std::string &str) {
     size_t pos = str.rfind('/');
-    string basename("");
-    if (pos == string::npos)
-        return string("");
+    std::string basename("");
+    if (pos == std::string::npos)
+        return std::string("");
     basename = str.substr(pos + 1);
     pos = basename.rfind('.');
-    if (pos == string::npos)
+    if (pos == std::string::npos)
         return basename;
     basename = basename.substr(0, pos);
     return basename;
 }
 
-long common::getFileSize(const string &file) {
+long utilities::getFileSize(const std::string &file) {
     struct stat64 finfo;
     if (lstat64(file.c_str(), &finfo) == -1)
         return (-1);
@@ -117,14 +117,14 @@ void clearNlines(int n) {
 }
 
 
-int common::checkFile(string &path) {
+int utilities::checkFile(string &path) {
     struct stat info;
 
     if (stat (path.c_str(), &info) == -1){
         reportError("An error occured while controlling the file: " + path);
         return (-1);
     }
-    string extension = getExtension(path);
+    std::string extension = getExtension(path);
     if (extension.empty()) {
         reportError("Invalid file extension.");
         return (-1);
@@ -137,8 +137,8 @@ int common::checkFile(string &path) {
     return (0);
 }
 
-string common::m_itoa(int n) {
-    string res;
+string utilities::m_itoa(int n) {
+    std::string res;
     int nn;
     while(n > 0) {
         nn = n % 10;
@@ -149,7 +149,7 @@ string common::m_itoa(int n) {
     return res;
 }
 
-int common::rmrDir(const char *dir, bool recursive) {
+int utilities::rmrDir(const char *dir, bool recursive) {
   DIR *d, *t;
   struct dirent *entry;
   char abs_fn[256];
@@ -178,7 +178,7 @@ int common::rmrDir(const char *dir, bool recursive) {
 }
 
 
-int common::prepareDir(string &location) {
+int utilities::prepareDir(string &location) {
     if (mkdir(location.c_str(), 0700) == -1) {
         switch (errno) {
         case EEXIST:
@@ -196,11 +196,11 @@ int common::prepareDir(string &location) {
     return (0);
 }
 
-int common::encodeChunk(TransferInfo *ti) {
-    string out, err;
+int utilities::encodeChunk(TransferInfo *ti) {
+    std::string out, err;
     char cmd[BUF_LENGTH];
-    string file_out = DATA->config.working_dir + "/processed/" + ti->job_id + "/" + ti->name;
-    string file_in = DATA->config.working_dir + "/" + ti->job_id + "/" + ti->name;
+    std::string file_out = DATA->config.working_dir + "/processed/" + ti->job_id + "/" + ti->name;
+    std::string file_in = DATA->config.working_dir + "/" + ti->job_id + "/" + ti->name;
     Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
              "-i", file_in.c_str(),
              "-vcodec", ti->output_format.c_str(),
@@ -210,10 +210,10 @@ int common::encodeChunk(TransferInfo *ti) {
     return (0);
 }
 
-vector<string> common::extract(const string text, const string from, int count) {
+vector<string> utilities::extract(const std::string text, const std::string from, int count) {
     vector<string> result;
-    string word;
-    stringstream ss(text);
+    std::string word;
+    std::stringstream ss(text);
     bool start = false;
     while (ss.good()) {
         ss >> word;
@@ -230,20 +230,20 @@ vector<string> common::extract(const string text, const string from, int count) 
     return result;
 }
 
-string common::getTimestamp() {
+string utilities::getTimestamp() {
     char stamp[16];
     sprintf(stamp, "%d", (int) time(NULL));
-    return string(stamp);
+    return std::string(stamp);
 }
 
-bool common::isAcceptable(char c) {
+bool utilities::isAcceptable(char c) {
     vector<char> acc = {'/', '.', '_', ' ', '=', '-'};
     if ((!isgraph(c)) || (iscntrl(c)))
         return false;
     return ((isalnum(c)) || (find(acc.begin(), acc.end(), c) != acc.end()));
 }
 
-int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...) {
+int utilities::runExternal(string &stdo, std::string &stde, char *cmd, int numargs, ...) {
     pid_t pid;
     int pd_o[2], pd_e[2], j;
     size_t bufsize = 65536;
@@ -295,7 +295,7 @@ int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...)
             //always positive anyway
             if((unsigned)(bo - buf_o) > bufsize){
                 *bo = '\0';
-                stdo += string(buf_o);
+                stdo += std::string(buf_o);
                 bo = buf_o;
             }
         }
@@ -303,12 +303,12 @@ int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...)
             be++;
             if((unsigned)(be - buf_e) > bufsize){
                 *be = '\0';
-                stde += string(buf_e);
+                stde += std::string(buf_e);
                 be = buf_e;
             }
         }
-        stdo += string(buf_o);
-        stde += string(buf_e);
+        stdo += std::string(buf_o);
+        stde += std::string(buf_e);
         close(pd_o[0]);
         close(pd_e[0]);
         break;
@@ -316,11 +316,11 @@ int common::runExternal(string &stdo, string &stde, char *cmd, int numargs, ...)
     return (0);
 }
 
-vector<string> common::split(const string &content, char sep) {
+vector<string> utilities::split(const std::string &content, char sep) {
     size_t pos;
     vector<string> result;
-    string remaining(content);
-    while((pos = remaining.find(sep)) != string::npos) {
+    std::string remaining(content);
+    while((pos = remaining.find(sep)) != std::string::npos) {
         result.push_back(remaining.substr(0, pos));
         remaining = remaining.substr(pos + 1, remaining.length());
     }
@@ -328,7 +328,7 @@ vector<string> common::split(const string &content, char sep) {
     return result;
 }
 
-bool common::knownCodec(const string &cod) {
+bool utilities::knownCodec(const std::string &cod) {
     vector<string> know = Data::getKnownCodecs();
     for (string &c : know) {
         if (c == cod)

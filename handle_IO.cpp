@@ -1,5 +1,5 @@
 #define _FILE_OFFSET_BITS 64
-#include "common.h"
+#include "include_list.h"
 #include "handle_IO.h"
 #include "commands.h"
 #include "defines.h"
@@ -34,7 +34,7 @@
 
 using namespace std;
 
-string loadInput(const string &histf, const string &msg, bool save) {
+string loadInput(const std::string &histf, const std::string &msg, bool save) {
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     std::unique_lock<std::mutex> lck2(DATA->m_data.O_mtx, std::defer_lock);
 
@@ -62,15 +62,15 @@ string loadInput(const string &histf, const string &msg, bool save) {
     DATA->m_data.using_I = false;
     lck.unlock();
     DATA->m_data.IO_cond.notify_one();
-    return string(line);
+    return std::string(line);
 }
 
-void reportFileProgress(const string &file, long desired) {
+void reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
     int tries = 10;
     double percent;
     while (fs < desired) {
-        fs = common::getFileSize(file);
+        fs = utilities::getFileSize(file);
         if (fs < 0)
             fs = 0;
         if (fs == old) {
@@ -88,22 +88,22 @@ void reportFileProgress(const string &file, long desired) {
     }
 }
 
-void reportError(const string &err) {
+void reportError(const std::string &err) {
     DATA->io_data.status_handler.add(err, ERROR);
     DATA->io_data.status_handler.print();
 }
 
-void reportSuccess(const string &msg) {
+void reportSuccess(const std::string &msg) {
     DATA->io_data.status_handler.add(msg, SUCCESS);
     DATA->io_data.status_handler.print();
 }
 
-void reportStatus(const string &msg) {
+void reportStatus(const std::string &msg) {
     DATA->io_data.status_handler.add(msg, PLAIN);
     DATA->io_data.status_handler.print();
 }
 
-void reportDebug(const string &msg, int lvl) {
+void reportDebug(const std::string &msg, int lvl) {
     if (lvl <= DEBUG_LEVEL) {
         DATA->io_data.status_handler.add(msg, DEBUG);
         DATA->io_data.status_handler.print();
@@ -189,18 +189,18 @@ void cursorToX(int nx) {
     move(y, nx);
 }
 
-void reportTime(const string &file, double time) {
-    string fn("results/" + common::getBasename(file) + ".measured");
+void reportTime(const std::string &file, double time) {
+    std::string fn("results/" + utilities::getBasename(file) + ".measured");
     ofstream out;
     out.open(fn, ofstream::app);
-    stringstream msg;
+    std::stringstream msg;
     out << time << endl;
     out.close();
     msg << "The operation took " << time << " seconds.";
     reportStatus(msg.str());
 }
 
-int getLine(char *line, int len, const string &histf, bool save) {
+int getLine(char *line, int len, const std::string &histf, bool save) {
     HistoryStorage hist(histf);
     char *start = line;
     *line = '\0';
@@ -243,7 +243,7 @@ int getLine(char *line, int len, const string &histf, bool save) {
             }
             move(y, x);
             delch();
-        } else if (common::isAcceptable(c)) {
+        } else if (utilities::isAcceptable(c)) {
             printw("%c", c);
             *(line++) = c;
         }

@@ -1,5 +1,5 @@
 #define _FILE_OFFSET_BITS 64
-#include "common.h"
+#include "include_list.h"
 #include "handle_IO.h"
 #include "commands.h"
 #include "defines.h"
@@ -132,19 +132,19 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
     return addr;
 }
 
-string storage2addr(sockaddr_storage &addr) {
+std::string storage2addr(sockaddr_storage &addr) {
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &addr, buf, INET_ADDRSTRLEN);
-        return string(buf);
+        return std::string(buf);
     } else {
         char buf[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, &addr, buf, INET6_ADDRSTRLEN);
-        return string(buf);
+        return std::string(buf);
     }
 }
 
-int sendString(int fd, string str) {
+int sendString(int fd, std::string str) {
     if (sendSth(str.length(), fd) == -1)
         return (-1);
     for (char c : str) {
@@ -154,7 +154,7 @@ int sendString(int fd, string str) {
     return (0);
 }
 
-int receiveFile(int fd, string fn) {
+int receiveFile(int fd, std::string fn) {
     off_t fsize, received = 0, r, w;
     int o_file;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
@@ -170,19 +170,19 @@ int receiveFile(int fd, string fn) {
         }
         //check the size
         while ((r = read(fd, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
-            //reportError(common::m1_itoa(r));
+            //reportError(utilities::m1_itoa(r));
             received += r;
-            if ((w = write(o_file, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) != -1) {
-                //reportSuccess(fn + ": " + common::m_itoa(r) + " bytes received.");
+            if ((w = write(o_file, buf, r)) != -1) {
+                //reportSuccess(fn + ": " + utilities::m_itoa(r) + " bytes received.");
             } else {
-                reportDebug("Error; received " + common::m_itoa(received), 2);
+                reportDebug("Error; received " + utilities::m_itoa(received), 2);
                 throw 1;
             }
         }
         if (received != fsize) {
             reportDebug("Received bytes and expected fsize does not equal. ", 2);
-            reportDebug("EXP: " + common::m_itoa(fsize), 1);
-            reportDebug("REC: " + common::m_itoa(received), 1);
+            reportDebug("EXP: " + utilities::m_itoa(fsize), 1);
+            reportDebug("REC: " + utilities::m_itoa(received), 1);
             throw 1;
         }
     } catch (int) {
@@ -190,12 +190,12 @@ int receiveFile(int fd, string fn) {
         close(o_file);
         return -1;
     }
-    reportDebug("received " + common::m_itoa(received), 2);
+    reportDebug("received " + utilities::m_itoa(received), 2);
     close(o_file);
     return 0;
 }
 
-int sendFile(int fd, string fn) {
+int sendFile(int fd, std::string fn) {
     int file;
     off_t fsize, sent = 0, r, w;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
@@ -223,7 +223,7 @@ int sendFile(int fd, string fn) {
             if ((w = write(fd, buf, r)) != -1) {
                 sent -= w;
             } else {
-                reportDebug("Error; sent " + common::m_itoa(w), 2);
+                reportDebug("Error; sent " + utilities::m_itoa(w), 2);
                 throw 1;
             }
         }
@@ -240,9 +240,27 @@ int sendFile(int fd, string fn) {
     return 0;
 }
 
-string receiveString(int fd) {
+int sendCmd(int fd, CMDS cmd) {
+    bool response;
+    if (sendSth(cmd, fd) == -1) {
+        reportError("Error send CMD");
+        return (-1);
+    }
+    if (recvSth(response, fd) == -1) {
+        reportError("ERROR conf CMD");
+        return (-1);
+    }
+    if (!response) {
+        reportDebug("The command was not accepted.", 1);
+        return (-1);
+    }
+    return (0);
+}
+
+
+std::string receiveString(int fd) {
     int len;
-    string res;
+    std::string res;
     char c;
     if (recvSth(len, fd) == -1)
         return res;

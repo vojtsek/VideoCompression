@@ -8,12 +8,13 @@
 
 struct sockaddr_storage addr2storage(const char* addr, int port, int family);
 std::string storage2addr(struct sockaddr_storage &addr);
+std::string receiveString(int fd);
 struct sockaddr_storage getHostAddr(int fd);
 struct sockaddr_storage getPeerAddr(int fd);
 int sendString(int fd, std::string str);
 int sendFile(int fd, std::string str);
 int receiveFile(int fd, std::string fn);
-std::string receiveString(int fd);
+int sendCmd(int fd, CMDS cmd);
 bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo *> &list);
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);
 template<typename T>

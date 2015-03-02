@@ -1,3 +1,4 @@
+#include <string>
 #ifndef HADLEIO_H
 #define HANDLEIO_H
 

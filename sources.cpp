@@ -1,5 +1,5 @@
 #include "defines.h"
-#include "common.h"
+#include "include_list.h"
 #include "network_helper.h"
 
 #include <string>
@@ -15,10 +15,10 @@
 #include <curses.h>
 
 using namespace std;
-using namespace common;
+using namespace utilities;
 
 void splitTransferRoutine(VideoState *st) {
-    string *fn;
+    std::string *fn;
     NeighborInfo *ngh;
     while (st->to_send > 0) {
         unique_lock<mutex> lck(st->split_mtx, defer_lock);
@@ -29,7 +29,7 @@ void splitTransferRoutine(VideoState *st) {
             st->split_cond.wait(lck);
         }
         st->split_deq_used = true;
-        fn = new string(st->chunks_to_process.front());
+        fn = new std::string(st->chunks_to_process.front());
         st->chunks_to_process.pop_front();
         st->split_deq_used = false;
         lck.unlock();
@@ -69,12 +69,12 @@ void processChunkRoutine() {
 
 int VideoState::split() {
     working = true;
-    string out, err;
+    std::string out, err;
     double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
     char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], chunk_id[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
     char dir_name[BUF_LENGTH];
-    sprintf(dir_name, "job_%s", common::getTimestamp().c_str());
+    sprintf(dir_name, "job_%s", utilities::getTimestamp().c_str());
     job_id = std::string(dir_name);
     std::string path(dir_location + std::string("/") + job_id);
     reportStatus(path);
@@ -113,7 +113,7 @@ int VideoState::split() {
                     "-c", "copy",
                     "-t", chunk_duration,
                     output);
-        if (err.find("Conversion failed") != string::npos) {
+        if (err.find("Conversion failed") != std::string::npos) {
             sprintf(msg, "%s %s %s %s %s %s %s %s\n", "ffmpeg",
                 "-i", finfo.fpath.c_str(),
                 "-ss", current,
@@ -169,9 +169,9 @@ void pushChunkProcess(TransferInfo * ti) {
 }
 
 int VideoState::join() {
-    string out, err, list_loc(dir_location + "/" + job_id + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
+    std::string out, err, list_loc(dir_location + "/" + job_id + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
     ofstream ofs(list_loc);
-    stringstream ss;
+    std::stringstream ss;
     char file[BUF_LENGTH], cmd[BUF_LENGTH];
     long sum_size = 0;
     double duration = 0;
@@ -197,7 +197,7 @@ int VideoState::join() {
                     "-i", list_loc.c_str(),
                     "-c", "copy",
                     output.c_str());
-    if (err.find("failed") != string::npos) {
+    if (err.find("failed") != std::string::npos) {
         thr.detach();
         clearProgress();
         return (-1);
@@ -259,9 +259,9 @@ void VideoState::changeChunkSize(size_t nsize) {
     c_chunks = (((size_t) finfo.fsize) / chunk_size) + 1;
 }
 
-HistoryStorage::HistoryStorage(const string &fn): filename(fn), c_index(0) {
+HistoryStorage::HistoryStorage(const std::string &fn): filename(fn), c_index(0) {
     ifstream in(fn);
-    string line;
+    std::string line;
     while (in.good()) {
         getline(in, line);
         if (!line.empty())
@@ -303,7 +303,7 @@ void HistoryStorage::write() {
 }
 
 string MyAddr::get() {
-    stringstream ss;
+    std::stringstream ss;
     ss << "Address: " << addr << " : " << port;
     return (ss.str());
 }
@@ -318,13 +318,13 @@ MyAddr::MyAddr(struct sockaddr_storage &address) {
         struct sockaddr_in *addr = (struct sockaddr_in *) &address;
         inet_ntop(AF_INET, &addr->sin_addr,
               adr4, sizeof(struct sockaddr_in));
-        this->addr = string(adr4);
+        this->addr = std::string(adr4);
         port = ntohs(addr->sin_port);
     } else {
         struct sockaddr_in6 *addr = (struct sockaddr_in6 *) &address;
         inet_ntop(AF_INET6, &addr->sin6_addr,
               adr6, sizeof(struct sockaddr_in6));
-       this->addr = string(adr6);
+       this->addr = std::string(adr6);
         port = ntohs(addr->sin6_port);
     }
 }
@@ -408,7 +408,7 @@ void NeighborInfo::printInfo() {
     reportSuccess(mad.get() + "; " + m_itoa(intervals));
 }
 
-void NeighborInfo::invoke(NetworkHandle &net_handler) {
+void NeighborInfo::invoke(NetworkHandler &net_handler) {
     int sock;
     if (!--intervals) {
         sock = net_handler.checkNeighbor(address);
@@ -416,7 +416,7 @@ void NeighborInfo::invoke(NetworkHandle &net_handler) {
     }
 }
 
-void TransferInfo::invoke(NetworkHandle &handler) {
+void TransferInfo::invoke(NetworkHandler &handler) {
     if (--time_left < 0) {
         try {
             DATA->waiting_chunks.at(name);
@@ -426,7 +426,7 @@ void TransferInfo::invoke(NetworkHandle &handler) {
 }
 
 string NeighborInfo::getHash() {
-    string hash(storage2addr(address) + m_itoa(((struct sockaddr_in *)&address)->sin_port));
+    std::string hash(storage2addr(address) + m_itoa(((struct sockaddr_in *)&address)->sin_port));
     return hash;
 }
 
