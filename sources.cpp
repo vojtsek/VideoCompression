@@ -18,37 +18,37 @@ using namespace std;
 using namespace utilities;
 
 void splitTransferRoutine(VideoState *st) {
-    std::string *fn;
+    TransferInfo *ti;
     NeighborInfo *ngh;
     while (st->to_send > 0) {
-        unique_lock<mutex> lck(st->split_mtx, defer_lock);
+        unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
         lck.lock();
-        while (st->split_deq_used || !st->chunks_to_process.size()) {
+        while (DATA->m_data.send_deq_used || !DATA->chunks_to_send.size()) {
             if (!st->to_send)
                 return;
-            st->split_cond.wait(lck);
+            DATA->m_data.send_cond.wait(lck);
         }
-        st->split_deq_used = true;
-        fn = new std::string(st->chunks_to_process.front());
-        st->chunks_to_process.pop_front();
-        st->split_deq_used = false;
+        DATA->m_data.send_deq_used = true;
+        ti = DATA->chunks_to_send.front();
+        DATA->chunks_to_send.pop_front();
+        DATA->m_data.send_deq_used = false;
         lck.unlock();
-        st->split_cond.notify_one();
+        DATA->m_data.send_cond.notify_one();
         if (st->net_handler->getFreeNeighbor(ngh) == 0) {
             reportError("No free neighbor!");
-            st->pushChunk(*fn);
-            delete fn;
+            pushChunkSend(ti);
+            delete ti;
             sleep(1);
             continue;
         }
         int sock = st->net_handler->checkNeighbor(ngh->address);
         st->net_handler->spawnOutgoingConnection(ngh->address, sock,
-        { PING_PEER, TRANSFER_PEER }, true, (void *) fn);
+        { PING_PEER, TRANSFER_PEER }, true, (void *) ti);
 
     }
 }
 
-void processChunkRoutine() {
+void chunkProcessRoutine() {
     TransferInfo *ti;
     while (1) {
         unique_lock<mutex> lck(DATA->m_data.chunk_mtx, defer_lock);
@@ -68,7 +68,7 @@ void processChunkRoutine() {
 }
 
 int VideoState::split() {
-    working = true;
+    DATA->state.working = true;
     std::string out, err;
     double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
@@ -78,7 +78,7 @@ int VideoState::split() {
     job_id = std::string(dir_name);
     std::string path(dir_location + std::string("/") + job_id);
     reportStatus(path);
-    if (prepareDir(path) == -1) {
+    if (prepareDir(path, true) == -1) {
         reportError("Failed to create the job directory.");
         return (-1);
     }
@@ -102,8 +102,7 @@ int VideoState::split() {
         snprintf(output, BUF_LENGTH, "%s/%s/%03d_splitted.avi",
                  //TODO check if exists
                  dir_location.c_str(), job_id.c_str(), i);
-        snprintf(chunk_id, BUF_LENGTH, "%s/%03d_splitted.avi",
-                 job_id.c_str(), i);
+        snprintf(chunk_id, BUF_LENGTH, "%03d_splitted.avi", i);
         snprintf(cmd, BUF_LENGTH, "ffmpeg");
         cursToStatus();
         sum += Measured<>::exec_measure(runExternal, out, err, cmd, 12, cmd,
@@ -124,7 +123,8 @@ int VideoState::split() {
             split_thr.detach();
             return (-1);
         }
-        pushChunk(string(chunk_id));
+        TransferInfo *ti = new TransferInfo(job_id, "libx264", chunk_id);
+        pushChunkSend(ti);
     }
     reportDebug("Waiting for chunks to distribute....", 1);
     split_thr.join();
@@ -142,17 +142,17 @@ void VideoState::abort() {
 
 }
 
-void VideoState::pushChunk(string path) {
-    unique_lock<mutex> lck(split_mtx, defer_lock);
+void pushChunkSend(TransferInfo *ti) {
+    unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
 
     lck.lock();
-    while (split_deq_used)
-        split_cond.wait(lck);
-    split_deq_used = true;
-    chunks_to_process.push_back(path);
-    split_deq_used = false;
+    while (DATA->m_data.send_deq_used)
+        DATA->m_data.send_cond.wait(lck);
+    DATA->m_data.send_deq_used = true;
+    DATA->chunks_to_send.push_back(ti);
+    DATA->m_data.send_deq_used = false;
     lck.unlock();
-    split_cond.notify_one();
+    DATA->m_data.send_cond.notify_one();
 }
 
 void pushChunkProcess(TransferInfo * ti) {

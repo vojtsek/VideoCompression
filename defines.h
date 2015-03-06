@@ -8,6 +8,7 @@
 #include <deque>
 #include <algorithm>
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -129,6 +130,7 @@ public:
 struct State {
     bool enough_neighbors = false;
     bool working = false;
+    std::atomic_int can_accept;
 };
 
 
@@ -141,9 +143,9 @@ struct IO_Data {
 };
 
 struct Mutexes_Data {
-    std::mutex I_mtx, O_mtx, report_mtx, chunk_mtx;
-    std::condition_variable IO_cond, chunk_cond;
-    bool using_I = false, using_O = false, process_deq_used = false;
+    std::mutex I_mtx, O_mtx, report_mtx, chunk_mtx, send_mtx;
+    std::condition_variable IO_cond, chunk_cond, send_cond;
+    bool using_I = false, using_O = false, process_deq_used = false, send_deq_used = false;
 };
 
 struct Configuration {
@@ -170,6 +172,7 @@ struct Data {
     State state;
     std::map<std::string, TransferInfo *> waiting_chunks;
     std::deque<TransferInfo *> chunks_to_encode;
+    std::deque<TransferInfo *> chunks_to_send;
     std::map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
@@ -193,7 +196,6 @@ struct VideoState {
     std::string dir_location, job_id, o_format, o_codec;
     bool working, splitting_ongoing, split_deq_used;
     int to_send;
-    std::deque<std::string> chunks_to_process;
     std::mutex split_mtx;
     std::condition_variable split_cond;
     NetworkHandler *net_handler;
@@ -217,6 +219,7 @@ struct VideoState {
 void splitTransferRoutine(VideoState *st);
 void chunkProcessRoutine();
 void pushChunkProcess(TransferInfo *ti);
+void pushChunkSend(TransferInfo *ti);
 
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
@@ -237,11 +240,12 @@ struct NeighborInfo : public Listener {
 };
 
 struct TransferInfo : public Listener {
+    bool addressed;
     int chunk_count, chunk_size, time_left;
     time_t sent_time;
     struct sockaddr_storage address;
     std::string job_id;
-    std::string name;
+    std::string name; //including extension
     std::string output_format;
 
     virtual void invoke(NetworkHandler &handler);
@@ -250,7 +254,15 @@ struct TransferInfo : public Listener {
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
         name(n), output_format(of) {
         address = addr;
+        addressed = true;
     }
+
+    TransferInfo(std::string ji, std::string of, std::string n):
+        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
+        name(n), output_format(of) {
+        addressed = false;
+    }
+
     virtual ~TransferInfo() {}
 };
 

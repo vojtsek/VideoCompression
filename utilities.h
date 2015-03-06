@@ -18,7 +18,7 @@ namespace utilities
     int readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
     int acceptCmd(cmd_storage_t &cmds);
     int checkFile(std::string &path);
-    int prepareDir(std::string &loc);
+    int prepareDir(std::string &loc, bool destroy);
     int rmrDir(const char *loc, bool rec);
     int runExternal(std::string &o, std::string &e, char *cmd, int numargs, ...);
     int encodeChunk(TransferInfo *ti);

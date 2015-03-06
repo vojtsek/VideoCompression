@@ -74,6 +74,7 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
+    DATA->state.can_accept = DATA->config.getValue("MAX_ACCEPTED_CHUNKS");
     data->config.working_dir = WD;
     if (data->config.working_dir == "") {
         char dirp[BUF_LENGTH];
@@ -136,11 +137,11 @@ int main(int argc, char **argv) {
     }
 
     initCurses();
-    initConfiguration();
     if (readConfiguration("CONF") == -1) {
         reportError("Error reading configuration!");
         return (1);
     }
+    initConfiguration();
     int optidx = parseOptions(argc, argv);
     NetworkHandler net_handler;
     VideoState state(&net_handler);
@@ -171,6 +172,8 @@ int main(int argc, char **argv) {
             }
         });
         thr2.detach();
+        std::thread thr3(chunkProcessRoutine);
+        thr3.detach();
     }
     try {
         do{

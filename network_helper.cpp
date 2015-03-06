@@ -159,7 +159,7 @@ int receiveFile(int fd, std::string fn) {
     int o_file;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
     try {
-        if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC)) == -1) {
+        if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
             reportDebug(fn + ": Failed to open the output file. ", 2);
             throw 1;
         }

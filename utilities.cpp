@@ -178,15 +178,16 @@ int utilities::rmrDir(const char *dir, bool recursive) {
 }
 
 
-int utilities::prepareDir(string &location) {
+int utilities::prepareDir(string &location, bool destroy) {
     if (mkdir(location.c_str(), 0700) == -1) {
         switch (errno) {
         case EEXIST:
-/*            if (rmrDir(location.c_str(), false) == -1)
-                return (-1);
-            if (mkdir(location.c_str(), 0700) == -1)
-                return (-1);
-*/
+            if (destroy) {
+                if (rmrDir(location.c_str(), false) == -1)
+                    return (-1);
+                if (mkdir(location.c_str(), 0700) == -1)
+                    return (-1);
+            }
             break;
         default:
             return (-1);
@@ -197,17 +198,44 @@ int utilities::prepareDir(string &location) {
 }
 
 int utilities::encodeChunk(TransferInfo *ti) {
-    std::string out, err;
+    std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
-    std::string file_out = DATA->config.working_dir + "/processed/" + ti->job_id + "/" + ti->name;
-    std::string file_in = DATA->config.working_dir + "/" + ti->job_id + "/" + ti->name;
-    Measured<>::exec_measure(runExternal, out, err, cmd, 8, cmd,
+    res_dir = DATA->config.working_dir + "/processed/";
+    if (prepareDir(res_dir, false) == -1) {
+        reportDebug("Failed to create working dir.", 2);
+        return -1;
+    }
+    res_dir += ti->job_id;
+    if (prepareDir(res_dir, false) == -1) {
+        reportDebug("Failed to create job dir.", 2);
+        return -1;
+    }
+    std::string file_out = res_dir + "/" + getBasename(ti->name) + ".mkv";
+    std::string file_in = DATA->config.working_dir + "/to_process/" +
+            ti->job_id + "/" + getBasename(ti->name);
+    reportDebug("Encoding: " + file_in + " -> ", 2);
+    reportDebug(file_out + ti->output_format, 2);
+    snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
+    int duration = Measured<>::exec_measure(runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
-             "-vcodec", ti->output_format.c_str(),
-             "-acodec", "copy",
+             "-c:v", ti->output_format.c_str(),
+             "-preset", "ultrafast",
+             "-qp", "0",
              file_out.c_str());
+    if (err.find("Conversion failed") != std::string::npos) {
+        reportDebug("Failed to encode chunk!", 2);
+        std::ofstream os(ti->job_id + ".err");
+        os << err;
+        os.close();
+        //should retry?
+        delete ti;
+        DATA->state.can_accept++;
+        return -1;
+    }
+    DATA->state.can_accept++;
+    reportDebug("Chunk " + ti->name + " encoded.", 2);
     delete ti;
-    return (0);
+    return 0;
 }
 
 vector<string> utilities::extract(const std::string text, const std::string from, int count) {
