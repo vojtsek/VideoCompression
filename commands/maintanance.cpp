@@ -75,7 +75,7 @@ bool CmdAskHost::execute(int fd, struct sockaddr_storage &address, void *) {
 bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFPEER " + MyAddr(address).get() , 5);
     CMDS action = CONFIRM_HOST;
-    RESPONSE_T resp = state->working ? ACK_BUSY : ACK_FREE;
+    RESPONSE_T resp = (!DATA->state.working && DATA->state.can_accept) ? ACK_FREE : ACK_BUSY;
     struct sockaddr_storage addr;
     try {
         addr = getHostAddr(fd);
@@ -159,7 +159,7 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     struct sockaddr_storage addr;
     CMDS action = PING_HOST;
     int peer_port;
-    RESPONSE_T resp = state->working ? ACK_BUSY : ACK_FREE;
+    RESPONSE_T resp = (!DATA->state.working && DATA->state.can_accept) ? ACK_FREE : ACK_BUSY;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;

@@ -140,6 +140,8 @@ int utilities::checkFile(string &path) {
 string utilities::m_itoa(int n) {
     std::string res;
     int nn;
+    if (n == 0)
+        return std::string("0");
     while(n > 0) {
         nn = n % 10;
         n /= 10;
@@ -210,22 +212,22 @@ int utilities::encodeChunk(TransferInfo *ti) {
         reportDebug("Failed to create job dir.", 2);
         return -1;
     }
-    std::string file_out = res_dir + "/" + getBasename(ti->name) + ".mkv";
+    std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
     std::string file_in = DATA->config.working_dir + "/to_process/" +
-            ti->job_id + "/" + getBasename(ti->name);
+            ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in + " -> ", 2);
-    reportDebug(file_out + ti->output_format, 2);
     snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
     int duration = Measured<>::exec_measure(runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
-             "-c:v", ti->output_format.c_str(),
+             "-c:v", ti->output_codec.c_str(),
              "-preset", "ultrafast",
              "-qp", "0",
              file_out.c_str());
     if (err.find("Conversion failed") != std::string::npos) {
         reportDebug("Failed to encode chunk!", 2);
         std::ofstream os(ti->job_id + ".err");
-        os << err;
+        os << err << std::endl;
+        os.flush();
         os.close();
         //should retry?
         delete ti;
@@ -234,7 +236,7 @@ int utilities::encodeChunk(TransferInfo *ti) {
     }
     DATA->state.can_accept++;
     reportDebug("Chunk " + ti->name + " encoded.", 2);
-    delete ti;
+    pushChunkSend(ti);
     return 0;
 }
 

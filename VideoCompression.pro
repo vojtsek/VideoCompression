@@ -24,7 +24,8 @@ HEADERS += \
     commands/interactive.h \
     include_list.h \
     commands/maintanance.h \
-    commands/transfer.h
+    commands/transfer.h \
+    utilities.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

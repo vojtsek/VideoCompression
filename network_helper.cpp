@@ -187,6 +187,7 @@ int receiveFile(int fd, std::string fn) {
         }
     } catch (int) {
         reportError("Bad transfer");
+        DATA->state.can_accept++;
         close(o_file);
         return -1;
     }

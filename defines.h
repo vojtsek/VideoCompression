@@ -76,17 +76,22 @@ enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
           ASK_PEER, ASK_HOST,
           CONFIRM_PEER, CONFIRM_HOST,
           PING_PEER, PING_HOST,
-          TRANSFER_PEER, TRANSFER_HOST };
+          DISTRIBUTE_PEER, DISTRIBUTE_HOST,
+          RETURN_PEER, RETURN_HOST };
 class Command;
 class NetworkCommand;
 typedef std::map<std::string, std::string> configuration_t;
 typedef std::map<CMDS, Command *> cmd_storage_t;
 typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 
-class Listener {
-public:
+struct Listener {
     virtual void invoke(NetworkHandler &handler) = 0;
     virtual std::string getHash() = 0;
+};
+
+struct Sendable {
+    virtual int send(int fd) = 0;
+    virtual int receive(int fd) = 0;
 };
 
 struct MyAddr {
@@ -130,7 +135,7 @@ public:
 struct State {
     bool enough_neighbors = false;
     bool working = false;
-    std::atomic_int can_accept;
+    std::atomic_int can_accept, to_send;
 };
 
 
@@ -195,9 +200,6 @@ struct VideoState {
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, job_id, o_format, o_codec;
     bool working, splitting_ongoing, split_deq_used;
-    int to_send;
-    std::mutex split_mtx;
-    std::condition_variable split_cond;
     NetworkHandler *net_handler;
     VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0), chunk_size(DATA->config.getValue("CHUNK_SIZE")),
     dir_location(DATA->config.working_dir), o_format("mkv"), o_codec("h264"),
@@ -212,12 +214,12 @@ struct VideoState {
     void loadFileInfo(finfo_t &finfo);
     void resetFileInfo();
     void abort();
-    void pushChunk(std::string path);
-    void transferChunk();
 };
 
-void splitTransferRoutine(VideoState *st);
+void chunkSendRoutine(NetworkHandler *net_handler);
 void chunkProcessRoutine();
+void pushChunk(TransferInfo *ti, std::mutex &mtx, std::condition_variable &cond,
+               bool &ctrl_var, std::deque<TransferInfo *> &queue);
 void pushChunkProcess(TransferInfo *ti);
 void pushChunkSend(TransferInfo *ti);
 
@@ -239,29 +241,39 @@ struct NeighborInfo : public Listener {
     }
 };
 
-struct TransferInfo : public Listener {
+struct TransferInfo : public Listener, Sendable {
     bool addressed;
-    int chunk_count, chunk_size, time_left;
-    time_t sent_time;
-    struct sockaddr_storage address;
+    int chunk_size, time_left;
+    struct sockaddr_storage address, src_address;
     std::string job_id;
-    std::string name; //including extension
-    std::string output_format;
+    std::string name; // without extension
+    std::string original_extension;
+    std::string desired_extension;
+    std::string path;
+    std::string output_codec;
 
     virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
-    TransferInfo(struct sockaddr_storage addr, std::string ji, std::string of, std::string n):
-        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
-        name(n), output_format(of) {
-        address = addr;
-        addressed = true;
+    virtual int send(int fd);
+    virtual int receive(int fd);
+    void print();
+
+    TransferInfo():addressed(false) {};
+    TransferInfo(struct sockaddr_storage addr, int size,
+                 std::string ji, std::string n, std::string oe, std::string de,
+                 std::string p, std::string oc): addressed(true), chunk_size(size),
+        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
+        job_id(ji), name(n), original_extension(oe), desired_extension(de),
+        path(p), output_codec(oc) {
+        src_address = addr;
     }
 
-    TransferInfo(std::string ji, std::string of, std::string n):
-        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")), job_id(ji),
-        name(n), output_format(of) {
-        addressed = false;
-    }
+    TransferInfo(int size,
+                 std::string ji, std::string n, std::string oe, std::string de,
+                 std::string p, std::string oc): addressed(false), chunk_size(size),
+        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
+        job_id(ji), name(n), original_extension(oe), desired_extension(de),
+        path(p), output_codec(oc) {}
 
     virtual ~TransferInfo() {}
 };

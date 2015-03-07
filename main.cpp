@@ -75,6 +75,7 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
     DATA->state.can_accept = DATA->config.getValue("MAX_ACCEPTED_CHUNKS");
+    DATA->state.to_send = 0;
     data->config.working_dir = WD;
     if (data->config.working_dir == "") {
         char dirp[BUF_LENGTH];
@@ -112,8 +113,10 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_HOST, new CmdAskHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_PEER, new CmdPingPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_HOST, new CmdPingHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(TRANSFER_PEER, new CmdTransferPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(TRANSFER_HOST, new CmdTransferHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_PEER, new CmdReturnPeer(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_HOST, new CmdReturnHost(&state, &net_handler)));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
@@ -174,6 +177,10 @@ int main(int argc, char **argv) {
         thr2.detach();
         std::thread thr3(chunkProcessRoutine);
         thr3.detach();
+        std::thread split_thr ([&]() {
+            chunkSendRoutine(&net_handler);
+        });
+        split_thr.detach();
     }
     try {
         do{

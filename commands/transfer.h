@@ -2,17 +2,28 @@
 #ifndef TRANSFER_CMD_H
 #define TRANSFER_CMD_H
 
-class CmdTransferPeer: public NetworkCommand {
+class CmdDistributePeer: public NetworkCommand {
 public:
-    CmdTransferPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdDistributePeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
 };
 
-class CmdTransferHost: public NetworkCommand {
+class CmdDistributeHost: public NetworkCommand {
 public:
-    CmdTransferHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdDistributeHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
 };
 
+class CmdReturnPeer: public NetworkCommand {
+public:
+    CmdReturnPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
+};
+
+class CmdReturnHost: public NetworkCommand {
+public:
+    CmdReturnHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
+};
 
 #endif

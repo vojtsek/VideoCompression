@@ -17,15 +17,13 @@
 using namespace std;
 using namespace utilities;
 
-void splitTransferRoutine(VideoState *st) {
+void chunkSendRoutine(NetworkHandler *net_handler) {
     TransferInfo *ti;
     NeighborInfo *ngh;
-    while (st->to_send > 0) {
+    while (true) {
         unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
         lck.lock();
         while (DATA->m_data.send_deq_used || !DATA->chunks_to_send.size()) {
-            if (!st->to_send)
-                return;
             DATA->m_data.send_cond.wait(lck);
         }
         DATA->m_data.send_deq_used = true;
@@ -34,17 +32,28 @@ void splitTransferRoutine(VideoState *st) {
         DATA->m_data.send_deq_used = false;
         lck.unlock();
         DATA->m_data.send_cond.notify_one();
-        if (st->net_handler->getFreeNeighbor(ngh) == 0) {
-            reportError("No free neighbor!");
-            pushChunkSend(ti);
-            delete ti;
-            sleep(1);
-            continue;
+        if (!ti->addressed) {
+            if (net_handler->getFreeNeighbor(ngh) == 0) {
+                reportError("No free neighbor!");
+                pushChunkSend(ti);
+                //delete ti;
+                sleep(1);
+                continue;
+            }
+            int sock = net_handler->checkNeighbor(ngh->address);
+            ti->address = ngh->address;
+            //TODO get my address
+            ti->src_address = addr2storage("0.0.0.0",
+                                          DATA->config.getValue("LISTENING_PORT"), AF_INET);
+            net_handler->spawnOutgoingConnection(ngh->address, sock,
+            { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
+        } else {
+            MyAddr mad(ti->src_address);
+            mad.print();
+            int sock = net_handler->checkNeighbor(ti->src_address);
+            net_handler->spawnOutgoingConnection(ti->src_address, sock,
+            { PING_PEER, RETURN_PEER }, true, (void *) ti);
         }
-        int sock = st->net_handler->checkNeighbor(ngh->address);
-        st->net_handler->spawnOutgoingConnection(ngh->address, sock,
-        { PING_PEER, TRANSFER_PEER }, true, (void *) ti);
-
     }
 }
 
@@ -86,8 +95,7 @@ int VideoState::split() {
     mins = secs_per_chunk / 60;
     secs = secs_per_chunk % 60;
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
-    to_send = c_chunks;
-    thread split_thr(splitTransferRoutine, this);
+    DATA->state.to_send = c_chunks;
     reportStatus("Splitting file: " + finfo.fpath);
     for (unsigned int i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
@@ -99,10 +107,10 @@ int VideoState::split() {
         mins = elapsed / 60;
         secs = elapsed % 60;
         snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
-        snprintf(output, BUF_LENGTH, "%s/%s/%03d_splitted.avi",
-                 //TODO check if exists
-                 dir_location.c_str(), job_id.c_str(), i);
-        snprintf(chunk_id, BUF_LENGTH, "%03d_splitted.avi", i);
+        snprintf(output, BUF_LENGTH, "%s/%s/%03d_splitted%s",
+                 //TODO check if exists, HARDCODE
+                 dir_location.c_str(), job_id.c_str(), i, ".avi");
+        snprintf(chunk_id, BUF_LENGTH, "%03d_splitted", i);
         snprintf(cmd, BUF_LENGTH, "ffmpeg");
         cursToStatus();
         sum += Measured<>::exec_measure(runExternal, out, err, cmd, 12, cmd,
@@ -120,15 +128,13 @@ int VideoState::split() {
                 output);
             reportError(msg);
             abort();
-            split_thr.detach();
             return (-1);
         }
-        TransferInfo *ti = new TransferInfo(job_id, "libx264", chunk_id);
+        //SIZE!
+        TransferInfo *ti = new TransferInfo(0, job_id, chunk_id, ".avi", ".mkv",
+                                            std::string(output), "libx264");
         pushChunkSend(ti);
     }
-    reportDebug("Waiting for chunks to distribute....", 1);
-    split_thr.join();
-    reportDebug("Distributed.", 1);
     printProgress(1);
     reportSuccess("File successfuly splitted.");
     reportTime("/splitting.sp", sum / 1000);
@@ -142,30 +148,28 @@ void VideoState::abort() {
 
 }
 
-void pushChunkSend(TransferInfo *ti) {
-    unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
+void pushChunk(TransferInfo *ti, std::mutex &mtx, std::condition_variable &cond,
+               bool &ctrl_var, std::deque<TransferInfo *> &queue) {
+    unique_lock<mutex> lck(mtx, defer_lock);
 
     lck.lock();
-    while (DATA->m_data.send_deq_used)
-        DATA->m_data.send_cond.wait(lck);
-    DATA->m_data.send_deq_used = true;
-    DATA->chunks_to_send.push_back(ti);
-    DATA->m_data.send_deq_used = false;
+    while (ctrl_var)
+        cond.wait(lck);
+    ctrl_var = true;
+    queue.push_back(ti);
+    ctrl_var = false;
     lck.unlock();
-    DATA->m_data.send_cond.notify_one();
+    cond.notify_one();
 }
 
 void pushChunkProcess(TransferInfo * ti) {
-    unique_lock<mutex> lck(DATA->m_data.chunk_mtx, defer_lock);
+    pushChunk(ti, DATA->m_data.chunk_mtx, DATA->m_data.chunk_cond,
+              DATA->m_data.process_deq_used, DATA->chunks_to_encode);
+}
 
-    lck.lock();
-    while (DATA->m_data.process_deq_used)
-        DATA->m_data.chunk_cond.wait(lck);
-    DATA->m_data.process_deq_used = true;
-    DATA->chunks_to_encode.push_back(ti);
-    DATA->m_data.process_deq_used = false;
-    lck.unlock();
-    DATA->m_data.chunk_cond.notify_one();
+void pushChunkSend(TransferInfo * ti) {
+    pushChunk(ti, DATA->m_data.send_mtx, DATA->m_data.send_cond,
+              DATA->m_data.send_deq_used, DATA->chunks_to_send);
 }
 
 int VideoState::join() {
@@ -416,6 +420,16 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
     }
 }
 
+void TransferInfo::print() {
+    reportStatus("Path: " + path);
+    reportStatus("Chunk name: " + name);
+    if (addressed) {
+        MyAddr srca(src_address), a(address);
+        reportStatus("SRC ADDR: " + srca.get());
+        reportStatus("ADDR: " + a.get());
+    }
+}
+
 void TransferInfo::invoke(NetworkHandler &handler) {
     if (--time_left < 0) {
         try {
@@ -423,6 +437,82 @@ void TransferInfo::invoke(NetworkHandler &handler) {
             reportError(name + ": Still in queue.");
         } catch (...) {}
     }
+}
+
+int TransferInfo::send(int fd) {
+    if (sendSth(chunk_size, fd) == -1) {
+        reportDebug("Failed to send size.", 1);
+        return -1;
+    }
+    if (sendSth(src_address, fd) == -1) {
+        reportDebug("Failed to send source address.", 1);
+        return -1;
+    }
+
+    if (sendString(fd, job_id) == -1) {
+        reportDebug("Failed to send job id.", 1);
+        return -1;
+    }
+
+    if (sendString(fd, name) == -1) {
+        reportDebug("Failed to send name.", 1);
+        return -1;
+    }
+
+    if (sendString(fd, original_extension) == -1) {
+        reportDebug("Failed to send original extension.", 1);
+        return -1;
+    }
+
+    if (sendString(fd, desired_extension) == -1) {
+        reportDebug("Failed to send desired extension.", 1);
+        return -1;
+    }
+
+    if (sendString(fd, output_codec) == -1) {
+        reportDebug("Failed to send codec.", 1);
+        return -1;
+    }
+    return 0;
+}
+
+int TransferInfo::receive(int fd) {
+    if (recvSth(chunk_size, fd) == -1) {
+        reportDebug("Failed to receive size.", 1);
+        return -1;
+    }
+    struct sockaddr_storage srca;
+    if (recvSth(srca, fd) == -1) {
+        reportDebug("Failed to receive source address.", 1);
+        return -1;
+    }
+    src_address = srca;
+
+    if ((job_id = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive job id.", 1);
+        return -1;
+    }
+
+    if ((name = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive name.", 1);
+        return -1;
+    }
+
+    if ((original_extension = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive original extension.", 1);
+        return -1;
+    }
+
+    if ((desired_extension = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive desired extension.", 1);
+        return -1;
+    }
+
+    if ((output_codec = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive codec.", 1);
+        return -1;
+    }
+    return 0;
 }
 
 string NeighborInfo::getHash() {
