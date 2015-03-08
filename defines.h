@@ -71,8 +71,7 @@ enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 enum CONN_T { OUTGOING, INCOMING };
 enum RESPONSE_T { ACK_FREE, ACK_BUSY, AWAITING, ABORT };
 enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
-            SET, SET_CODEC, SET_SIZE,
-          ASK, RESPOND, REACT,
+            SET, SET_CODEC, SET_SIZE, SET_FORMAT,
           ASK_PEER, ASK_HOST,
           CONFIRM_PEER, CONFIRM_HOST,
           PING_PEER, PING_HOST,
@@ -129,13 +128,15 @@ public:
     }
     void changeWin(WINDOW *nwin);
     void add(std::string msg, MSG_T type);
+    void updateAt(int idx, std::string value);
+    void clear();
     void print();
 };
 
 struct State {
     bool enough_neighbors = false;
     bool working = false;
-    std::atomic_int can_accept, to_send;
+    std::atomic<int> can_accept, to_send, to_recv;
 };
 
 
@@ -182,12 +183,14 @@ struct Data {
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }
+    static std::vector<std::string> getKnownFormats() {
+        return {"avi", "mkv", "ogg"};
+    }
     static std::map<wchar_t, CMDS> getCmdMapping() {
         return {
             { KEY_F(6), SHOW },
             { KEY_F(7), START },
             { KEY_F(8), LOAD },
-            { KEY_F(10), ASK },
             { KEY_F(9), SET } };
     }
 
@@ -199,11 +202,10 @@ struct VideoState {
     finfo_t finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
     std::string dir_location, job_id, o_format, o_codec;
-    bool working, splitting_ongoing, split_deq_used;
     NetworkHandler *net_handler;
-    VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0), chunk_size(DATA->config.getValue("CHUNK_SIZE")),
-    dir_location(DATA->config.working_dir), o_format("mkv"), o_codec("h264"),
-      working(false), splitting_ongoing(false), split_deq_used(false) {
+    VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0),
+        chunk_size(DATA->config.getValue("CHUNK_SIZE")),
+    dir_location(DATA->config.working_dir), o_format(".mkv"), o_codec("libx264") {
         net_handler = nh;
     }
 

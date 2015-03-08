@@ -101,7 +101,7 @@ long utilities::getFileSize(const std::string &file) {
     struct stat64 finfo;
     if (lstat64(file.c_str(), &finfo) == -1)
         return (-1);
-    return finfo.st_size / 1000;
+    return finfo.st_size;
 }
 
 void clearNlines(int n) {
@@ -129,7 +129,7 @@ int utilities::checkFile(string &path) {
         reportError("Invalid file extension.");
         return (-1);
     }
-    vector<string> video_ext {"avi", "mkv", "ogg"};
+    vector<string> video_ext = DATA->getKnownFormats();
     if (find(video_ext.begin(), video_ext.end(), extension) == video_ext.end()) {
         reportError("Unknown file extension");
         return (-1);
@@ -151,18 +151,18 @@ string utilities::m_itoa(int n) {
     return res;
 }
 
-int utilities::rmrDir(const char *dir, bool recursive) {
+int utilities::rmrDir(std::string dir, bool recursive) {
   DIR *d, *t;
   struct dirent *entry;
   char abs_fn[256];
-  d = opendir(dir);
+  d = opendir(dir.c_str());
   if (d == NULL)
     return (-1);
   while ((entry = readdir(d))) {
     if ((strcmp(entry->d_name, ".") == 0) ||
       (strcmp(entry->d_name, "..") == 0))
       continue;
-    sprintf(abs_fn, "%s/%s", dir, entry->d_name);
+    sprintf(abs_fn, "%s/%s", dir.c_str(), entry->d_name);
     if ((t = opendir(abs_fn))) {
       closedir(t);
       if(recursive)
@@ -175,8 +175,16 @@ int utilities::rmrDir(const char *dir, bool recursive) {
     }
   }
   closedir(d);
-  rmdir(dir);
+  rmdir(dir.c_str());
   return (0);
+}
+
+int utilities::rmFile(std::string fp) {
+    if (unlink(fp.c_str()) == -1) {
+        reportDebug(fp + ": Failed to remove.", 1);
+        return -1;
+    }
+    return 0;
 }
 
 
@@ -215,7 +223,7 @@ int utilities::encodeChunk(TransferInfo *ti) {
     std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
     std::string file_in = DATA->config.working_dir + "/to_process/" +
             ti->job_id + "/" + ti->name + ti->original_extension;
-    reportDebug("Encoding: " + file_in + " -> ", 2);
+    reportDebug("Encoding: " + file_in, 2);
     snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
     int duration = Measured<>::exec_measure(runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
@@ -231,15 +239,15 @@ int utilities::encodeChunk(TransferInfo *ti) {
         os.close();
         //should retry?
         delete ti;
-        DATA->state.can_accept++;
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
         return -1;
     }
-    DATA->state.can_accept++;
     reportDebug("Chunk " + ti->name + " encoded.", 2);
+    utilities::rmFile(file_in);
+    std::atomic_fetch_add(&DATA->state.can_accept, 1);
     pushChunkSend(ti);
     return 0;
 }
-
 vector<string> utilities::extract(const std::string text, const std::string from, int count) {
     vector<string> result;
     std::string word;
@@ -343,7 +351,7 @@ int utilities::runExternal(string &stdo, std::string &stde, char *cmd, int numar
         close(pd_e[0]);
         break;
     }
-    return (0);
+    return 0;
 }
 
 vector<string> utilities::split(const std::string &content, char sep) {
@@ -362,7 +370,24 @@ bool utilities::knownCodec(const std::string &cod) {
     vector<string> know = Data::getKnownCodecs();
     for (string &c : know) {
         if (c == cod)
-            return (true);
+            return true;
     }
-    return (false);
+    return false;
+}
+
+bool utilities::knownFormat(const std::string &format) {
+    vector<string> know = Data::getKnownFormats();
+    for (string &f : know) {
+        if (f == format)
+            return true;
+    }
+    return false;
+}
+
+bool utilities::isFileOk(string fp) {
+    struct stat st;
+    if (stat(fp.c_str(), &st) == -1) {
+        return false;
+    }
+    return true;
 }

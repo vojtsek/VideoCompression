@@ -33,22 +33,4 @@ public:
     virtual bool execute(int fd, struct sockaddr_storage &addr, void *data) = 0;
 };
 
-class CmdAsk: public NetworkCommand {
-public:
-    CmdAsk(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
-    virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
-};
-
-class CmdRespond: public NetworkCommand {
-public:
-    CmdRespond(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
-    virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
-};
-
-class CmdReact: public NetworkCommand {
-public:
-    CmdReact(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
-    virtual bool execute(int fd, struct sockaddr_storage &address, void *data);
-};
-
 #endif

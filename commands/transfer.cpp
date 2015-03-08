@@ -6,9 +6,12 @@ using namespace utilities;
 bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = DISTRIBUTE_HOST;
     TransferInfo *ti = new TransferInfo;
-    RESPONSE_T resp = (!DATA->state.working && DATA->state.can_accept) ? ACK_FREE : ACK_BUSY;
-    if (resp == ACK_FREE)
-        DATA->state.can_accept--;
+    RESPONSE_T resp = ACK_FREE;
+    int can_accept = std::atomic_fetch_sub(&DATA->state.can_accept, 1);
+    if ((can_accept <= 0) || (DATA->state.working)) {
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
+        resp = ACK_BUSY;
+    }
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -54,7 +57,8 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
         return false;
     }
 
-    reportDebug("Pushing chunk " + ti->name + " to process.", 2);
+    reportDebug("Pushing chunk " + ti->name + "(" +
+                utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
     ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
                            "/" + ti->name + ti->desired_extension);
     ti->addressed = true;
@@ -92,14 +96,15 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
         return false;
     }
 
-    DATA->state.to_send--;
     std::unique_lock<std::mutex> lck(DATA->m_data.send_mtx, std::defer_lock);
     lck.lock();
     lck.unlock();
     DATA->m_data.send_cond.notify_one();
     DATA->periodic_listeners.insert(std::make_pair(ti->name, ti));
     DATA->waiting_chunks.insert(std::make_pair(ti->name, ti));
-    reportDebug("Chunk transferred. " + m_itoa(DATA->state.to_send) + " remaining.", 2);
+   // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+    //                  "/" + ti->name + ti->original_extension);
+    reportDebug("Chunk transferred. " + m_itoa(--DATA->state.to_send) + " remaining.", 2);
     return true;
 }
 //TODO:generic function to send chunk
@@ -122,7 +127,7 @@ bool CmdReturnHost::execute(int fd, sockaddr_storage &address, void *data) {
     lck.lock();
     lck.unlock();
     DATA->m_data.send_cond.notify_one();
-    reportDebug("Chunk transferred. " + m_itoa(DATA->state.to_send) + " remaining.", 2);
+    utilities::rmFile(ti->path);
     delete ti;
     return true;
 }
@@ -155,13 +160,20 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
         reportError(ti->name + ": Failed to transfer file.");
         return false;
     }
-    reportSuccess(ti->name + ": It returned.");
-    //HARDCODE
-    try {
+    // do I need two containers?
+    if (DATA->waiting_chunks.find(ti->name) !=
+            DATA->waiting_chunks.end()) {
+        utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+                              "/" + ti->name + ti->original_extension);
         DATA->periodic_listeners.erase(ti->name);
         DATA->waiting_chunks.erase(ti->name);
-    } catch (std::exception e) {
-        reportDebug(e.what(), 1);
+        if (!--DATA->state.to_recv) {
+            reportSuccess("All chunks are back!");
+            state->join();
+        }
+    } else {
+        reportError(ti->name + ": Too late.");
+        //utilities::rmFile(dir + "/" + ti->name + ti->desired_extension);
     }
 
     return true;

@@ -259,7 +259,7 @@ void NetworkHandler::contactSuperPeer() {
 
 int NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     int sock;
-    CmdAsk cmd(nullptr, nullptr);
+    CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportError("Failed to check neighbor." +MyAddr(addr).get());
         removeNeighbor(addr);
@@ -360,7 +360,7 @@ int NetworkHandler::getFreeNeighbor(NeighborInfo *&ngh) {
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
     int sock;
-    CmdAsk cmd(nullptr, nullptr);
+    CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);
         return;

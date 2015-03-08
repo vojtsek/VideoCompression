@@ -45,6 +45,12 @@ public:
     virtual void execute();
 };
 
+class CmdSetFormat: public Command {
+public:
+    CmdSetFormat(VideoState *st): Command(st) {}
+    virtual void execute();
+};
+
 class CmdSetChSize: public Command {
 public:
     CmdSetChSize(VideoState *st): Command(st) {}

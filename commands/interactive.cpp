@@ -3,7 +3,6 @@
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
 
-using namespace utilities;
 using namespace rapidjson;
 using namespace std;
 
@@ -36,7 +35,7 @@ void CmdStart::execute() {
         reportError("Please load the file first.");
         return;
     }
-    if (checkFile(state->finfo.fpath) == -1) {
+    if (utilities::checkFile(state->finfo.fpath) == -1) {
         reportError("Invalid file.");
         return;
     }
@@ -45,29 +44,31 @@ void CmdStart::execute() {
     refresh();
     if (state->split() == -1) {
         reportError("Error while splitting the video file.");
-        rmrDir(state->dir_location.c_str(), false);
+        utilities::rmrDir(state->dir_location.c_str(), false);
         return;
     }
+    /*
     if (state->join() == -1) {
         reportError("Error while joining the video file.");
         rmrDir(state->dir_location.c_str(), false);
         return;
     }
     rmrDir(state->dir_location.c_str(), false);
+    */
 }
 
 void CmdSetCodec::execute() {
-    std::string in = loadInput("codecs", "Enter new codec:", false);
-    if (knownCodec(in)) {
+    std::string in = loadInput("codecs", "Enter desired output codec:", false);
+    if (utilities::knownCodec(in)) {
         state->o_codec = in;
         reportSuccess("Output codec set to: " + in);
     } else {
-        reportError("Unknown codec: " + in);
-        std::stringstream msg;
-        msg << "Available codecs: ";
+        reportError(in + ": Unknown codec.");
+        std::string msg;
+        msg += "Available codecs: ";
         for (string c : Data::getKnownCodecs())
-            msg << c << ", ";
-        reportStatus(msg.str().substr(0, msg.str().length() - 2));
+            msg += c += ", ";
+        reportStatus(msg.substr(0, msg.length() - 2));
     }
 }
 
@@ -81,14 +82,32 @@ void CmdSetChSize::execute() {
     reportSuccess(msg.str());
 }
 
+void CmdSetFormat::execute() {
+    std::string in = loadInput("", "Enter desired output format:", false);
+    if (utilities::knownFormat(in)) {
+        state->o_format = "." + in;
+        reportSuccess("Output format set to: " + in);
+    } else {
+        reportError(in + ": Not a valid format.");
+        std::string msg;
+        msg += "Available formats: ";
+        for (string c : Data::getKnownFormats())
+            msg += c += ", ";
+        reportStatus(msg.substr(0, msg.length() - 2));
+    }
+}
+
 void CmdSet::execute() {
     std::string line = loadInput("set.history", "What option set?", false);
     if (line.find("codec") != std::string::npos)
         DATA->cmds[SET_CODEC]->execute();
     else if (line.find("chunksize") != std::string::npos)
         DATA->cmds[SET_SIZE]->execute();
+    else if (line.find("format") != std::string::npos)
+        DATA->cmds[SET_FORMAT]->execute();
     else
-        reportStatus("Available options: 'codec'', 'chunksize'");
+        reportStatus("Available options: 'codec'', 'chunksize', 'format'");
+    state->printVideoState();
 }
 
 void CmdLoad::execute(){
@@ -102,14 +121,14 @@ void CmdLoad::execute(){
         reportError("File path not provided.");
         return;
     }
-    if (checkFile(path) == -1){
+    if (utilities::checkFile(path) == -1){
         reportError("Loading the file " + path + " failed");
         return;
     }
     finfo.fpath = path;
-    finfo.extension = getExtension(path);
-    finfo.basename = getBasename(path);
-    if (runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+    finfo.extension = "." + utilities::getExtension(path);
+    finfo.basename = utilities::getBasename(path);
+    if (utilities::runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }
@@ -180,4 +199,5 @@ void CmdLoad::execute(){
     }
     state->loadFileInfo(finfo);
     reportSuccess(finfo.fpath + " loaded.");
+    state->printVideoState();
 }

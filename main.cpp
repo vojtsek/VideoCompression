@@ -104,9 +104,7 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
     DATA->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
     DATA->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK, new CmdAsk(&state,  &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RESPOND, new CmdRespond(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(REACT, new CmdReact(&state, &net_handler)));
+    DATA->cmds.insert(make_pair<CMDS, Command *>(SET_FORMAT, new CmdSetFormat(&state)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_PEER, new CmdAskPeer(&state, &net_handler)));

@@ -9,8 +9,8 @@
 struct sockaddr_storage addr2storage(const char* addr, int port, int family);
 std::string storage2addr(struct sockaddr_storage &addr);
 std::string receiveString(int fd);
-struct sockaddr_storage getHostAddr(int fd);
-struct sockaddr_storage getPeerAddr(int fd);
+void getHostAddr(struct sockaddr_storage &addr, int fd);
+void getPeerAddr(struct sockaddr_storage &addr, int fd);
 int sendString(int fd, std::string str);
 int sendFile(int fd, std::string str);
 int receiveFile(int fd, std::string fn);

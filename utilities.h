@@ -19,7 +19,8 @@ namespace utilities
     int acceptCmd(cmd_storage_t &cmds);
     int checkFile(std::string &path);
     int prepareDir(std::string &loc, bool destroy);
-    int rmrDir(const char *loc, bool rec);
+    int rmrDir(std::string dir, bool rec);
+    int rmFile(std::string fp);
     int runExternal(std::string &o, std::string &e, char *cmd, int numargs, ...);
     int encodeChunk(TransferInfo *ti);
     long getFileSize(const std::string &file);
@@ -33,7 +34,9 @@ namespace utilities
     std::string getHash(NeighborInfo &n);
     void listCmds();
     bool knownCodec(const std::string &cod);
+    bool knownFormat(const std::string &format);
     bool isAcceptable(char c);
+    bool isFileOk(std::string fp);
 
 }
 #endif

@@ -37,19 +37,18 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                 reportError("No free neighbor!");
                 pushChunkSend(ti);
                 //delete ti;
-                sleep(1);
+                sleep(5);
                 continue;
             }
             int sock = net_handler->checkNeighbor(ngh->address);
             ti->address = ngh->address;
             //TODO get my address
-            ti->src_address = addr2storage("0.0.0.0",
-                                          DATA->config.getValue("LISTENING_PORT"), AF_INET);
+            getHostAddr(ti->src_address, sock);
+            ((struct sockaddr_in*) &ti->src_address)->sin_port =
+                    htons(DATA->config.getValue("LISTENING_PORT"));
             net_handler->spawnOutgoingConnection(ngh->address, sock,
             { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
         } else {
-            MyAddr mad(ti->src_address);
-            mad.print();
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
@@ -95,8 +94,8 @@ int VideoState::split() {
     mins = secs_per_chunk / 60;
     secs = secs_per_chunk % 60;
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
-    DATA->state.to_send = c_chunks;
     reportStatus("Splitting file: " + finfo.fpath);
+    DATA->state.to_recv = c_chunks;
     for (unsigned int i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
 
@@ -130,9 +129,10 @@ int VideoState::split() {
             abort();
             return (-1);
         }
-        //SIZE!
-        TransferInfo *ti = new TransferInfo(0, job_id, chunk_id, ".avi", ".mkv",
-                                            std::string(output), "libx264");
+        TransferInfo *ti = new TransferInfo(getFileSize(output),
+                                            job_id, chunk_id, finfo.extension, o_format,
+                                            std::string(output), o_codec);
+        DATA->state.to_send++;
         pushChunkSend(ti);
     }
     printProgress(1);
@@ -144,8 +144,7 @@ int VideoState::split() {
 
 void VideoState::abort() {
     clearProgress();
-    working = false;
-
+    DATA->state.working = false;
 }
 
 void pushChunk(TransferInfo *ti, std::mutex &mtx, std::condition_variable &cond,
@@ -173,10 +172,11 @@ void pushChunkSend(TransferInfo * ti) {
 }
 
 int VideoState::join() {
-    std::string out, err, list_loc(dir_location + "/" + job_id + "/join_list.txt"), output(finfo.basename + "_output." + finfo.extension);
+    std::string out, err, list_loc(DATA->config.working_dir + "/received/" + job_id + "/join_list.txt"),
+            output(DATA->config.working_dir + "/" + finfo.basename + "_output" + o_format);
+    std::string file, file_item;
     ofstream ofs(list_loc);
-    std::stringstream ss;
-    char file[BUF_LENGTH], cmd[BUF_LENGTH];
+    char fn[BUF_LENGTH], cmd[BUF_LENGTH];
     long sum_size = 0;
     double duration = 0;
     unlink(output.c_str());
@@ -184,14 +184,14 @@ int VideoState::join() {
     reportStatus("Joining the file: " + output);
     snprintf(cmd, BUF_LENGTH, "ffmpeg");
     for (unsigned int i = 0; i < c_chunks; ++i) {
-        snprintf(file, BUF_LENGTH, "file '%03d_splitted.avi'", i);
-        try {
-            ss.clear();
-            ss.str("");
-            ss << dir_location << "/" << job_id << "/" << setfill('0') << setw(3) << i << "_splitted.avi";
-            sum_size += getFileSize(ss.str());
-            ofs << file << endl;
-        } catch (...) {} // TODO: handle exception
+        snprintf(fn, BUF_LENGTH, "%03d_splitted", i);
+        //HARDCODE
+        file = DATA->config.working_dir + "/received/" + job_id + "/" + fn + o_format;
+//        if (!utilities::getFileSize())
+        //check existence
+        file_item = "file '" + file + "'";
+        sum_size += utilities::getFileSize(file);
+        ofs << file_item << endl;
     }
     ofs.flush();
     ofs.close();
@@ -203,6 +203,8 @@ int VideoState::join() {
                     output.c_str());
     if (err.find("failed") != std::string::npos) {
         thr.detach();
+        reportError(output + ": Error while joining file.");
+        reportError(err);
         clearProgress();
         return (-1);
     }
@@ -211,18 +213,20 @@ int VideoState::join() {
     reportSuccess("Succesfully joined.");
     reportTime("/joining.j", duration / 1000);
     clearProgress();
+    utilities::rmrDir(DATA->config.working_dir + "/received/", true);
     return (0);
 }
 
 
 void VideoState::printVideoState() {
     char value[BUF_LENGTH];
+    DATA->io_data.info_handler.clear();
     if (!finfo.fpath.empty())
         snprintf(value, BUF_LENGTH, "%15s%35s", "File:", finfo.fpath.c_str());
-        DATA->io_data.info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), DEBUG);
     if (!finfo.codec.empty())
         snprintf(value, BUF_LENGTH, "%15s%35s", "Codec:", finfo.codec.c_str());
-        DATA->io_data.info_handler.add(string(value), PLAIN);
+        DATA->io_data.info_handler.add(string(value), DEBUG);
     if (finfo.bitrate) {
         snprintf(value, BUF_LENGTH, "%15s%35f", "Bitrate:", finfo.bitrate);
         DATA->io_data.info_handler.add(string(value), PLAIN);
@@ -236,7 +240,15 @@ void VideoState::printVideoState() {
         DATA->io_data.info_handler.add(string(value), PLAIN);
     }
     if (chunk_size) {
-        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->config.intValues.at("CHUNK_SIZE"));
+        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->config.getValue("CHUNK_SIZE"));
+        DATA->io_data.info_handler.add(string(value), PLAIN);
+    }
+    if (o_codec.size()) {
+        snprintf(value, BUF_LENGTH, "%15s%35s", "Output codec:", o_codec.c_str());
+        DATA->io_data.info_handler.add(string(value), PLAIN);
+    }
+    if (chunk_size) {
+        snprintf(value, BUF_LENGTH, "%15s%35s", "Output extension:", o_format.c_str());
         DATA->io_data.info_handler.add(string(value), PLAIN);
     }
     DATA->io_data.info_handler.print();
@@ -346,6 +358,14 @@ void WindowPrinter::changeWin(WINDOW *nwin) {
     win = nwin;
 }
 
+void WindowPrinter::clear() {
+    q.clear();
+}
+
+void WindowPrinter::updateAt(int idx, std::string value) {
+    q.at(idx) = std::make_pair<>(value, PLAIN);
+}
+
 void WindowPrinter::print() {
     unique_lock<mutex> lck(DATA->m_data.O_mtx, defer_lock);
 
@@ -423,18 +443,20 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
 void TransferInfo::print() {
     reportStatus("Path: " + path);
     reportStatus("Chunk name: " + name);
-    if (addressed) {
-        MyAddr srca(src_address), a(address);
-        reportStatus("SRC ADDR: " + srca.get());
-        reportStatus("ADDR: " + a.get());
-    }
+    MyAddr srca(src_address), a(address);
+    reportStatus("SRC ADDR: " + srca.get());
+    reportStatus("ADDR: " + a.get());
 }
 
 void TransferInfo::invoke(NetworkHandler &handler) {
     if (--time_left < 0) {
         try {
             DATA->waiting_chunks.at(name);
-            reportError(name + ": Still in queue.");
+            reportError(name + ": Still in queue, resending.");
+            DATA->state.to_send++;
+            pushChunkSend(this);
+            time_left = DATA->config.intValues.at(
+                        "COMPUTATION_TIMEOUT");
         } catch (...) {}
     }
 }

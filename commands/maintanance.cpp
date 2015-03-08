@@ -75,10 +75,14 @@ bool CmdAskHost::execute(int fd, struct sockaddr_storage &address, void *) {
 bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFPEER " + MyAddr(address).get() , 5);
     CMDS action = CONFIRM_HOST;
-    RESPONSE_T resp = (!DATA->state.working && DATA->state.can_accept) ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = ACK_FREE;
+    int can_accept = std::atomic_load(&DATA->state.can_accept);
+    if ((can_accept <= 0) || (DATA->state.working)) {
+        resp = ACK_BUSY;
+    }
     struct sockaddr_storage addr;
     try {
-        addr = getHostAddr(fd);
+        getHostAddr(addr, fd);
     } catch (std::exception *e) {
         reportDebug(e->what(), 1);
     }
@@ -159,7 +163,11 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     struct sockaddr_storage addr;
     CMDS action = PING_HOST;
     int peer_port;
-    RESPONSE_T resp = (!DATA->state.working && DATA->state.can_accept) ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = ACK_FREE;
+    int can_accept = std::atomic_load(&DATA->state.can_accept);
+    if ((can_accept <= 0) || (DATA->state.working)) {
+        resp = ACK_BUSY;
+    }
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -173,7 +181,7 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         return false;
     }
     try {
-        addr = getPeerAddr(fd);
+        getPeerAddr(addr, fd);
     } catch (std::exception *e) {
         reportDebug(e->what(), 1);
     }

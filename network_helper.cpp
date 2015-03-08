@@ -68,52 +68,51 @@ bool addrIn(struct sockaddr_storage &addr, std::vector<NeighborInfo *> &list) {
 }
 
 //TODO getsockname doesnt fail if short structure was supplied!
-struct sockaddr_storage getHostAddr(int fd) {
-    struct sockaddr_storage in4, in6;
-    struct sockaddr_in *in4p = (struct sockaddr_in *) &in4;
-    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &in6;
+void getHostAddr(struct sockaddr_storage &addr, int fd) {
+    struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
+    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
     bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
-    socklen_t size4 = sizeof (in4), size6 = sizeof(in6);
+    socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
     if (DATA->config.IPv4_ONLY) {
         if (getsockname(fd, (struct sockaddr *) in4p, &size4) == -1) {
             reportDebug("Not an IPv4 addr.", 4);
         } else {
             in4p->sin_family = AF_INET;
-            return (in4);
+            return;
         }
     } else {
         in6p->sin6_family = AF_INET6;
         if (getsockname(fd, (struct sockaddr *) in6p, &size6) == -1) {
             reportDebug("Not an IPv6 addr.", 4);
         } else
-            return (in6);
+            return;
     }
     reportDebug("Failed to get host's address.", 2);
     throw new std::exception();
-    return (in4);
+    return;
 }
 
-struct sockaddr_storage getPeerAddr(int fd) {
-    struct sockaddr_storage in4, in6;
-    struct sockaddr_in *in4p = (struct sockaddr_in *) &in4;
-    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &in6;
+void getPeerAddr(struct sockaddr_storage &addr, int fd) {
+    struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
+    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
     bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
-    socklen_t size4 = sizeof (in4), size6 = sizeof(in6);
+    socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
     if (getpeername(fd, (struct sockaddr *) in4p, &size4) == -1) {
         reportDebug("Not an IPv4 addr.", 4);
     } else {
-        in4.ss_family = AF_INET;
-        return (in4);
+        addr.ss_family = AF_INET;
+        return;
     }
     if (getpeername(fd, (struct sockaddr *) in6p, &size6) == -1) {
         reportDebug("Not an IPv6 addr.", 4);
-    } else
-        return (in4);
+    } else {
+        addr.ss_family = AF_INET6;
+        return;
+    }
     reportDebug("Failed to get host's address.", 2);
     throw new std::exception();
-    return (in4);
 }
 
 struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) {
@@ -187,7 +186,7 @@ int receiveFile(int fd, std::string fn) {
         }
     } catch (int) {
         reportError("Bad transfer");
-        DATA->state.can_accept++;
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
         close(o_file);
         return -1;
     }
@@ -205,11 +204,7 @@ int sendFile(int fd, std::string fn) {
             reportDebug(fn + ": Failed to open.", 2);
             throw 1;
         }
-        if ((fsize = lseek(file, 0, SEEK_END)) == -1) {
-            reportDebug(fn + ": Failed to get file size", 2);
-            throw 1;
-        }
-        if (lseek(file, 0, SEEK_SET) == -1) {
+        if ((fsize = utilities::getFileSize(fn)) == -1) {
             reportDebug(fn + ": Failed to get file size", 2);
             throw 1;
         }
