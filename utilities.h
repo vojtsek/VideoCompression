@@ -32,6 +32,7 @@ namespace utilities
     std::string getBasename(const std::string &str);
     std::string m_itoa(int n);
     std::string getHash(NeighborInfo &n);
+    std::string formatString(std::string str1, std::string str2);
     void listCmds();
     bool knownCodec(const std::string &cod);
     bool knownFormat(const std::string &format);

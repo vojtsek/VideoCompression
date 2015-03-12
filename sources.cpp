@@ -77,6 +77,7 @@ void chunkProcessRoutine() {
 
 int VideoState::split() {
     DATA->state.working = true;
+    processed_chunks = false;
     std::string out, err;
     double sum = 0.0;
     size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
@@ -96,6 +97,9 @@ int VideoState::split() {
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
     reportStatus("Splitting file: " + finfo.fpath);
     DATA->state.to_recv = c_chunks;
+    std::string infoMsg = utilities::formatString("processed chunks: ", "0/" + utilities::m_itoa(c_chunks));
+    msgIndex = DATA->io_data.info_handler.add(infoMsg, DEBUG);
+    DATA->io_data.info_handler.print();
     for (unsigned int i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
 
@@ -214,49 +218,52 @@ int VideoState::join() {
     reportTime("/joining.j", duration / 1000);
     clearProgress();
     utilities::rmrDir(DATA->config.working_dir + "/received/", true);
+    DATA->state.working = false;
     return (0);
 }
 
 
 void VideoState::printVideoState() {
-    char value[BUF_LENGTH];
-    DATA->io_data.info_handler.clear();
-    if (!finfo.fpath.empty())
-        snprintf(value, BUF_LENGTH, "%15s%35s", "File:", finfo.fpath.c_str());
-        DATA->io_data.info_handler.add(string(value), DEBUG);
-    if (!finfo.codec.empty())
-        snprintf(value, BUF_LENGTH, "%15s%35s", "Codec:", finfo.codec.c_str());
-        DATA->io_data.info_handler.add(string(value), DEBUG);
-    if (finfo.bitrate) {
-        snprintf(value, BUF_LENGTH, "%15s%35f", "Bitrate:", finfo.bitrate);
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
-    if (finfo.duration) {
-        snprintf(value, BUF_LENGTH, "%15s%35f", "Duration:", finfo.duration);
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
-    if (finfo.fsize) {
-        snprintf(value, BUF_LENGTH, "%15s%35f", "Filesize:", finfo.fsize);
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
-    if (chunk_size) {
-        snprintf(value, BUF_LENGTH, "%15s%35d", "Chunk size:", DATA->config.getValue("CHUNK_SIZE"));
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
-    if (o_codec.size()) {
-        snprintf(value, BUF_LENGTH, "%15s%35s", "Output codec:", o_codec.c_str());
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
-    if (chunk_size) {
-        snprintf(value, BUF_LENGTH, "%15s%35s", "Output extension:", o_format.c_str());
-        DATA->io_data.info_handler.add(string(value), PLAIN);
-    }
     DATA->io_data.info_handler.print();
 }
 
 void VideoState::loadFileInfo(finfo_t &finfo) {
     this->finfo = finfo;
     changeChunkSize(DATA->config.getValue("CHUNK_SIZE"));
+    DATA->io_data.info_handler.clear();
+    if (!finfo.fpath.empty()) {
+        DATA->io_data.info_handler.add(utilities::formatString("File:",
+                                                               finfo.fpath), PLAIN);
+    }
+    if (!finfo.codec.empty()) {
+        DATA->io_data.info_handler.add(utilities::formatString("Codec:",
+                                                               finfo.codec), PLAIN);
+    }
+    if (finfo.bitrate) {
+        DATA->io_data.info_handler.add(utilities::formatString("Bitrate:",
+                                                               utilities::m_itoa(finfo.bitrate)), PLAIN);
+    }
+    if (finfo.duration) {
+        DATA->io_data.info_handler.add(utilities::formatString("Duration:",
+                                                               utilities::m_itoa(finfo.duration)), PLAIN);
+        }
+    if (finfo.fsize) {
+        DATA->io_data.info_handler.add(utilities::formatString("File size:",
+                                                               utilities::m_itoa(finfo.fsize)), PLAIN);
+    }
+    if (chunk_size) {
+        DATA->io_data.info_handler.add(utilities::formatString("Chnuk size:",
+                                                               utilities::m_itoa(
+                                                                   DATA->config.getValue("CHUNK_SIZE"))), PLAIN);
+    }
+    if (!o_codec.empty()) {
+        DATA->io_data.info_handler.add(utilities::formatString("Output codec:",
+                                                               o_codec), PLAIN);
+    }
+    if (!o_format.empty()) {
+        DATA->io_data.info_handler.add(utilities::formatString("Output extension:",
+                                                               o_format), PLAIN);
+    }
 }
 
 void VideoState::resetFileInfo() {
@@ -345,13 +352,19 @@ MyAddr::MyAddr(struct sockaddr_storage &address) {
     }
 }
 
-void WindowPrinter::add(string str, MSG_T type) {
+//the indexing is not permanent
+int WindowPrinter::add(string str, MSG_T type) {
+    int retval;
     DATA->m_data.report_mtx.lock();
-    if (direction == DOWN)
+    if ((direction == DOWN) || (direction == STATIC)) {
         q.push_back(make_pair(str, type));
-    else
+        retval = q.size() - 1;
+    } else {
         q.push_front(make_pair(str, type));
+        retval = 0;
+    }
     DATA->m_data.report_mtx.unlock();
+    return retval;
 }
 
 void WindowPrinter::changeWin(WINDOW *nwin) {
@@ -362,8 +375,9 @@ void WindowPrinter::clear() {
     q.clear();
 }
 
-void WindowPrinter::updateAt(int idx, std::string value) {
-    q.at(idx) = std::make_pair<>(value, PLAIN);
+void WindowPrinter::updateAt(int idx, std::string value, MSG_T type) {
+    q.at(idx) = std::make_pair<>(value, type);
+    print();
 }
 
 void WindowPrinter::print() {
@@ -466,6 +480,12 @@ int TransferInfo::send(int fd) {
         reportDebug("Failed to send size.", 1);
         return -1;
     }
+
+    if (sendSth(address, fd) == -1) {
+        reportDebug("Failed to send source address.", 1);
+        return -1;
+    }
+
     if (sendSth(src_address, fd) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
@@ -495,6 +515,11 @@ int TransferInfo::send(int fd) {
         reportDebug("Failed to send codec.", 1);
         return -1;
     }
+
+    if (sendString(fd, timestamp) == -1) {
+        reportDebug("Failed to send codec.", 1);
+        return -1;
+    }
     return 0;
 }
 
@@ -504,10 +529,18 @@ int TransferInfo::receive(int fd) {
         return -1;
     }
     struct sockaddr_storage srca;
+
     if (recvSth(srca, fd) == -1) {
         reportDebug("Failed to receive source address.", 1);
         return -1;
     }
+    address = srca;
+
+    if (recvSth(srca, fd) == -1) {
+        reportDebug("Failed to receive source address.", 1);
+        return -1;
+    }
+
     src_address = srca;
 
     if ((job_id = receiveString(fd)).empty()) {
@@ -534,11 +567,17 @@ int TransferInfo::receive(int fd) {
         reportDebug("Failed to receive codec.", 1);
         return -1;
     }
+
+    if ((timestamp = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive codec.", 1);
+        return -1;
+    }
     return 0;
 }
 
 string NeighborInfo::getHash() {
-    std::string hash(storage2addr(address) + m_itoa(((struct sockaddr_in *)&address)->sin_port));
+    std::string hash(storage2addr(address) +
+                     m_itoa(((struct sockaddr_in *)&address)->sin_port));
     return hash;
 }
 

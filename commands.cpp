@@ -50,25 +50,3 @@ int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
     reportDebug("Connected to " + mad.get(), 5);
     return (sock);
 }
-
-
-bool CmdAsk::execute(int, struct sockaddr_storage &, void *) {
-            wscrl(DATA->io_data.status_win, -3);
-            wrefresh(DATA->io_data.status_win);
-            return true;
-}
-
-bool CmdRespond::execute(int fd, struct sockaddr_storage &, void *) {
-    reportStatus("Responding");
-    CMDS action = REACT;
-    sendCmd(fd, action);
-    sendSth("Hi\0", fd, 3);
-    return true;
-}
-
-bool CmdReact::execute(int fd, struct sockaddr_storage &, void *) {
-    char response[BUF_LENGTH];
-    recvSth(response, fd, BUF_LENGTH);
-    reportSuccess("Received: " + std::string(response));
-    return true;
-}

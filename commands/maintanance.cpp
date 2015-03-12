@@ -8,7 +8,7 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     CMDS action = ASK_HOST;
     int rand_n;
     int size = handler->getNeighborCount();
-    int count = (size < DATA->config.getValue("MIN_NEIGHBOR_COUNT")) ? size : DATA->config.getValue("MIN_NEIGHBOR_COUNT");
+    int count = (size < DATA->config.getValue("MAX_NEIGHBOR_COUNT")) ? size : DATA->config.getValue("MAX_NEIGHBOR_COUNT");
     struct sockaddr_storage addr;
     if (sendCmd(fd, action) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -21,7 +21,11 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         return false;
     }
         rand_n = rand() % size;
-        addr = handler->getNeighbors().at(rand_n)->address;
+        auto it = handler->getNeighbors().begin();
+        while (rand_n--) {
+            it++;
+        }
+        addr =it->second->address;
         if (sendSth(count, fd) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -39,7 +43,7 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
             return false;
         }
         for (auto neighbor : handler->getNeighbors()) {
-            addr = neighbor->address;
+            addr = neighbor.second->address;
             if (sendSth(addr, fd) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;

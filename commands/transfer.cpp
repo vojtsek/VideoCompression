@@ -28,33 +28,34 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
             resp = ACK_BUSY;
     }
     */
+    try {
     if (sendSth(resp, fd) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
+            throw 1;
     }
 
     if (resp == ACK_BUSY)
         return true;
-    reportStatus("Allowing transfer. " + MyAddr(address).get());
+    reportDebug("Beginning transfer. " + MyAddr(address).get(), 1);
 
     if (ti->receive(fd) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        throw 1;
     }
 
     std::string dir(DATA->config.working_dir + "/to_process");
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating received dir.");
-        return false;
+        throw 1;
     }
     dir += "/" + ti->job_id;
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating job dir.");
-        return false;
+        throw 1;
     }
     if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
         reportError(ti->name + ": Failed to transfer file.");
-        return false;
+        throw 1;
     }
 
     reportDebug("Pushing chunk " + ti->name + "(" +
@@ -63,6 +64,11 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
                            "/" + ti->name + ti->desired_extension);
     ti->addressed = true;
     pushChunkProcess(ti);
+    } catch (int) {
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
+        return false;
+    }
+
     return true;
 }
 
@@ -77,7 +83,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
     }
 
     if (resp == ACK_BUSY) {
-        reportError("Peer is busy. " + MyAddr(address).get());
+        reportDebug("Peer is busy. " + MyAddr(address).get(), 3);
         handler->setNeighborFree(address, false);
         pushChunkSend(ti);
         return true;
@@ -95,6 +101,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
         pushChunkSend(ti);
         return false;
     }
+    ti->timestamp = getTimestamp();
 
     std::unique_lock<std::mutex> lck(DATA->m_data.send_mtx, std::defer_lock);
     lck.lock();
@@ -134,6 +141,7 @@ bool CmdReturnHost::execute(int fd, sockaddr_storage &address, void *data) {
 
 bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
+    //TODO: delete in case of failure
     TransferInfo *ti = new TransferInfo;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -167,8 +175,24 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
                               "/" + ti->name + ti->original_extension);
         DATA->periodic_listeners.erase(ti->name);
         DATA->waiting_chunks.erase(ti->name);
+        int comp_time = atoi(utilities::getTimestamp().c_str())
+                - atoi(ti->timestamp.c_str());
+        NeighborInfo *ngh = handler->getNeighborInfo(ti->address);
+        ngh->overall_time += comp_time;
+        ngh->processed_chunks++;
+        ngh->quality = ngh->overall_time / ngh->processed_chunks;
+        reportDebug(MyAddr(ti->address).get() +
+                      " new quality: " + utilities::m_itoa(ngh->quality), 3);
+        MSG_T type = DEBUG;
         if (!--DATA->state.to_recv) {
-            reportSuccess("All chunks are back!");
+            type = SUCCESS;
+        }
+        DATA->io_data.info_handler.updateAt(state->msgIndex,
+                                            utilities::formatString(
+                                                "processed chunks:",
+                                                utilities::m_itoa(++state->processed_chunks) +
+                                                "/" + utilities::m_itoa(state->c_chunks)), type);
+        if (!DATA->state.to_recv) {
             state->join();
         }
     } else {

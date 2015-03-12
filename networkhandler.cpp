@@ -19,20 +19,6 @@
 using namespace std;
 using namespace utilities;
 
-void NetworkHandler::addConnection(int fd, struct sockaddr_storage addr) {
-    conns_mtx.lock();
-    connections.emplace(fd, addr);
-    conns_mtx.unlock();
-}
-
-void NetworkHandler::deleteConnection(int fd) {
-    conns_mtx.lock();
-    try {
-        connections.erase(connections.find(fd));
-    } catch (std::out_of_range) {}
-    conns_mtx.unlock();
-}
-
 void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                                     int fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
@@ -125,7 +111,8 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                throw exception();
            }
         }catch (exception e) {
-           reportDebug("Error while communicating: Unrecognized command." + std::string(e.what()), 1);
+           reportDebug("Error while communicating: Unrecognized command."
+                       + std::string(e.what()), 1);
            break;
            }
         }
@@ -146,9 +133,9 @@ int NetworkHandler::getNeighborCount() {
     return size;
 }
 
-std::vector<NeighborInfo *> NetworkHandler::getNeighbors() {
+neighbor_storageT NetworkHandler::getNeighbors() {
     n_mtx.lock();
-    std::vector<NeighborInfo *> n = neighbors;
+    neighbor_storageT n = neighbors;
     n_mtx.unlock();
     return n;
 }
@@ -210,12 +197,13 @@ int NetworkHandler::start_listening(int port) {
 
 int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
     n_mtx.lock();
-    for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it)->address, addr)) {
+    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
+        if (cmpStorages(it->second->address, addr)) {
             neighbors.erase(it);
             DATA->periodic_listeners.erase(
-                        DATA->periodic_listeners.find(((**it).getHash())));
-            delete (*it);
+                        DATA->periodic_listeners.find(
+                        it->second->getHash()));
+            delete it->second;
             n_mtx.unlock();
             return 1;
         }
@@ -226,9 +214,9 @@ int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
 
 void NetworkHandler::setInterval(sockaddr_storage addr, int i) {
     n_mtx.lock();
-    for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it)->address, addr)) {
-            (*it)->intervals = i;
+    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
+        if (cmpStorages(it->second->address, addr)) {
+            it->second->intervals = i;
             n_mtx.unlock();
             break;
         }
@@ -239,8 +227,8 @@ void NetworkHandler::setInterval(sockaddr_storage addr, int i) {
 
 void NetworkHandler::decrIntervals() {
     n_mtx.lock();
-    for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        (*it)->intervals--;
+    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
+        it->second->intervals--;
     }
     n_mtx.unlock();
     return;
@@ -261,7 +249,7 @@ int NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     int sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
-        reportError("Failed to check neighbor." +MyAddr(addr).get());
+        reportError("Failed to check neighbor."  + MyAddr(addr).get());
         removeNeighbor(addr);
         return -1;
     }
@@ -275,23 +263,21 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
     spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false, nullptr);
 }
 
-void NetworkHandler::obtainNeighbors(unsigned int count) {
+void NetworkHandler::obtainNeighbors() {
     // if nobody to ask to, try to earn some more addresses
     if (!potential_neighbors.size()) {
         reportDebug("Need to collect more potential neighbors", 4);
         collectNeighbors();
     }
     struct sockaddr_storage addr;
-    for (unsigned int i = 0; i < count; ++i) {
         if (!potential_neighbors.size()) {
-            break;
+            return;
         }
         n_mtx.lock();
         addr = *(potential_neighbors.end() - 1);
         potential_neighbors.pop_back();
         n_mtx.unlock();
         confirmNeighbor(addr);
-    }
 }
 
 /* tries to collect more potential neighbors
@@ -301,7 +287,7 @@ void NetworkHandler::collectNeighbors() {
     struct sockaddr_storage addr;
     if (neighbors.size()) {
         for (auto n : getNeighbors()) {
-            addr = n->address;
+            addr = n.second->address;
             MyAddr mad(addr);
             reportDebug("Trying neighbor. " + mad.get(), 4);
             askForAddresses(addr);
@@ -322,9 +308,9 @@ void NetworkHandler::collectNeighbors() {
 NeighborInfo *NetworkHandler::getNeighborInfo(sockaddr_storage &addr) {
     NeighborInfo *res = nullptr;
     n_mtx.lock();
-    for (auto it = neighbors.begin(); it < neighbors.end(); ++it) {
-        if (cmpStorages((*it)->address, addr)) {
-            res = *it;
+    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
+        if (cmpStorages(it->second->address, addr)) {
+            res = it->second;
             n_mtx.unlock();
             return res;
         }
@@ -335,21 +321,40 @@ NeighborInfo *NetworkHandler::getNeighborInfo(sockaddr_storage &addr) {
 
 void NetworkHandler::applyToNeighbors(void (*op)(NeighborInfo *)) {
     n_mtx.lock();
-    applyToVector(neighbors, op);
+    applyToMap(neighbors, op);
     n_mtx.unlock();
 }
 
 void NetworkHandler::setNeighborFree(sockaddr_storage &addr, bool free) {
     NeighborInfo *ngh = getNeighborInfo(addr);
-    if (ngh != nullptr)
-        ngh->free = free;
+    if (ngh == nullptr) {
+        return;
+    }
+    if (ngh->free == free) {
+        return;
+    }
+    if (!ngh->free) {
+        for (auto it = free_neighbors.begin(); it != free_neighbors.end(); it++) {
+            if (cmpStorages((*it)->address, ngh->address)) {
+                free_neighbors.erase(it);
+                break;
+            }
+        }
+    } else {
+        free_neighbors.push_back(ngh);
+    }
+    ngh->free = free;
 }
 
 int NetworkHandler::getFreeNeighbor(NeighborInfo *&ngh) {
     n_mtx.lock();
-    for (auto n : neighbors) {
-        if (n->free) {
-            ngh = n;
+    std::sort(free_neighbors.begin(), free_neighbors.end(),
+              [&](NeighborInfo *n1, NeighborInfo *n2) {
+        return (n1->quality < n2->quality);
+    });
+    for (auto &n : neighbors) {
+        if (n.second->free) {
+            ngh = n.second;
             n_mtx.unlock();
             return 1;
         }
@@ -375,11 +380,15 @@ void NetworkHandler::addNewNeighbor(bool potential, struct sockaddr_storage &add
     else {
         if (!addrIn(addr, neighbors)) {
             NeighborInfo *ngh = new NeighborInfo(addr);
-            neighbors.push_back(ngh);
-            DATA->periodic_listeners.insert(make_pair(ngh->getHash(), ngh));
+            neighbors.insert(
+                        std::make_pair(ngh->getHash(), ngh));
+            DATA->periodic_listeners.insert(
+                        std::make_pair(ngh->getHash(), ngh));
+            free_neighbors.push_back(ngh);
             MyAddr mad(addr);
-            reportDebug("Neighbor added; " + mad.get(), 3);
-            if (neighbors.size() == (unsigned) DATA->config.getValue("MIN_NEIGHBOR_COUNT")) {
+            reportDebug("Neighbor added; " + mad.get(), 4);
+            if (neighbors.size() == (unsigned)
+                    DATA->config.getValue("MAX_NEIGHBOR_COUNT")) {
                 reportSuccess("Enough neighbors gained.");
             }
         } else

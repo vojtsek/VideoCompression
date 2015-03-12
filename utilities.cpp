@@ -268,7 +268,13 @@ vector<string> utilities::extract(const std::string text, const std::string from
     return result;
 }
 
-string utilities::getTimestamp() {
+std::string utilities::formatString(std::string str1, std::string str2) {
+    char value[BUF_LENGTH];
+    snprintf(value, BUF_LENGTH, "%20s%35s", str1.c_str(), str2.c_str());
+    return std::string(value);
+}
+
+std::string utilities::getTimestamp() {
     char stamp[16];
     sprintf(stamp, "%d", (int) time(NULL));
     return std::string(stamp);

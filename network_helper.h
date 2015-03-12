@@ -15,7 +15,7 @@ int sendString(int fd, std::string str);
 int sendFile(int fd, std::string str);
 int receiveFile(int fd, std::string fn);
 int sendCmd(int fd, CMDS cmd);
-bool addrIn(struct sockaddr_storage &st, std::vector<NeighborInfo *> &list);
+bool addrIn(struct sockaddr_storage &st, neighbor_storageT &list);
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2);
 template<typename T>
 int sendSth(T what, int fd) {

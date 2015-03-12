@@ -123,8 +123,9 @@ void cleanCommands(cmd_storage_t &cmds) {
 }
 
 void periodicActions(NetworkHandler &net_handler) {
-    if (net_handler.getNeighborCount() < DATA->config.getValue("MIN_NEIGHBOR_COUNT"))
-        net_handler.obtainNeighbors(DATA->config.getValue("MIN_NEIGHBOR_COUNT"));
+    if (net_handler.getNeighborCount() < DATA->config.getValue(
+                "MAX_NEIGHBOR_COUNT"))
+        net_handler.obtainNeighbors();
     net_handler.contactSuperPeer();
     for (auto l : DATA->periodic_listeners) {
         l.second->invoke(net_handler);

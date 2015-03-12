@@ -58,6 +58,13 @@ void applyToVector(std::vector<T *> vec, void (*op)(T *)) {
     std::for_each(vec.begin(), vec.end(), op);
 }
 
+template <typename T, typename S>
+void applyToMap(std::map<T, S *> map, void (*op)(S *)) {
+    std::for_each(map.begin(), map.end(),
+                  [&](std::pair<T, S *> p) { op(p.second);
+                                          });
+}
+
 namespace utilities {
     std::string getTimestamp();
 }
@@ -121,14 +128,14 @@ class WindowPrinter {
     std::deque<printable_pair_T> q;
     bool bolded;
 public:
-    enum DIRECTION {UP, DOWN} direction;
+    enum DIRECTION {UP, DOWN, STATIC} direction;
     enum START {TOP, BOTTOM} start;
     WindowPrinter(DIRECTION dir, bool b, START st): bolded(b), direction(dir), start(st){
         win = stdscr;
     }
     void changeWin(WINDOW *nwin);
-    void add(std::string msg, MSG_T type);
-    void updateAt(int idx, std::string value);
+    int add(std::string msg, MSG_T type);
+    void updateAt(int idx, std::string value, MSG_T type);
     void clear();
     void print();
 };
@@ -141,7 +148,7 @@ struct State {
 
 
 struct IO_Data {
-    IO_Data(): info_handler(WindowPrinter::DOWN, false, WindowPrinter::TOP),
+    IO_Data(): info_handler(WindowPrinter::STATIC, false, WindowPrinter::TOP),
         status_handler(WindowPrinter::UP, true, WindowPrinter::BOTTOM) {}
     WindowPrinter info_handler, status_handler;
     int status_y = 0, perc_y = 0, question_y = 0;
@@ -201,6 +208,7 @@ private:
 struct VideoState {
     finfo_t finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
+    int msgIndex, processed_chunks;
     std::string dir_location, job_id, o_format, o_codec;
     NetworkHandler *net_handler;
     VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0),
@@ -228,7 +236,9 @@ void pushChunkSend(TransferInfo *ti);
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
     int intervals;
-    //quality
+    int quality;
+    int overall_time;
+    int processed_chunks;
     bool confirmed;
     bool active;
     bool free;
@@ -238,7 +248,9 @@ struct NeighborInfo : public Listener {
     virtual std::string getHash();
     virtual ~NeighborInfo() {}
 
-    NeighborInfo(struct sockaddr_storage &addr): intervals(DATA->config.getValue("CHECK_INTERVALS")), free(true) {
+    NeighborInfo(struct sockaddr_storage &addr):
+        intervals(DATA->config.getValue("CHECK_INTERVALS")),
+        quality(0), free(true) {
         address = addr;
     }
 };
@@ -253,6 +265,7 @@ struct TransferInfo : public Listener, Sendable {
     std::string desired_extension;
     std::string path;
     std::string output_codec;
+    std::string timestamp;
 
     virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
@@ -266,7 +279,7 @@ struct TransferInfo : public Listener, Sendable {
                  std::string p, std::string oc): addressed(true), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
-        path(p), output_codec(oc) {
+        path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
         src_address = addr;
     }
 
@@ -275,7 +288,7 @@ struct TransferInfo : public Listener, Sendable {
                  std::string p, std::string oc): addressed(false), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
-        path(p), output_codec(oc) {}
+        path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {}
 
     virtual ~TransferInfo() {}
 };

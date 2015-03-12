@@ -58,10 +58,10 @@ bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
     return false;
 }
 
-bool addrIn(struct sockaddr_storage &addr, std::vector<NeighborInfo *> &list) {
+bool addrIn(struct sockaddr_storage &addr, neighbor_storageT &list) {
 
-    for (auto n : list) {
-        if (cmpStorages(n->address, addr))
+    for (auto &n : list) {
+        if (cmpStorages(n.second->address, addr))
             return true;
     }
     return false;
@@ -169,11 +169,8 @@ int receiveFile(int fd, std::string fn) {
         }
         //check the size
         while ((r = read(fd, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
-            //reportError(utilities::m1_itoa(r));
             received += r;
-            if ((w = write(o_file, buf, r)) != -1) {
-                //reportSuccess(fn + ": " + utilities::m_itoa(r) + " bytes received.");
-            } else {
+            if ((w = write(o_file, buf, r)) == -1) {
                 reportDebug("Error; received " + utilities::m_itoa(received), 2);
                 throw 1;
             }
