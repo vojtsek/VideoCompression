@@ -187,8 +187,23 @@ int utilities::rmFile(std::string fp) {
     return 0;
 }
 
+int utilities::prepareDir(string location, bool destroy) {
+    std::string directory, current;
+    location = location.substr(
+                DATA->config.working_dir.length() + 1, location.length());
+    int pos;
+    current = DATA->config.working_dir;
+    while ((pos = location.find('/')) != std::string::npos) {
+        directory = location.substr(0, pos);
+        location = location.substr(pos + 1, location.length());
+        current += "/" + directory;
+        utilities::mkDir(current, destroy);
+    }
+    current += "/" + location;
+    utilities::mkDir(current, destroy);
+}
 
-int utilities::prepareDir(string &location, bool destroy) {
+int utilities::mkDir(string location, bool destroy) {
     if (mkdir(location.c_str(), 0700) == -1) {
         switch (errno) {
         case EEXIST:
