@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <chrono>
 #include <vector>
@@ -183,10 +184,11 @@ struct Data {
     Mutexes_Data m_data;
     Configuration config;
     State state;
-    std::map<std::string, TransferInfo *> waiting_chunks;
+    std::unordered_map<std::string, TransferInfo *> waiting_chunks;
+    std::unordered_map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
+    std::unordered_map<std::string, TransferInfo *> chunks_received; //TODO: hashmap, so easy deletion?
     std::deque<TransferInfo *> chunks_to_encode;
     std::deque<TransferInfo *> chunks_to_send;
-    std::map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }
@@ -232,6 +234,8 @@ void pushChunk(TransferInfo *ti, std::mutex &mtx, std::condition_variable &cond,
                bool &ctrl_var, std::deque<TransferInfo *> &queue);
 void pushChunkProcess(TransferInfo *ti);
 void pushChunkSend(TransferInfo *ti);
+void processReturnedChunk(TransferInfo *ti,
+                          NetworkHandler *handler, VideoState *state);
 
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
@@ -257,7 +261,7 @@ struct NeighborInfo : public Listener {
 
 struct TransferInfo : public Listener, Sendable {
     bool addressed;
-    int chunk_size, time_left;
+    int chunk_size, time_left, tries_left;
     struct sockaddr_storage address, src_address;
     std::string job_id;
     std::string name; // without extension
@@ -278,6 +282,7 @@ struct TransferInfo : public Listener, Sendable {
                  std::string ji, std::string n, std::string oe, std::string de,
                  std::string p, std::string oc): addressed(true), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
+        tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
         src_address = addr;
@@ -287,6 +292,7 @@ struct TransferInfo : public Listener, Sendable {
                  std::string ji, std::string n, std::string oe, std::string de,
                  std::string p, std::string oc): addressed(false), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
+        tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {}
 

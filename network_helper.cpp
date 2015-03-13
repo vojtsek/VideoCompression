@@ -185,6 +185,7 @@ int receiveFile(int fd, std::string fn) {
         reportError("Bad transfer");
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
         close(o_file);
+        utilities::rmFile(fn);
         return -1;
     }
     reportDebug("received " + utilities::m_itoa(received), 2);

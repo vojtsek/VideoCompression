@@ -52,6 +52,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
+            DATA->chunks_received.erase(ti->getHash());
         }
     }
 }
@@ -73,6 +74,48 @@ void chunkProcessRoutine() {
         lck.unlock();
         DATA->m_data.chunk_cond.notify_one();
     }
+}
+
+void processReturnedChunk(TransferInfo *ti,
+                          NetworkHandler *handler, VideoState *state) {
+    utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+              "/" + ti->name + ti->original_extension);
+    DATA->periodic_listeners.erase(ti->getHash());
+    DATA->waiting_chunks.erase(ti->getHash());
+    unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
+    lck.lock();
+    while (DATA->m_data.send_deq_used) {
+        DATA->m_data.send_cond.wait(lck);
+    }
+    DATA->m_data.send_deq_used = true;
+    for (auto it = DATA->chunks_to_send.begin();
+         it != DATA->chunks_to_send.end(); ++it) {
+        if ((*it)->getHash() == ti->getHash()) {
+            DATA->chunks_to_send.erase(it);
+            DATA->state.to_send--;
+            break;
+        }
+    }
+    DATA->m_data.send_deq_used = false;
+    lck.unlock();
+    DATA->m_data.send_cond.notify_one();
+    int comp_time = atoi(utilities::getTimestamp().c_str())
+        - atoi(ti->timestamp.c_str());
+    NeighborInfo *ngh = handler->getNeighborInfo(ti->address);
+    ngh->overall_time += comp_time;
+    ngh->processed_chunks++;
+    ngh->quality = ngh->overall_time / ngh->processed_chunks;
+    reportDebug(MyAddr(ti->address).get() +
+              " new quality: " + utilities::m_itoa(ngh->quality), 3);
+    MSG_T type = DEBUG;
+    if (!--DATA->state.to_recv) {
+        type = SUCCESS;
+    }
+    DATA->io_data.info_handler.updateAt(state->msgIndex,
+                        utilities::formatString(
+                        "processed chunks:",
+                        utilities::m_itoa(++state->processed_chunks) +
+                        "/" + utilities::m_itoa(state->c_chunks)), type);
 }
 
 int VideoState::split() {
@@ -463,14 +506,24 @@ void TransferInfo::print() {
 }
 
 void TransferInfo::invoke(NetworkHandler &handler) {
-    if (--time_left < 0) {
+    if (--time_left <= 0) {
+        if ((--tries_left > 0) && (handler.checkNeighbor(address) != -1)) {
+            reportSuccess("Time is up, neighbor alive.");
+            time_left = DATA->config.getValue(
+                        "COMPUTATION_TIMEOUT");
+            return;
+        } else {
+
+        }
         try {
-            DATA->waiting_chunks.at(name);
+            DATA->waiting_chunks.at(getHash());
             reportError(name + ": Still in queue, resending.");
             DATA->state.to_send++;
             pushChunkSend(this);
-            time_left = DATA->config.intValues.at(
+            time_left = DATA->config.getValue(
                         "COMPUTATION_TIMEOUT");
+            tries_left = DATA->config.getValue(
+                        "TRIES_BEFORE_RESEND");
         } catch (...) {}
     }
 }
@@ -582,7 +635,7 @@ string NeighborInfo::getHash() {
 }
 
 string TransferInfo::getHash() {
-    return job_id;
+    return (name + job_id);
 }
 
 int Configuration::getValue(string key) {

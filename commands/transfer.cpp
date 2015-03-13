@@ -16,18 +16,6 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-   /*
-    if (resp == ACK_FREE) {
-        std::string answer;
-        while (true) {
-            answer = loadInput("", "Accept transfer?(y/n)", false);
-            if ((answer == "y") || (answer == "n"))
-                break;
-        }
-        if (answer == "n")
-            resp = ACK_BUSY;
-    }
-    */
     try {
     if (sendSth(resp, fd) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -43,6 +31,24 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
         throw 1;
     }
 
+    if (DATA->chunks_received.find(
+                ti->getHash()) != DATA->chunks_received.end()) {
+        resp = ABORT;
+        if (sendSth(resp, fd) == -1) {
+                reportError("Error while communicating with peer." + MyAddr(address).get());
+                throw 1;
+        }
+        reportDebug("I have this chunk already.", 2);
+        throw 1;
+    }
+
+    resp = AWAITING;
+    if (sendSth(resp, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            throw 1;
+    }
+
+    //TODO: mkdir -p ?
     std::string dir(DATA->config.working_dir + "/to_process");
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating received dir.");
@@ -63,6 +69,8 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
                            "/" + ti->name + ti->desired_extension);
     ti->addressed = true;
+    //todo remove when done
+    DATA->chunks_received.insert(std::make_pair(ti->getHash(), ti));
     pushChunkProcess(ti);
     } catch (int) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
@@ -76,39 +84,54 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
-    if (recvSth(resp, fd) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
+    try {
+        if (recvSth(resp, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            throw 1;
+        }
+
+        if (resp == ACK_BUSY) {
+            reportDebug("Peer is busy. " + MyAddr(address).get(), 3);
+            handler->setNeighborFree(address, false);
+            throw 1;
+        }
+
+        if (ti->send(fd) == -1) {
+            reportError(ti->name + ": Failed to send info.");
+            throw 1;
+        }
+
+        if (recvSth(resp, fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            throw 1;
+        }
+        if (resp == ABORT) {
+            reportDebug(
+                "This chunk is already being processed by this neighbor.", 2);
+            ti->addressed = false;
+            handler->getNeighborInfo(
+                ti->address)->quality += 5; //todo: handle this better
+        throw 1;
+        }
+
+        if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
+             "/" + ti->name + ti->original_extension) == -1) {
+            reportError(ti->name + ": Failed to send.");
+            throw 1;
+        }
+    } catch (int) {
         pushChunkSend(ti);
         return false;
     }
 
-    if (resp == ACK_BUSY) {
-        reportDebug("Peer is busy. " + MyAddr(address).get(), 3);
-        handler->setNeighborFree(address, false);
-        pushChunkSend(ti);
-        return true;
-    }
-
-    if (ti->send(fd) == -1) {
-        reportError(ti->name + ": Failed to send info.");
-        pushChunkSend(ti);
-        return false;
-    }
-
-    if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
-                 "/" + ti->name + ti->original_extension) == -1) {
-        reportError(ti->name + ": Failed to send.");
-        pushChunkSend(ti);
-        return false;
-    }
     ti->timestamp = getTimestamp();
 
     std::unique_lock<std::mutex> lck(DATA->m_data.send_mtx, std::defer_lock);
     lck.lock();
     lck.unlock();
     DATA->m_data.send_cond.notify_one();
-    DATA->periodic_listeners.insert(std::make_pair(ti->name, ti));
-    DATA->waiting_chunks.insert(std::make_pair(ti->name, ti));
+    DATA->periodic_listeners.insert(std::make_pair(ti->getHash(), ti));
+    DATA->waiting_chunks.insert(std::make_pair(ti->getHash(), ti));
    // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
     //                  "/" + ti->name + ti->original_extension);
     reportDebug("Chunk transferred. " + m_itoa(--DATA->state.to_send) + " remaining.", 2);
@@ -169,29 +192,9 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
         return false;
     }
     // do I need two containers?
-    if (DATA->waiting_chunks.find(ti->name) !=
+    if (DATA->waiting_chunks.find(ti->getHash()) !=
             DATA->waiting_chunks.end()) {
-        utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
-                              "/" + ti->name + ti->original_extension);
-        DATA->periodic_listeners.erase(ti->name);
-        DATA->waiting_chunks.erase(ti->name);
-        int comp_time = atoi(utilities::getTimestamp().c_str())
-                - atoi(ti->timestamp.c_str());
-        NeighborInfo *ngh = handler->getNeighborInfo(ti->address);
-        ngh->overall_time += comp_time;
-        ngh->processed_chunks++;
-        ngh->quality = ngh->overall_time / ngh->processed_chunks;
-        reportDebug(MyAddr(ti->address).get() +
-                      " new quality: " + utilities::m_itoa(ngh->quality), 3);
-        MSG_T type = DEBUG;
-        if (!--DATA->state.to_recv) {
-            type = SUCCESS;
-        }
-        DATA->io_data.info_handler.updateAt(state->msgIndex,
-                                            utilities::formatString(
-                                                "processed chunks:",
-                                                utilities::m_itoa(++state->processed_chunks) +
-                                                "/" + utilities::m_itoa(state->c_chunks)), type);
+        processReturnedChunk(ti, handler, state);
         if (!DATA->state.to_recv) {
             state->join();
         }

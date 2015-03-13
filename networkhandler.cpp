@@ -197,6 +197,11 @@ int NetworkHandler::start_listening(int port) {
 
 int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
     n_mtx.lock();
+    for (auto it = free_neighbors.begin(); it != free_neighbors.end(); ++it) {
+        if (cmpStorages((*it)->address, addr)) {
+            free_neighbors.erase(it);
+        }
+    }
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (cmpStorages(it->second->address, addr)) {
             neighbors.erase(it);
