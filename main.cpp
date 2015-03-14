@@ -2,7 +2,6 @@
 #include "defines.h"
 #include "commands.h"
 #include "networkhandler.h"
-#include "network_helper.h"
 
 #include <iostream>
 #include <fstream>

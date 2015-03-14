@@ -7,10 +7,8 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#ifndef DEFINES_H
-#include "defines.h"
-#endif
 
+class VideoState;
 class Command {
 protected:
     VideoState *state;

@@ -1,6 +1,7 @@
 #ifndef NETWORKHANDLER_H
 #define NETWORKHANDLER_H
 #include "defines.h"
+#include "structures/NeighborInfo.h"
 
 #include <thread>
 #include <mutex>
@@ -9,7 +10,6 @@
 #include <curses.h>
 #include <sys/socket.h>
 
-typedef std::map<std::string, NeighborInfo *> neighbor_storageT;
 class NetworkHandler {
     neighbor_storageT neighbors;
     std::vector<NeighborInfo *> free_neighbors;

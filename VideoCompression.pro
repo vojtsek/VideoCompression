@@ -6,13 +6,20 @@ CONFIG -= qt
 SOURCES += main.cpp \
     commands.cpp \
     utilities.cpp \
-    sources.cpp \
     handle_IO.cpp \
-    network_helper.cpp \
     networkhandler.cpp \
     commands/interactive.cpp \
     commands/maintanance.cpp \
-    commands/transfer.cpp
+    commands/transfer.cpp \
+    structures/TransferInfo.cpp \
+    structures/NeighborInfo.cpp \
+    structures/WindowPrinter.cpp \
+    structures/VideoState.cpp \
+    structures/HistoryStorage.cpp \
+    structures/MyAddr.cpp \
+    helpers/chunk_helper.cpp \
+    helpers/network_helper.cpp \
+    helpers/filesystem_helper.cpp
 
 HEADERS += \
     commands.h \
@@ -25,7 +32,20 @@ HEADERS += \
     include_list.h \
     commands/maintanance.h \
     commands/transfer.h \
-    utilities.h
+    utilities.h \
+    structures.h \
+    structures/VideoState.h \
+    structures/WindowPrinter.h \
+    enums_types.h \
+    templates.h \
+    structures/singletons.h \
+    structures/HistoryStorage.h \
+    structures/structures.h \
+    structures/NeighborInfo.h \
+    structures/TransferInfo.h \
+    helpers/chunk_helper.h \
+    helpers/network_helper.h \
+    helpers/filesystem_helper.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

@@ -114,7 +114,7 @@ void CmdLoad::execute(){
     std::string path, out, err, err_msg("Error loading the file: ");
     Document document;
     std::stringstream ssd;
-    finfo_t finfo;
+    struct FileInfo finfo;
 
     path = loadInput("paths.history", "Enter a file path:", true);
     if (path.empty()) {
