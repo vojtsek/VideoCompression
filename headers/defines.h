@@ -16,7 +16,7 @@
 #include <time.h>
 #include <curses.h>
 
-#include "enums_types.h"
+#include "headers/enums_types.h"
 #include "structures/WindowPrinter.h"
 #include "structures/singletons.h"
 
@@ -26,7 +26,7 @@
 #define STATUS_LENGTH 10
 #define WD "/home/vojcek/WD"
 #define INFO_LINES 15
-#define SUPERPEER_ADDR "127.0.0.1"
+#define SUPERPEER_ADDR "::ffff:127.0.0.1"
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

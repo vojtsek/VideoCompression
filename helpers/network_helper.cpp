@@ -1,8 +1,8 @@
 #define _FILE_OFFSET_BITS 64
-#include "include_list.h"
-#include "handle_IO.h"
-#include "commands.h"
-#include "defines.h"
+#include "headers/include_list.h"
+#include "headers/handle_IO.h"
+#include "headers/commands.h"
+#include "headers/defines.h"
 
 #include <iostream>
 #include <iomanip>
@@ -34,18 +34,19 @@
 #include <sys/stat.h>
 #include <err.h>
 #include <fcntl.h>
-#include "network_helper.h"
+#include "helpers/network_helper.h"
 
 
 bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
     if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
         return false;
     if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
-        if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port))
-                //(((struct sockaddr_in *) &s1)->sin_addr == ((struct sockaddr_in *) &s2)->sin_addr))
+        if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port) &&
+                (storage2addr(s1) == storage2addr(s2)))
             return true;
-        else
+        else {
             return false;
+        }
     }
     //TODO: maybe bad
     if (((struct sockaddr *) &s1)->sa_family == AF_INET6) {
@@ -59,7 +60,6 @@ bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
 }
 
 bool addrIn(struct sockaddr_storage &addr, neighbor_storageT &list) {
-
     for (auto &n : list) {
         if (cmpStorages(n.second->address, addr))
             return true;
@@ -89,7 +89,7 @@ void getHostAddr(struct sockaddr_storage &addr, int fd) {
             return;
     }
     reportDebug("Failed to get host's address.", 2);
-    throw new std::exception();
+   // throw new std::exception();
     return;
 }
 
@@ -112,7 +112,7 @@ void getPeerAddr(struct sockaddr_storage &addr, int fd) {
         return;
     }
     reportDebug("Failed to get host's address.", 2);
-    throw new std::exception();
+    //throw new std::exception();
 }
 
 struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) {
@@ -134,11 +134,11 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
 std::string storage2addr(sockaddr_storage &addr) {
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &addr, buf, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr, buf, INET_ADDRSTRLEN);
         return std::string(buf);
     } else {
         char buf[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, &addr, buf, INET6_ADDRSTRLEN);
+        inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&addr)->sin6_addr, buf, INET6_ADDRSTRLEN);
         return std::string(buf);
     }
 }
@@ -167,7 +167,6 @@ int receiveFile(int fd, std::string fn) {
             reportDebug(fn + ": Failed to get file size. ", 2);
             throw 1;
         }
-        //check the size
         while ((r = read(fd, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
             received += r;
             if ((w = write(o_file, buf, r)) == -1) {
@@ -195,7 +194,7 @@ int receiveFile(int fd, std::string fn) {
 
 int sendFile(int fd, std::string fn) {
     int file;
-    off_t fsize, sent = 0, r, w;
+    off_t fsize, to_sent = 0, r, w;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
     try {
         if ((file = open(fn.c_str(), O_RDONLY)) == -1) {
@@ -212,17 +211,17 @@ int sendFile(int fd, std::string fn) {
             throw 1;
         }
 
-        sent = fsize;
+        to_sent = fsize;
         while ((r = read(file, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
             if ((w = write(fd, buf, r)) != -1) {
-                sent -= w;
+                to_sent -= w;
             } else {
                 reportDebug("Error; sent " + utilities::m_itoa(w), 2);
                 throw 1;
             }
         }
 
-        if (sent) {
+        if (to_sent) {
             reportDebug("Sent bytes and filesize does not equal", 2);
             throw 1;
         }

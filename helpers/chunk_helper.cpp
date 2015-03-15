@@ -1,5 +1,5 @@
-#include "defines.h"
-#include "include_list.h"
+#include "headers/defines.h"
+#include "headers/include_list.h"
 #include "network_helper.h"
 
 #include <string>
@@ -21,28 +21,16 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
     TransferInfo *ti;
     NeighborInfo *ngh;
     while (true) {
-        unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
-        lck.lock();
-        while (DATA->m_data.send_deq_used || !DATA->chunks_to_send.size()) {
-            DATA->m_data.send_cond.wait(lck);
-        }
-        DATA->m_data.send_deq_used = true;
-        ti = DATA->chunks_to_send.front();
-        DATA->chunks_to_send.pop_front();
-        DATA->m_data.send_deq_used = false;
-        lck.unlock();
-        DATA->m_data.send_cond.notify_one();
+        ti = DATA->chunks_to_send.pop();
         if (!ti->addressed) {
-            if (net_handler->getFreeNeighbor(ngh) == 0) {
-                reportError("No free neighbor!");
+            if ((ngh = net_handler->getFreeNeighbor()) == nullptr) {
+                reportDebug("No free neighbor!", 2);
                 pushChunkSend(ti);
-                //delete ti;
                 sleep(5);
                 continue;
             }
             int sock = net_handler->checkNeighbor(ngh->address);
             ti->address = ngh->address;
-            //TODO get my address
             getHostAddr(ti->src_address, sock);
             ((struct sockaddr_in*) &ti->src_address)->sin_port =
                     htons(DATA->config.getValue("LISTENING_PORT"));
@@ -60,19 +48,8 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
 void chunkProcessRoutine() {
     TransferInfo *ti;
     while (1) {
-        unique_lock<mutex> lck(DATA->m_data.chunk_mtx, defer_lock);
-        lck.lock();
-        while (DATA->m_data.process_deq_used ||
-               !DATA->chunks_to_encode.size() ||
-               DATA->state.working)
-            DATA->m_data.chunk_cond.wait(lck);
-        DATA->m_data.process_deq_used = true;
-        ti = DATA->chunks_to_encode.front();
+        ti = DATA->chunks_to_encode.pop();
         encodeChunk(ti);
-        DATA->chunks_to_encode.pop_front();
-        DATA->m_data.process_deq_used = false;
-        lck.unlock();
-        DATA->m_data.chunk_cond.notify_one();
     }
 }
 
@@ -82,23 +59,9 @@ void processReturnedChunk(TransferInfo *ti,
               "/" + ti->name + ti->original_extension);
     DATA->periodic_listeners.erase(ti->getHash());
     DATA->waiting_chunks.erase(ti->getHash());
-    unique_lock<mutex> lck(DATA->m_data.send_mtx, defer_lock);
-    lck.lock();
-    while (DATA->m_data.send_deq_used) {
-        DATA->m_data.send_cond.wait(lck);
+    if (DATA->chunks_to_send.remove(ti)) {
+        DATA->state.to_send--;
     }
-    DATA->m_data.send_deq_used = true;
-    for (auto it = DATA->chunks_to_send.begin();
-         it != DATA->chunks_to_send.end(); ++it) {
-        if ((*it)->getHash() == ti->getHash()) {
-            DATA->chunks_to_send.erase(it);
-            DATA->state.to_send--;
-            break;
-        }
-    }
-    DATA->m_data.send_deq_used = false;
-    lck.unlock();
-    DATA->m_data.send_cond.notify_one();
     int comp_time = atoi(utilities::getTimestamp().c_str())
         - atoi(ti->timestamp.c_str());
     NeighborInfo *ngh = handler->getNeighborInfo(ti->address);
@@ -118,28 +81,12 @@ void processReturnedChunk(TransferInfo *ti,
                         "/" + utilities::m_itoa(state->c_chunks)), type);
 }
 
-void pushChunk(TransferInfo *ti, std::mutex &mtx, std::condition_variable &cond,
-               bool &ctrl_var, std::deque<TransferInfo *> &queue) {
-    unique_lock<mutex> lck(mtx, defer_lock);
-
-    lck.lock();
-    while (ctrl_var)
-        cond.wait(lck);
-    ctrl_var = true;
-    queue.push_back(ti);
-    ctrl_var = false;
-    lck.unlock();
-    cond.notify_one();
+void pushChunkProcess(TransferInfo *ti) {
+    DATA->chunks_to_encode.push(ti);
 }
 
-void pushChunkProcess(TransferInfo * ti) {
-    pushChunk(ti, DATA->m_data.chunk_mtx, DATA->m_data.chunk_cond,
-              DATA->m_data.process_deq_used, DATA->chunks_to_encode);
-}
-
-void pushChunkSend(TransferInfo * ti) {
-    pushChunk(ti, DATA->m_data.send_mtx, DATA->m_data.send_cond,
-              DATA->m_data.send_deq_used, DATA->chunks_to_send);
+void pushChunkSend(TransferInfo *ti) {
+    DATA->chunks_to_send.push(ti);
 }
 
 int Configuration::getValue(string key) {

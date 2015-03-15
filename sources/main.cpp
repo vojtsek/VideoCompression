@@ -1,7 +1,7 @@
-#include "include_list.h"
-#include "defines.h"
-#include "commands.h"
-#include "networkhandler.h"
+#include "headers/include_list.h"
+#include "headers/defines.h"
+#include "headers/commands.h"
+#include "headers/networkhandler.h"
 
 #include <iostream>
 #include <fstream>
@@ -83,7 +83,7 @@ void initConfiguration() {
         else
             data->config.working_dir = ".";
     }
-    data->config.IPv4_ONLY = true;
+    data->config.IPv4_ONLY = false;
     int x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
@@ -126,10 +126,11 @@ void periodicActions(NetworkHandler &net_handler) {
                 "MAX_NEIGHBOR_COUNT"))
         net_handler.obtainNeighbors();
     net_handler.contactSuperPeer();
-    for (auto l : DATA->periodic_listeners) {
-        l.second->invoke(net_handler);
-    }
-    //applyToVector(DATA->periodic_listeners, [=](Listener *obj) { obj->invoke(net_handler); });
+
+    std::for_each (DATA->periodic_listeners.begin(), DATA->periodic_listeners.end(),
+                   [&](std::pair<std::string, Listener *> entry) {
+            entry.second->invoke(net_handler);
+    });
 }
 
 int main(int argc, char **argv) {

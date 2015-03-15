@@ -1,5 +1,5 @@
-#include "defines.h"
-#include "include_list.h"
+#include "headers/defines.h"
+#include "headers/include_list.h"
 
 #include <mutex>
 #include <thread>
@@ -10,6 +10,8 @@
 int WindowPrinter::add(std::string str, MSG_T type) {
     int retval;
     DATA->m_data.report_mtx.lock();
+    ofs << str << std::endl;
+    ofs.flush();
     if ((direction == DOWN) || (direction == STATIC)) {
         q.push_back(make_pair(str, type));
         retval = q.size() - 1;

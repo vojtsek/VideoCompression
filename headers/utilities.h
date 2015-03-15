@@ -5,10 +5,10 @@
 #include <string>
 #include <unistd.h>
 
-#include "commands.h"
-#include "networkhandler.h"
-#include "handle_IO.h"
-#include "defines.h"
+#include "headers/commands.h"
+#include "headers/networkhandler.h"
+#include "headers/handle_IO.h"
+#include "headers/defines.h"
 
 #ifndef UTILS_H
 #define UTILS_H

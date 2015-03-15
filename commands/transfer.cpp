@@ -1,4 +1,4 @@
-#include "include_list.h"
+#include "headers/include_list.h"
 
 using namespace utilities;
 
@@ -47,13 +47,13 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
             throw 1;
     }
 
-    //TODO: mkdir -p ?
-    std::string dir(DATA->config.working_dir + "/to_process");
+    std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
+    /*
     if (prepareDir(dir, false) == -1) {
-        reportError(ti->name + ": Error creating received dir.");
+        reportError(ti->name + ": Error creating received di
         throw 1;
     }
-    dir += "/" + ti->job_id;
+    */
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating job dir.");
         throw 1;
@@ -90,7 +90,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
         }
 
         if (resp == ACK_BUSY) {
-            reportDebug("Peer is busy. " + MyAddr(address).get(), 3);
+            reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
             handler->setNeighborFree(address, false);
             throw 1;
         }
@@ -125,10 +125,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
 
     ti->timestamp = getTimestamp();
 
-    std::unique_lock<std::mutex> lck(DATA->m_data.send_mtx, std::defer_lock);
-    lck.lock();
-    lck.unlock();
-    DATA->m_data.send_cond.notify_one();
+    DATA->chunks_to_send.signal();
     DATA->periodic_listeners.insert(std::make_pair(ti->getHash(), ti));
     DATA->waiting_chunks.insert(std::make_pair(ti->getHash(), ti));
    // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
@@ -152,10 +149,7 @@ bool CmdReturnHost::execute(int fd, sockaddr_storage &address, void *data) {
         return false;
     }
 
-    std::unique_lock<std::mutex> lck(DATA->m_data.send_mtx, std::defer_lock);
-    lck.lock();
-    lck.unlock();
-    DATA->m_data.send_cond.notify_one();
+    DATA->chunks_to_send.signal();
     utilities::rmFile(ti->path);
     delete ti;
     return true;
@@ -175,12 +169,11 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
             return false;
     }
 
-    std::string dir(DATA->config.working_dir + "/received/");
-    if (prepareDir(dir, false) == -1) {
+    std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
+    /*if (prepareDir(dir false) == -1) {
         reportError(ti->name + ": Error creating received dir.");
         return false;
-    }
-    dir += ti->job_id;
+    }*/
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating received job dir.");
         return false;

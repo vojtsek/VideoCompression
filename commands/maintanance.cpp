@@ -1,4 +1,4 @@
-#include "include_list.h"
+#include "headers/include_list.h"
 #include <netinet/in.h>
 
 using namespace utilities;
@@ -67,8 +67,8 @@ bool CmdAskHost::execute(int fd, struct sockaddr_storage &address, void *) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
             }
-        addr.ss_family = AF_INET;
-        if (((sockaddr_in *) &addr)->sin_port != htons(DATA->config.intValues.at("LISTENING_PORT")))
+        addr.ss_family = AF_INET6;
+        if (((sockaddr_in6 *) &addr)->sin6_port != htons(DATA->config.intValues.at("LISTENING_PORT")))
             handler->addNewNeighbor(true, addr);
     }
         reportDebug("ASKHOST END", 5);
@@ -80,16 +80,12 @@ bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     CMDS action = CONFIRM_HOST;
     RESPONSE_T resp = ACK_FREE;
     int can_accept = std::atomic_load(&DATA->state.can_accept);
+    int port;
     if ((can_accept <= 0) || (DATA->state.working)) {
         resp = ACK_BUSY;
     }
-    struct sockaddr_storage addr;
-    try {
-        getHostAddr(addr, fd);
-    } catch (std::exception *e) {
-        reportDebug(e->what(), 1);
-    }
 
+    struct sockaddr_storage addr;
     /* if (DATA->IPv4_ONLY)
         addr = addr2storage("127.0.0.1",
                                                 DATA->config.intValues.at("LISTENING_PORT"), AF_INET);
@@ -101,6 +97,22 @@ bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
+
+    if (recvSth(port, fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+    try {
+
+        ((struct sockaddr_in6 *) &address)->sin6_port = htons(port);
+        int sock = handler->checkNeighbor(address);
+        getHostAddr(addr, sock);
+        ((struct sockaddr_in6 *) &addr)->sin6_port = htons(DATA->config.getValue("LISTENING_PORT"));
+        //getHostAddr(addr, fd);
+    } catch (std::exception *e) {
+        reportDebug(e->what(), 1);
+    }
+
     if (sendSth(resp, fd) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -116,6 +128,12 @@ bool CmdConfirmHost::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFHOST", 5);
     RESPONSE_T resp;
     struct sockaddr_storage addr;
+
+    if (sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+
     if (recvSth(resp, fd) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -184,12 +202,15 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         return false;
     }
     try {
-        getPeerAddr(addr, fd);
+        ((struct sockaddr_in6 *) &address)->sin6_port = htons(peer_port);
+        int sock = handler->checkNeighbor(address);
+        getHostAddr(addr, sock);
+
     } catch (std::exception *e) {
         reportDebug(e->what(), 1);
     }
 
-    ((struct sockaddr_in *) &addr)->sin_port = htons(peer_port);
+    ((struct sockaddr_in6 *) &addr)->sin6_port = htons(peer_port);
 
     if (DATA->config.is_superpeer)
         handler->addNewNeighbor(false, addr);

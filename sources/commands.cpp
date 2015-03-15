@@ -1,7 +1,7 @@
-﻿#include "commands.h"
-#include "include_list.h"
-#include "handle_IO.h"
-#include "defines.h"
+﻿#include "headers/commands.h"
+#include "headers/include_list.h"
+#include "headers/handle_IO.h"
+#include "headers/defines.h"
 
 #include <iostream>
 #include <fstream>

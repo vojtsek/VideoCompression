@@ -1,4 +1,4 @@
-#include "commands.h"
+#include "headers/commands.h"
 #ifndef INTER_CMD_H
 #define INTER_CMD_H
 

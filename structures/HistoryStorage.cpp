@@ -1,5 +1,5 @@
-#include "defines.h"
-#include "include_list.h"
+#include "headers/defines.h"
+#include "headers/include_list.h"
 
 #include <fstream>
 

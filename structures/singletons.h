@@ -1,7 +1,8 @@
 #ifndef SINGLETONS_H
 #define SINGLETONS_H
 
-#include "enums_types.h"
+#include "headers/enums_types.h"
+#include "structures/SynchronizedQueue.h"
 struct TransferInfo;
 struct Listener;
 
@@ -47,11 +48,10 @@ struct Data {
     Mutexes_Data m_data;
     Configuration config;
     State state;
+    SynchronizedQueue<TransferInfo> chunks_to_send, chunks_to_encode;
     std::unordered_map<std::string, TransferInfo *> waiting_chunks;
-    std::unordered_map<std::string, Listener *> periodic_listeners; //TODO: hashmap, so easy deletion?
-    std::unordered_map<std::string, TransferInfo *> chunks_received; //TODO: hashmap, so easy deletion?
-    std::deque<TransferInfo *> chunks_to_encode;
-    std::deque<TransferInfo *> chunks_to_send;
+    std::unordered_map<std::string, Listener *> periodic_listeners;
+    std::unordered_map<std::string, TransferInfo *> chunks_received;
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }

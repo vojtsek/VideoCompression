@@ -1,4 +1,4 @@
-#include "include_list.h"
+#include "headers/include_list.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
@@ -19,7 +19,10 @@ void CmdShow::execute() {
 
     } else if (what.find( "neighbors") != std::string::npos) {
         cursToInfo();
-        handler->applyToNeighbors([=](NeighborInfo *n) {n->printInfo(); });
+        std::for_each (handler->neighbors.begin(), handler->neighbors.end(),
+                   [&](std::pair<std::string, NeighborInfo *> entry) {
+            entry.second->printInfo();
+    });
     } else {
         if (state->finfo.fpath.empty()) {
             reportError("Please load the file first.");

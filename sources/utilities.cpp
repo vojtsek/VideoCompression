@@ -1,8 +1,8 @@
 #define _FILE_OFFSET_BITS 64
-#include "include_list.h"
-#include "handle_IO.h"
-#include "commands.h"
-#include "defines.h"
+#include "headers/include_list.h"
+#include "headers/handle_IO.h"
+#include "headers/commands.h"
+#include "headers/defines.h"
 
 #include <iostream>
 #include <iomanip>
@@ -105,12 +105,13 @@ string utilities::m_itoa(int n) {
 int utilities::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
-    res_dir = DATA->config.working_dir + "/processed/";
+    res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
+    /*
     if (prepareDir(res_dir, false) == -1) {
         reportDebug("Failed to create working dir.", 2);
         return -1;
     }
-    res_dir += ti->job_id;
+    */
     if (prepareDir(res_dir, false) == -1) {
         reportDebug("Failed to create job dir.", 2);
         return -1;

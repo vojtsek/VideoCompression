@@ -1,6 +1,6 @@
 #ifndef NETWORKHANDLER_H
 #define NETWORKHANDLER_H
-#include "defines.h"
+#include "headers/defines.h"
 #include "structures/NeighborInfo.h"
 
 #include <thread>
@@ -10,13 +10,11 @@
 #include <curses.h>
 #include <sys/socket.h>
 
-class NetworkHandler {
+struct NetworkHandler {
     neighbor_storageT neighbors;
     std::vector<NeighborInfo *> free_neighbors;
     std::vector<struct sockaddr_storage> potential_neighbors;
     int listening_sock;
-
-public:
     std::mutex conns_mtx, n_mtx;
     NeighborInfo *lookupNeighbor(struct sockaddr_storage&);
     void spawnOutgoingConnection(struct sockaddr_storage addr, int fd,
@@ -28,16 +26,14 @@ public:
     void collectNeighbors();
     void contactSuperPeer();
     void askForAddresses(struct sockaddr_storage &addr);
-    void applyToNeighbors(void (*op)(NeighborInfo *));
     int getNeighborCount();
     neighbor_storageT getNeighbors();
     void addNewNeighbor(bool potential, struct sockaddr_storage &addr);
     int removeNeighbor(struct sockaddr_storage addr);
     void setInterval(struct sockaddr_storage addr, int i);
-    void decrIntervals();
     NeighborInfo *getNeighborInfo(struct sockaddr_storage &addr);
     void setNeighborFree(struct sockaddr_storage &addr, bool free);
-    int getFreeNeighbor(NeighborInfo  *&ngh);
+    NeighborInfo *getFreeNeighbor();
     int checkNeighbor(struct sockaddr_storage addr);
 };
 

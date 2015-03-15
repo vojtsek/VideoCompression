@@ -1,8 +1,8 @@
 #define _FILE_OFFSET_BITS 64
-#include "include_list.h"
-#include "handle_IO.h"
-#include "commands.h"
-#include "defines.h"
+#include "headers/include_list.h"
+#include "headers/handle_IO.h"
+#include "headers/commands.h"
+#include "headers/defines.h"
 
 #include <iostream>
 #include <iomanip>

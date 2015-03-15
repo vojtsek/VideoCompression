@@ -1,4 +1,4 @@
-﻿#include "networkhandler.h"
+﻿#include "headers/networkhandler.h"
 
 #include <string>
 #include <iostream>
@@ -27,6 +27,9 @@ public:
     int connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
+    virtual std::string printName() {
+        return(typeid(this).name());
+    }
     virtual void execute() {}
     virtual bool execute(int fd, struct sockaddr_storage &addr, void *data) = 0;
 };
