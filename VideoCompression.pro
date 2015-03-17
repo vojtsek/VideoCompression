@@ -3,11 +3,7 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp \
-    commands.cpp \
-    utilities.cpp \
-    handle_IO.cpp \
-    networkhandler.cpp \
+SOURCES +=  \
     commands/interactive.cpp \
     commands/maintanance.cpp \
     commands/transfer.cpp \
@@ -19,25 +15,19 @@ SOURCES += main.cpp \
     structures/MyAddr.cpp \
     helpers/chunk_helper.cpp \
     helpers/network_helper.cpp \
-    helpers/filesystem_helper.cpp
+    helpers/filesystem_helper.cpp \
+    sources/commands.cpp \
+    sources/handle_IO.cpp \
+    sources/main.cpp \
+    sources/networkhandler.cpp \
+    sources/utilities.cpp
 
 HEADERS += \
-    commands.h \
-    include_list.h \
-    defines.h \
-    networkhandler.h \
-    handle_IO.h \
-    network_helper.h \
     commands/interactive.h \
-    include_list.h \
     commands/maintanance.h \
     commands/transfer.h \
-    utilities.h \
-    structures.h \
     structures/VideoState.h \
     structures/WindowPrinter.h \
-    enums_types.h \
-    templates.h \
     structures/singletons.h \
     structures/HistoryStorage.h \
     structures/structures.h \
@@ -45,7 +35,17 @@ HEADERS += \
     structures/TransferInfo.h \
     helpers/chunk_helper.h \
     helpers/network_helper.h \
-    helpers/filesystem_helper.h
+    helpers/filesystem_helper.h \
+    headers/commands.h \
+    headers/defines.h \
+    headers/enums_types.h \
+    headers/handle_IO.h \
+    headers/include_list.h \
+    headers/networkhandler.h \
+    headers/structures.h \
+    headers/templates.h \
+    headers/utilities.h \
+    structures/SynchronizedQueue.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

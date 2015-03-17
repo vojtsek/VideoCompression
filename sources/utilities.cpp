@@ -51,8 +51,9 @@ int utilities::acceptCmd(cmd_storage_t &cmds) {
         DATA->m_data.IO_cond.notify_one();
         usleep(10000);
     } while(c == ERR);
-    if (c == KEY_F(12))
+    if (c == KEY_F(12)) {
         return (1);
+    }
     thread thr ([&]() {
         try {
             cmds.at(Data::getCmdMapping().at(c))->execute();
@@ -91,14 +92,23 @@ void clearNlines(int n) {
 string utilities::m_itoa(int n) {
     std::string res;
     int nn;
-    if (n == 0)
+    bool negative = false;
+    if (n < 0) {
+        negative = true;
+        n *= -1;
+    }
+    if (n == 0) {
         return std::string("0");
+    }
     while(n > 0) {
         nn = n % 10;
         n /= 10;
         res.push_back('0' + nn);
     }
     reverse(res.begin(), res.end());
+    if (negative) {
+        return "-" + res;
+    }
     return res;
 }
 

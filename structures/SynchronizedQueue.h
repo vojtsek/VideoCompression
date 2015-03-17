@@ -55,14 +55,15 @@ struct SynchronizedQueue {
         }
         being_used = true;
         int size_before = queue.size();
-        std::remove_if(queue.begin(), queue.end(), [=](T *it) {
-            return (it->getHash() == item->getHash());
-        });
+        queue.erase(
+            std::remove_if(queue.begin(), queue.end(), [=](T *it) {
+                return (it->getHash() == item->getHash());
+            }), queue.end());
         int size_after = queue.size();
         being_used = false;
         lck.unlock();
         cond.notify_one();
-        return (size_before == size_after);
+        return (size_before != size_after);
     }
 
     bool removeIf(std::function<bool (T *)> func) {

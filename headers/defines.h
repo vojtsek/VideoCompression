@@ -42,7 +42,7 @@
 #define BG 20
 #define BG_COL COLOR_BLACK
 #define ST_Y 10
-#define DATA Data::getInstance()
+#define DATA Data::getInstance("log")
 #define show(x, y) wprintw(DATA->io_data.info_win, "%15s%35s\n", x, y);
 
 #endif

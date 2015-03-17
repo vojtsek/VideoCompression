@@ -14,11 +14,14 @@ struct State {
 
 
 struct IO_Data {
-    IO_Data(): info_handler(STATIC, false, TOP),
-        status_handler(UP, true, BOTTOM) {}
+    IO_Data(std::string log_location): info_handler(STATIC, false, TOP, log_location),
+        status_handler(UP, true, BOTTOM, log_location) {}
     WindowPrinter info_handler, status_handler;
     int status_y = 0, perc_y = 0, question_y = 0;
     WINDOW *status_win, *info_win;
+    void changeLogLocation(std::string log_location) {
+        status_handler.changeLogLocation(log_location);
+    }
 };
 
 struct Mutexes_Data {
@@ -35,9 +38,9 @@ struct Configuration {
 };
 
 struct Data {
-    static std::shared_ptr<Data> getInstance() {
+    static std::shared_ptr<Data> getInstance(std::string log_location) {
         if(!inst) {
-            inst = std::shared_ptr<Data>(new Data);
+            inst = std::shared_ptr<Data>(new Data(log_location));
         }
         return inst;
     }
@@ -65,6 +68,7 @@ struct Data {
             { KEY_F(8), LOAD },
             { KEY_F(9), SET } };
     }
+    Data(std::string log_location) : io_data(log_location) {}
 
 private:
     static std::shared_ptr<Data> inst;

@@ -92,7 +92,8 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
         if (resp == ACK_BUSY) {
             reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
             handler->setNeighborFree(address, false);
-            throw 1;
+            pushChunkSend(ti);
+            return true;
         }
 
         if (ti->send(fd) == -1) {

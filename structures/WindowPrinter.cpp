@@ -36,6 +36,11 @@ void WindowPrinter::updateAt(int idx, std::string value, MSG_T type) {
     print();
 }
 
+void WindowPrinter::changeLogLocation(std::string log_location) {
+    ofs.close();
+    ofs.open(log_location);
+}
+
 void WindowPrinter::print() {
     std::unique_lock<std::mutex> lck(DATA->m_data.O_mtx, std::defer_lock);
 

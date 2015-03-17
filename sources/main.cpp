@@ -93,6 +93,9 @@ void initConfiguration() {
     data->io_data.info_handler.changeWin(data->io_data.info_win);
     data->config.superpeer_addr = SUPERPEER_ADDR;
     data->config.intValues.emplace("STATUS_LENGTH", y_space / 2 - 1);
+    data->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
+                                    utilities::getTimestamp() + "_" +
+                                    utilities::m_itoa(DATA->config.getValue("LISTENING_PORT")));
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
@@ -114,6 +117,9 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_PEER, new CmdReturnPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_HOST, new CmdReturnHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler)));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
@@ -143,8 +149,8 @@ int main(int argc, char **argv) {
         reportError("Error reading configuration!");
         return (1);
     }
-    initConfiguration();
     int optidx = parseOptions(argc, argv);
+    initConfiguration();
     NetworkHandler net_handler;
     VideoState state(&net_handler);
     initCommands(state, net_handler);
@@ -187,6 +193,8 @@ int main(int argc, char **argv) {
     } catch (exception e) {
        printw(e.what());
     }
+    DATA->net_cmds.at(SAY_GOODBYE)->execute();
+    sleep(10);
     cleanCommands(DATA->cmds);
     endwin();
 	return (0);

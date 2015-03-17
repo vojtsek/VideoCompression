@@ -61,7 +61,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                    break;
                }
                if (!command->execute(fd, addr, data)) {
-                   command->printName();
+                   reportError(command->getName());
                    throw new std::runtime_error(
                                            "Command was not completed successfuly");
                }
@@ -110,6 +110,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                break;
            }
            if (!cmd->execute(fd, addr, nullptr)) {
+               reportError(cmd->getName());
                throw exception();
            }
         }catch (exception e) {
@@ -203,12 +204,13 @@ int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
     reportError("Removing neighbor: " + MyAddr(addr).get());
     n_mtx.lock();
     free_neighbors.erase(
-    std::remove_if(free_neighbors.begin(), free_neighbors.end(),
+        std::remove_if(free_neighbors.begin(), free_neighbors.end(),
                    [&](NeighborInfo *ngh) {
         return cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
     //todo: removing neighbor with algorithms?
+    //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (cmpStorages(it->second->address, addr)) {
             neighbors.erase(it);
@@ -254,7 +256,7 @@ int NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     int sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
-        reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 2);
+        reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
         removeNeighbor(addr);
         return -1;
     }
@@ -340,6 +342,7 @@ void NetworkHandler::setNeighborFree(sockaddr_storage &addr, bool free) {
         }), free_neighbors.end());
         n_mtx.unlock();
     } else {
+        reportSuccess("Neighbor is now free: " + MyAddr(addr).get());
         free_neighbors.push_back(ngh);
     }
     ngh->free = free;

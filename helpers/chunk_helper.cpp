@@ -36,6 +36,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                     htons(DATA->config.getValue("LISTENING_PORT"));
             net_handler->spawnOutgoingConnection(ngh->address, sock,
             { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
+            net_handler->setNeighborFree(ngh->address, false);
         } else {
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
@@ -74,6 +75,7 @@ void processReturnedChunk(TransferInfo *ti,
     if (!--DATA->state.to_recv) {
         type = SUCCESS;
     }
+    //TODO: add to free negihbors?
     DATA->io_data.info_handler.updateAt(state->msgIndex,
                         utilities::formatString(
                         "processed chunks:",

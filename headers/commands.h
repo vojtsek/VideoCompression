@@ -27,7 +27,7 @@ public:
     int connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
-    virtual std::string printName() {
+    virtual std::string getName() {
         return(typeid(this).name());
     }
     virtual void execute() {}

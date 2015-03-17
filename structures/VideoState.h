@@ -1,10 +1,10 @@
 #ifndef VIDEOSTATE_H
 #define VIDEOSTATE_H
 
+#include "headers/defines.h"
 #include "structures/singletons.h"
 #include "structures/structures.h"
 
-#define DATA Data::getInstance()
 
 
 struct VideoState {

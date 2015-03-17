@@ -12,14 +12,15 @@ class WindowPrinter {
 public:
     PRINTER_DIRECTION direction;
     PRINTER_START start;
-    //TODO: log location
-    WindowPrinter(PRINTER_DIRECTION dir, bool b, PRINTER_START st):
-        bolded(b), direction(dir), start(st), ofs("log") {
+    WindowPrinter(PRINTER_DIRECTION dir, bool b,
+                  PRINTER_START st, std::string log_location):
+        bolded(b), ofs(log_location), direction(dir), start(st) {
         win = stdscr;
     }
     void changeWin(WINDOW *nwin);
     int add(std::string msg, MSG_T type);
     void updateAt(int idx, std::string value, MSG_T type);
+    void changeLogLocation(std::string log_location);
     void clear();
     void print();
 };
