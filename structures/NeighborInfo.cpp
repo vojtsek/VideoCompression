@@ -22,3 +22,7 @@ std::string NeighborInfo::getHash() {
                      utilities::m_itoa(((struct sockaddr_in *)&address)->sin_port));
     return hash;
 }
+
+bool NeighborInfo::equalsTo(Listener *that) {
+    return (getHash() == that->getHash());
+}

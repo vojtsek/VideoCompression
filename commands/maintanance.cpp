@@ -253,7 +253,17 @@ bool CmdGoodbyeHost::execute(int fd, sockaddr_storage &address, void *data) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    reportDebug("I have noticed neighbor: " + MyAddr(address).get(), 2);
+    reportDebug("I have informed neighbor: " + MyAddr(address).get(), 2);
     return true;
 
+}
+
+void CmdSayGoodbye::execute() {
+    int sock;
+    for (auto &n : handler->getNeighbors()) {
+        sock = handler->checkNeighbor(n.second->address);
+        reportError("Saying goodbye to: "+MyAddr(n.second->address).get());
+        handler->spawnOutgoingConnection(n.second->address,
+                                         sock, { GOODBYE_PEER }, false, nullptr);
+    }
 }

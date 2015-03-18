@@ -213,7 +213,6 @@ int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
     //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (cmpStorages(it->second->address, addr)) {
-            neighbors.erase(it);
             DATA->periodic_listeners.erase(
                         it->second->getHash());
             DATA->chunks_to_send.removeIf(
@@ -221,6 +220,7 @@ int NetworkHandler::removeNeighbor(sockaddr_storage addr) {
                 return cmpStorages(ti->address, it->second->address);
             });
             delete it->second;
+            neighbors.erase(it);
             n_mtx.unlock();
             return 1;
         }

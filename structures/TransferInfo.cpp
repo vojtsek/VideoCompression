@@ -134,3 +134,7 @@ int TransferInfo::receive(int fd) {
 std::string TransferInfo::getHash() {
     return (name + job_id);
 }
+
+bool TransferInfo::equalsTo(Listener *that) {
+    return (getHash() == that->getHash());
+}

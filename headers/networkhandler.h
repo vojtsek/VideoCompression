@@ -16,7 +16,6 @@ struct NetworkHandler {
     std::vector<struct sockaddr_storage> potential_neighbors;
     int listening_sock;
     std::mutex conns_mtx, n_mtx;
-    NeighborInfo *lookupNeighbor(struct sockaddr_storage&);
     void spawnOutgoingConnection(struct sockaddr_storage addr, int fd,
                                  std::vector<CMDS> cmds, bool async, void *data);
     void spawnIncomingConnection(struct sockaddr_storage addr, int fd, bool async);

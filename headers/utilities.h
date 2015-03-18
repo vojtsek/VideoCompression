@@ -13,6 +13,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 class Command;
+class TransferInfo;
 namespace utilities
 {
     int readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);

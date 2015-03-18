@@ -4,7 +4,7 @@ using namespace utilities;
 
 bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = DISTRIBUTE_HOST;
-    TransferInfo *ti = new TransferInfo;
+    TransferInfo *ti(new TransferInfo);
     RESPONSE_T resp = ACK_FREE;
     int can_accept = std::atomic_fetch_sub(&DATA->state.can_accept, 1);
     if ((can_accept <= 0) || (DATA->state.working)) {
@@ -152,14 +152,14 @@ bool CmdReturnHost::execute(int fd, sockaddr_storage &address, void *data) {
 
     DATA->chunks_to_send.signal();
     utilities::rmFile(ti->path);
-    delete ti;
+    //delete ti;
     return true;
 }
 
 bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
     //TODO: delete in case of failure
-    TransferInfo *ti = new TransferInfo;
+    TransferInfo *ti(new TransferInfo);
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;

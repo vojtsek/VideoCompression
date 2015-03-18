@@ -12,6 +12,7 @@ struct FileInfo {
 struct Listener {
     virtual void invoke(NetworkHandler &handler) = 0;
     virtual std::string getHash() = 0;
+    virtual bool equalsTo(Listener *that) = 0;
 };
 
 struct Sendable {
@@ -24,6 +25,7 @@ struct MyAddr {
     int port;
     void print();
     std::string get();
+    //bool equalsTo(const struct sockaddr_storage &that);
     MyAddr(struct sockaddr_storage &addr);
 };
 

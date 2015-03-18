@@ -13,6 +13,10 @@ void MyAddr::print() {
     reportStatus(get());
 }
 
+/*bool MyAddr::equalsTo(const sockaddr_storage &that) {
+    return cmpStorages(this->addr, that);
+}*/
+
 MyAddr::MyAddr(struct sockaddr_storage &address) {
     char adr4[sizeof (struct sockaddr_in)], adr6[sizeof (struct sockaddr_in6)];
     if (((struct sockaddr_in *)(&address))->sin_family == AF_INET) {

@@ -78,9 +78,7 @@ class CmdSayGoodbye: public NetworkCommand {
 public:
     CmdSayGoodbye(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int , struct sockaddr_storage &, void *) { return true; }
-    virtual void execute() {
-        reportError("QUIT");
-    }
+    virtual void execute();
 
     virtual std::string getName() {
         return("Goodbye...");

@@ -194,7 +194,6 @@ int main(int argc, char **argv) {
        printw(e.what());
     }
     DATA->net_cmds.at(SAY_GOODBYE)->execute();
-    sleep(10);
     cleanCommands(DATA->cmds);
     endwin();
 	return (0);

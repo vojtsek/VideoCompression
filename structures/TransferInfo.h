@@ -20,6 +20,7 @@ struct TransferInfo : public Listener, Sendable {
     virtual int send(int fd);
     virtual int receive(int fd);
     void print();
+    virtual bool equalsTo(Listener *that);
 
     TransferInfo():addressed(false) {};
 

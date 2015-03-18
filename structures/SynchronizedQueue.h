@@ -57,7 +57,7 @@ struct SynchronizedQueue {
         int size_before = queue.size();
         queue.erase(
             std::remove_if(queue.begin(), queue.end(), [=](T *it) {
-                return (it->getHash() == item->getHash());
+                return (item->equalsTo(it));
             }), queue.end());
         int size_after = queue.size();
         being_used = false;

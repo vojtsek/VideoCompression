@@ -13,6 +13,7 @@ struct NeighborInfo : public Listener {
     bool free;
 
     void printInfo();
+    virtual bool equalsTo(Listener *that);
     virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
     virtual ~NeighborInfo() {}
@@ -23,5 +24,14 @@ struct NeighborInfo : public Listener {
         address = addr;
     }
 };
+
+/*
+template<typename T>
+struct StructureRef {
+    T *data;
+    bool valid;
+    T &operator->()
+};
+*/
 
 #endif // NEIGHBORINFO_H
