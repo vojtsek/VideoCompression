@@ -17,7 +17,7 @@ void MyAddr::print() {
     return cmpStorages(this->addr, that);
 }*/
 
-MyAddr::MyAddr(struct sockaddr_storage &address) {
+MyAddr::MyAddr(const struct sockaddr_storage &address) {
     char adr4[sizeof (struct sockaddr_in)], adr6[sizeof (struct sockaddr_in6)];
     if (((struct sockaddr_in *)(&address))->sin_family == AF_INET) {
         struct sockaddr_in *addr = (struct sockaddr_in *) &address;

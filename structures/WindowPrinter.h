@@ -3,6 +3,8 @@
 
 #include "headers/enums_types.h"
 #include <fstream>
+#include <deque>
+#include <curses.h>
 
 class WindowPrinter {
     WINDOW *win;

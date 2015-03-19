@@ -1,28 +1,32 @@
 #ifndef NEIGHBORSTORAGE_H
 #define NEIGHBORSTORAGE_H
-#include "headers/defines.h"
-#include "structures/NeighborInfo.h"
+#include <vector>
+#include <functional>
+#include <mutex>
+#include <arpa/inet.h>
+#include "headers/enums_types.h"
 
+struct NeighborInfo;
 class NeighborStorage
 {
     neighbor_storageT neighbors;
     std::vector<NeighborInfo *> free_neighbors;
     std::vector<struct sockaddr_storage> potential_neighbors;
     int listening_sock;
-    std::mutex conns_mtx, n_mtx;
-    void confirmNeighbor(struct sockaddr_storage addr);
-    void obtainNeighbors();
-    void collectNeighbors();
+    std::mutex n_mtx;
+public:
     int getNeighborCount();
-    void addNewNeighbor(struct sockaddr_storage &addr);
-    int removeNeighbor(struct sockaddr_storage addr);
-    void setInterval(struct sockaddr_storage addr, int i);
-    NeighborInfo *getNeighborInfo(struct sockaddr_storage &addr);
-    void setNeighborFree(struct sockaddr_storage &addr, bool free);
+    NeighborInfo *getNeighborInfo(const struct sockaddr_storage &addr);
     NeighborInfo *getFreeNeighbor();
-applyToNeighbors(std::function<bool (T *)> func);
-//add to DATA
-
+    struct sockaddr_storage getRandomNeighbor();
+    std::vector<struct sockaddr_storage> getNeighborAdresses(int count);
+    int removeNeighbor(const struct sockaddr_storage addr);
+    void addNewNeighbor(const struct sockaddr_storage &addr);
+    void setInterval(const struct sockaddr_storage &addr, int i);
+    void updateQuality(const struct sockaddr_storage &addr, int q);
+    void setNeighborFree(struct sockaddr_storage &addr, bool free);
+    void applyToNeighbors(
+            std::function<void (std::pair<std::string, NeighborInfo *>)> func);
     NeighborStorage();
 };
 

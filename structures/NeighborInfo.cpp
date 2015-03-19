@@ -6,7 +6,9 @@
 
 void NeighborInfo::printInfo() {
     MyAddr mad(address);
-    reportSuccess(mad.get() + "; " + utilities::m_itoa(intervals));
+    reportSuccess(mad.get() + "; quality: " +
+                  utilities::m_itoa(quality) + "; seconds to check: " +
+                  utilities::m_itoa(intervals));
 }
 
 void NeighborInfo::invoke(NetworkHandler &net_handler) {

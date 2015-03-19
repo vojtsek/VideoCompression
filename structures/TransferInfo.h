@@ -2,6 +2,7 @@
 #define TRANSFERINFO_H
 
 #include "structures/structures.h"
+#include "headers/utilities.h"
 
 struct TransferInfo : public Listener, Sendable {
     bool addressed;

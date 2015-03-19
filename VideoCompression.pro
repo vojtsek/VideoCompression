@@ -21,7 +21,7 @@ SOURCES +=  \
     sources/main.cpp \
     sources/networkhandler.cpp \
     sources/utilities.cpp \
-    structures/neighborstorage.cpp
+    structures/NeighborStorage.cpp
 
 HEADERS += \
     commands/interactive.h \

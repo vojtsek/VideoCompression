@@ -23,7 +23,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
     while (true) {
         ti = DATA->chunks_to_send.pop();
         if (!ti->addressed) {
-            if ((ngh = net_handler->getFreeNeighbor()) == nullptr) {
+            if ((ngh = DATA->neighbors.getFreeNeighbor()) == nullptr) {
                 reportDebug("No free neighbor!", 2);
                 pushChunkSend(ti);
                 sleep(5);
@@ -36,7 +36,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                     htons(DATA->config.getValue("LISTENING_PORT"));
             net_handler->spawnOutgoingConnection(ngh->address, sock,
             { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
-            net_handler->setNeighborFree(ngh->address, false);
+            DATA->neighbors.setNeighborFree(ngh->address, false);
         } else {
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
@@ -55,7 +55,7 @@ void chunkProcessRoutine() {
 }
 
 void processReturnedChunk(TransferInfo *ti,
-                          NetworkHandler *handler, VideoState *state) {
+                          NetworkHandler *, VideoState *state) {
     utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
     DATA->periodic_listeners.erase(ti->getHash());
@@ -65,12 +65,14 @@ void processReturnedChunk(TransferInfo *ti,
     }
     int comp_time = atoi(utilities::getTimestamp().c_str())
         - atoi(ti->timestamp.c_str());
-    NeighborInfo *ngh = handler->getNeighborInfo(ti->address);
-    ngh->overall_time += comp_time;
-    ngh->processed_chunks++;
-    ngh->quality = ngh->overall_time / ngh->processed_chunks;
-    reportDebug(MyAddr(ti->address).get() +
-              " new quality: " + utilities::m_itoa(ngh->quality), 3);
+    DATA->neighbors.applyToNeighbors([&](
+                     std::pair<std::string, NeighborInfo *> entry) {
+        if (cmpStorages(entry.second->address, ti->address)) {
+            entry.second->overall_time += comp_time;
+            entry.second->processed_chunks++;
+            entry.second->quality = entry.second->overall_time /
+                    entry.second->processed_chunks;
+        }});
     MSG_T type = DEBUG;
     if (!--DATA->state.to_recv) {
         type = SUCCESS;

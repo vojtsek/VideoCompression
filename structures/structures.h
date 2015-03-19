@@ -1,6 +1,8 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
+#include <string>
+#include <arpa/inet.h>
 class NetworkHandler;
 
 struct FileInfo {
@@ -26,7 +28,7 @@ struct MyAddr {
     void print();
     std::string get();
     //bool equalsTo(const struct sockaddr_storage &that);
-    MyAddr(struct sockaddr_storage &addr);
+    MyAddr(const struct sockaddr_storage &addr);
 };
 
 #endif // STRUCTURES_H

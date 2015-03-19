@@ -91,7 +91,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
 
         if (resp == ACK_BUSY) {
             reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
-            handler->setNeighborFree(address, false);
+            DATA->neighbors.setNeighborFree(address, false);
             pushChunkSend(ti);
             return true;
         }
@@ -109,8 +109,8 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
             reportDebug(
                 "This chunk is already being processed by this neighbor.", 2);
             ti->addressed = false;
-            handler->getNeighborInfo(
-                ti->address)->quality += 5; //todo: handle this better
+            DATA->neighbors.updateQuality(
+                        ti->address, 5);
         throw 1;
         }
 
@@ -136,7 +136,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
 }
 //TODO:generic function to send chunk
 
-bool CmdReturnHost::execute(int fd, sockaddr_storage &address, void *data) {
+bool CmdReturnHost::execute(int fd, sockaddr_storage &, void *data) {
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");

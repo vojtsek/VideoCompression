@@ -37,7 +37,8 @@
 #include "helpers/network_helper.h"
 
 
-bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
+bool cmpStorages(const struct sockaddr_storage &s1,
+                 const struct sockaddr_storage &s2) {
     if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
         return false;
     if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
@@ -59,7 +60,8 @@ bool cmpStorages(struct sockaddr_storage &s1, struct sockaddr_storage &s2) {
     return false;
 }
 
-bool addrIn(struct sockaddr_storage &addr, neighbor_storageT &list) {
+bool addrIn(const struct sockaddr_storage &addr,
+            neighbor_storageT &list) {
     for (auto &n : list) {
         if (cmpStorages(n.second->address, addr))
             return true;
@@ -129,7 +131,7 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
     return addr;
 }
 
-std::string storage2addr(sockaddr_storage &addr) {
+std::string storage2addr(const sockaddr_storage &addr) {
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr, buf, INET_ADDRSTRLEN);

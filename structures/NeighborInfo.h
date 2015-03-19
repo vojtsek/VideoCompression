@@ -2,6 +2,8 @@
 #define NEIGHBORINFO_H
 
 #include "structures/structures.h"
+#include "headers/defines.h"
+
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
     int intervals;
@@ -18,8 +20,7 @@ struct NeighborInfo : public Listener {
     virtual std::string getHash();
     virtual ~NeighborInfo() {}
 
-    NeighborInfo(struct sockaddr_storage &addr):
-        intervals(DATA->config.getValue("CHECK_INTERVALS")),
+    NeighborInfo(const struct sockaddr_storage &addr):
         quality(0), free(true) {
         address = addr;
     }

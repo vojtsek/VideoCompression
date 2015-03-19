@@ -1,8 +1,13 @@
 #ifndef SINGLETONS_H
 #define SINGLETONS_H
 
+#include <atomic>
+#include <unordered_map>
+#include "structures/WindowPrinter.h"
 #include "headers/enums_types.h"
 #include "structures/SynchronizedQueue.h"
+#include "structures/NeighborStorage.h"
+
 struct TransferInfo;
 struct Listener;
 
@@ -51,6 +56,7 @@ struct Data {
     Mutexes_Data m_data;
     Configuration config;
     State state;
+    NeighborStorage neighbors;
     SynchronizedQueue<TransferInfo> chunks_to_send, chunks_to_encode;
     std::unordered_map<std::string, TransferInfo *> waiting_chunks;
     std::unordered_map<std::string, Listener *> periodic_listeners;

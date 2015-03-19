@@ -1,5 +1,6 @@
 #ifndef ENUMS_TYPES_H
 #define ENUMS_TYPES_H
+#include <map>
 
 class Command;
 class NetworkCommand;
@@ -24,5 +25,6 @@ typedef std::map<CMDS, Command *> cmd_storage_t;
 typedef std::map<CMDS, NetworkCommand *> net_cmd_storage_t;
 typedef std::pair<std::string, MSG_T> printable_pair_T;
 typedef std::map<std::string, NeighborInfo *> neighbor_storageT;
+typedef std::pair<std::string, NeighborInfo *> neighbor_recordT;
 
 #endif // ENUMS_TYPES_H

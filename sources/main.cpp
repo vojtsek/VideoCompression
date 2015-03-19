@@ -128,7 +128,7 @@ void cleanCommands(cmd_storage_t &cmds) {
 }
 
 void periodicActions(NetworkHandler &net_handler) {
-    if (net_handler.getNeighborCount() < DATA->config.getValue(
+    if (DATA->neighbors.getNeighborCount() < DATA->config.getValue(
                 "MAX_NEIGHBOR_COUNT"))
         net_handler.obtainNeighbors();
     net_handler.contactSuperPeer();
