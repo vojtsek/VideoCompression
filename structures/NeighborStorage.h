@@ -20,11 +20,11 @@ public:
     NeighborInfo *getFreeNeighbor();
     struct sockaddr_storage getRandomNeighbor();
     std::vector<struct sockaddr_storage> getNeighborAdresses(int count);
-    int removeNeighbor(const struct sockaddr_storage addr);
+    int removeNeighbor(const struct sockaddr_storage &addr);
     void addNewNeighbor(const struct sockaddr_storage &addr);
     void setInterval(const struct sockaddr_storage &addr, int i);
     void updateQuality(const struct sockaddr_storage &addr, int q);
-    void setNeighborFree(struct sockaddr_storage &addr, bool free);
+    void setNeighborFree(const struct sockaddr_storage &addr, bool free);
     void applyToNeighbors(
             std::function<void (std::pair<std::string, NeighborInfo *>)> func);
     NeighborStorage();

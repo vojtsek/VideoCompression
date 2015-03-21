@@ -64,12 +64,14 @@ int utilities::rmFile(std::string fp) {
 int utilities::prepareDir(std::string location, bool destroy) {
     std::string directory, current;
     location = location.substr(
-                DATA->config.working_dir.length() + 1, location.length());
+                std::string(WD).size() + 1, location.length());
     uint32_t pos;
-    current = DATA->config.working_dir;
+    current = WD;
     while ((pos = location.find('/')) != std::string::npos) {
         directory = location.substr(0, pos);
-        location = location.substr(pos + 1, location.length());
+        if ( location.find('/') != std::string::npos) {
+            location = location.substr(pos + 1, location.length());
+        }
         current += "/" + directory;
         //todo remove rest?
         if (utilities::mkDir(current, destroy) == -1) {

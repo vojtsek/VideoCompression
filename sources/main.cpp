@@ -74,14 +74,14 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
     DATA->state.can_accept = DATA->config.getValue("MAX_ACCEPTED_CHUNKS");
-    DATA->state.to_send = 0;
     data->config.working_dir = WD;
     if (data->config.working_dir == "") {
         char dirp[BUF_LENGTH];
-        if (getcwd(dirp, BUF_LENGTH) == NULL)
+        if (getcwd(dirp, BUF_LENGTH) == NULL) {
             data->config.working_dir = std::string(dirp);
-        else
+        } else {
             data->config.working_dir = ".";
+        }
     }
     data->config.IPv4_ONLY = false;
     int x,y, y_space;
@@ -129,14 +129,12 @@ void cleanCommands(cmd_storage_t &cmds) {
 
 void periodicActions(NetworkHandler &net_handler) {
     if (DATA->neighbors.getNeighborCount() < DATA->config.getValue(
-                "MAX_NEIGHBOR_COUNT"))
+                "MAX_NEIGHBOR_COUNT")) {
         net_handler.obtainNeighbors();
+    }
     net_handler.contactSuperPeer();
-
-    std::for_each (DATA->periodic_listeners.begin(), DATA->periodic_listeners.end(),
-                   [&](std::pair<std::string, Listener *> entry) {
-            entry.second->invoke(net_handler);
-    });
+    DATA->periodic_listeners.applyTo(
+                [&](Listener *l) { l->invoke(net_handler);  });
 }
 
 int main(int argc, char **argv) {
@@ -151,6 +149,11 @@ int main(int argc, char **argv) {
     }
     int optidx = parseOptions(argc, argv);
     initConfiguration();
+    DATA->config.working_dir += "/" +
+            utilities::m_itoa(DATA->config.getValue("LISTENING_PORT"));
+    if (prepareDir(DATA->config.working_dir, false) == -1) {
+        reportError("Failed to prepare working directory.");
+    }
     NetworkHandler net_handler;
     VideoState state(&net_handler);
     initCommands(state, net_handler);

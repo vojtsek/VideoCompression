@@ -111,7 +111,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
             ti->addressed = false;
             DATA->neighbors.updateQuality(
                         ti->address, 5);
-        throw 1;
+            throw 1;
         }
 
         if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
@@ -126,12 +126,10 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
 
     ti->timestamp = getTimestamp();
 
-    DATA->chunks_to_send.signal();
-    DATA->periodic_listeners.insert(std::make_pair(ti->getHash(), ti));
-    DATA->waiting_chunks.insert(std::make_pair(ti->getHash(), ti));
    // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
     //                  "/" + ti->name + ti->original_extension);
-    reportDebug("Chunk transferred. " + m_itoa(--DATA->state.to_send) + " remaining.", 2);
+    reportDebug("Chunk transferred. " + m_itoa(
+                    DATA->chunks_to_send.getSize()) + " remaining.", 2);
     return true;
 }
 //TODO:generic function to send chunk
@@ -185,8 +183,7 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
         return false;
     }
     // do I need two containers?
-    if (DATA->waiting_chunks.find(ti->getHash()) !=
-            DATA->waiting_chunks.end()) {
+    if (!DATA->chunks_returned.contains(ti->getHash())) {
         processReturnedChunk(ti, handler, state);
         if (!DATA->state.to_recv) {
             state->join();

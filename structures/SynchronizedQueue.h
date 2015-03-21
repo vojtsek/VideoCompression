@@ -1,11 +1,100 @@
 #ifndef SYNCHRONIZEDQUEUE_H
 #define SYNCHRONIZEDQUEUE_H
+
+#include <vector>
 #include <deque>
+#include <unordered_map>
+#include <map>
 #include <mutex>
 #include <condition_variable>
 #include <algorithm>
 #include <functional>
 #include "headers/handle_IO.h"
+
+
+template <typename T>
+struct SynchronizedMap {
+    std::unordered_map<std::string, T *> map;
+    std::mutex mtx;
+    std::condition_variable cond;
+    bool being_used;
+
+    SynchronizedMap(): being_used(false) {}
+
+    void push(T *item) {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        map.insert(
+                    std::make_pair(item->getHash(), item));
+        lck.unlock();
+    }
+
+    T *get(std::string key) {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        T *item = nullptr;
+        lck.lock();
+        try {
+            item = map.at(key);
+        } catch (std::out_of_range) { }
+        lck.unlock();
+        return item;
+    }
+
+    bool contains (std::string key) {
+        if (get(key) == nullptr) {
+            return false;
+        }
+        return true;
+    }
+
+    std::vector<T *> getValues() {
+        std::vector<T *> values;
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        for (auto &v : map) {
+            values.push_back(v.second);
+        }
+        lck.unlock();
+    }
+
+    bool remove(T *item) {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        int size_before = map.size();
+        map.erase(item->getHash());
+        int size_after = map.size();
+        lck.unlock();
+        if (size_before != size_after) {
+            reportError("Removed: " + item->getHash());
+            return true;
+        }
+        return false;
+    }
+
+    void applyTo(std::function<void (T *)> func) {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        std::for_each(map.begin(), map.end(),
+                      [&](std::pair<std::string, T*> entry) { func(entry.second); });
+        lck.unlock();
+        return false;
+    }
+
+    bool removeIf(std::function<bool (T *)> func) {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        map.erase(
+            std::remove_if(map.begin(), map.end(), func), map.end());
+        lck.unlock();
+        return false;
+    }
+
+    void signal() {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        lck.unlock();
+    }
+};
 
 template <typename T>
 struct SynchronizedQueue {
@@ -29,10 +118,24 @@ struct SynchronizedQueue {
         cond.notify_one();
     }
 
+    int getSize() {
+        int size;
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        while (being_used) {
+            cond.wait(lck);
+        }
+        being_used = true;
+        size = queue.size();
+        being_used = false;
+        lck.unlock();
+        cond.notify_one();
+        return size;
+    }
+
     T *pop() {
         T *item = nullptr;
-        std::unique_lock<std::mutex> lck(
-                    mtx, std::defer_lock);
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         while (being_used || !queue.size()) {
             cond.wait(lck);
@@ -47,8 +150,7 @@ struct SynchronizedQueue {
     }
 
     bool remove(T *item) {
-        std::unique_lock<std::mutex> lck(
-                    mtx, std::defer_lock);
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         while (being_used) {
             cond.wait(lck);
@@ -67,8 +169,7 @@ struct SynchronizedQueue {
     }
 
     bool removeIf(std::function<bool (T *)> func) {
-        std::unique_lock<std::mutex> lck(
-                    mtx, std::defer_lock);
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         while (being_used) {
             cond.wait(lck);
@@ -83,8 +184,7 @@ struct SynchronizedQueue {
     }
 
     void signal() {
-         std::unique_lock<std::mutex> lck(
-                    mtx, std::defer_lock);
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         lck.unlock();
         cond.notify_one();

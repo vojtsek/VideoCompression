@@ -29,14 +29,18 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                 sleep(5);
                 continue;
             }
+            DATA->periodic_listeners.remove(ti);
             int sock = net_handler->checkNeighbor(ngh->address);
             ti->address = ngh->address;
             getHostAddr(ti->src_address, sock);
             ((struct sockaddr_in*) &ti->src_address)->sin_port =
                     htons(DATA->config.getValue("LISTENING_PORT"));
             net_handler->spawnOutgoingConnection(ngh->address, sock,
-            { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
+            { PING_PEER, DISTRIBUTE_PEER }, false, (void *) ti);
+            DATA->chunks_to_send.signal();
+            DATA->periodic_listeners.push(ti);
             DATA->neighbors.setNeighborFree(ngh->address, false);
+            reportSuccess(ti->name + " was sent.");
         } else {
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
@@ -56,13 +60,12 @@ void chunkProcessRoutine() {
 
 void processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *, VideoState *state) {
+    DATA->periodic_listeners.remove(ti);
+    reportDebug("Chunk returned: " + ti->getHash(), 2);
+    DATA->chunks_returned.push(ti);
     utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
-    DATA->periodic_listeners.erase(ti->getHash());
-    DATA->waiting_chunks.erase(ti->getHash());
-    if (DATA->chunks_to_send.remove(ti)) {
-        DATA->state.to_send--;
-    }
+    DATA->chunks_to_send.remove(ti);
     int comp_time = atoi(utilities::getTimestamp().c_str())
         - atoi(ti->timestamp.c_str());
     DATA->neighbors.applyToNeighbors([&](

@@ -14,7 +14,7 @@ struct Listener;
 struct State {
     bool enough_neighbors = false;
     bool working = false;
-    std::atomic<int> can_accept, to_send, to_recv;
+    std::atomic<int> can_accept, to_recv;
 };
 
 
@@ -58,8 +58,8 @@ struct Data {
     State state;
     NeighborStorage neighbors;
     SynchronizedQueue<TransferInfo> chunks_to_send, chunks_to_encode;
-    std::unordered_map<std::string, TransferInfo *> waiting_chunks;
-    std::unordered_map<std::string, Listener *> periodic_listeners;
+    SynchronizedMap<TransferInfo>chunks_returned;
+    SynchronizedMap<Listener> periodic_listeners;
     std::unordered_map<std::string, TransferInfo *> chunks_received;
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};

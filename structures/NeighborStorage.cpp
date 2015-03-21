@@ -15,29 +15,31 @@ int NeighborStorage::getNeighborCount() {
     return size;
 }
 
-int NeighborStorage::removeNeighbor(sockaddr_storage addr) {
+int NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
+    //TODO: check differently
     if (getNeighborInfo(addr) == nullptr)
         return 0;
-    reportError("Removing neighbor: " + MyAddr(addr).get());
     n_mtx.lock();
     free_neighbors.erase(
         std::remove_if(free_neighbors.begin(), free_neighbors.end(),
                    [&](NeighborInfo *ngh) {
-        return cmpStorages(ngh->address, addr);
+                        return cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
     //todo: removing neighbor with algorithms?
     //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (cmpStorages(it->second->address, addr)) {
-            DATA->periodic_listeners.erase(
-                        it->second->getHash());
+            //TODO: structures handling synchronization of listeners
+          //  DATA->periodic_listeners.erase(
+               //         it->second->getHash());
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
                 return cmpStorages(ti->address, it->second->address);
             });
-            delete it->second;
+            //delete it->second;
             neighbors.erase(it);
+            reportError("Removed neighbor: " + MyAddr(addr).get());
             n_mtx.unlock();
             return 1;
         }
@@ -65,13 +67,11 @@ void NeighborStorage::setInterval(
 
 void NeighborStorage::updateQuality(
         const struct sockaddr_storage &addr, int q) {
-    SYNCHRONIZED_SECTION(
         applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
             if (cmpStorages(entry.second->address, addr)) {
                 entry.second->quality += q;
             }});
-    )
     return;
 }
 
@@ -89,7 +89,8 @@ NeighborInfo *NeighborStorage::getNeighborInfo(
     return res;
 }
 
-void NeighborStorage::setNeighborFree(sockaddr_storage &addr, bool free) {
+void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
+                                      bool free) {
     NeighborInfo *ngh = getNeighborInfo(addr);
     if (ngh == nullptr) {
         return;
@@ -161,8 +162,7 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
             "NEIGHBOR_CHECK_TIMEOUT");
         neighbors.insert(
             std::make_pair(ngh->getHash(), ngh));
-        DATA->periodic_listeners.insert(
-            std::make_pair(ngh->getHash(), ngh));
+        DATA->periodic_listeners.push(ngh);
         free_neighbors.push_back(ngh);
         MyAddr mad(addr);
         reportDebug("Neighbor added; " + mad.get(), 3);

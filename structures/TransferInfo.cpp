@@ -15,13 +15,12 @@ void TransferInfo::invoke(NetworkHandler &handler) {
             time_left = DATA->config.getValue(
                         "COMPUTATION_TIMEOUT");
             return;
-        } else {
-
-        }
+        } else {}
         try {
-            DATA->waiting_chunks.at(getHash());
+            if (DATA->chunks_returned.contains(getHash())) {
+                return;
+            }
             reportError(name + ": Still in queue, resending.");
-            DATA->state.to_send++;
             pushChunkSend(this);
             time_left = DATA->config.getValue(
                         "COMPUTATION_TIMEOUT");
