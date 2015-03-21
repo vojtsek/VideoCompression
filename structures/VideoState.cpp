@@ -2,6 +2,7 @@
 #include "headers/include_list.h"
 
 #include <fstream>
+#include <algorithm>
 
 
 int VideoState::split() {
@@ -15,7 +16,6 @@ int VideoState::split() {
     sprintf(dir_name, "job_%s", utilities::getTimestamp().c_str());
     job_id = std::string(dir_name);
     std::string path(dir_location + std::string("/") + job_id);
-    reportStatus(path);
     if (utilities::prepareDir(path, false) == -1) {
         reportError("Failed to create the job directory.");
         return (-1);
@@ -26,9 +26,12 @@ int VideoState::split() {
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
     reportStatus("Splitting file: " + finfo.fpath);
     DATA->state.to_recv = c_chunks;
-    std::string infoMsg = utilities::formatString("processed chunks: ", "0/" + utilities::m_itoa(c_chunks));
+    std::string infoMsg = utilities::formatString(
+                "processed chunks: ", "0/" + utilities::m_itoa(c_chunks));
     if (msgIndex < 0) {
         msgIndex = DATA->io_data.info_handler.add(infoMsg, DEBUG);
+    } else {
+        DATA->io_data.info_handler.updateAt(msgIndex, infoMsg, DEBUG);
     }
     DATA->io_data.info_handler.print();
     for (unsigned int i = 0; i < c_chunks; ++i) {
@@ -121,14 +124,28 @@ int VideoState::join() {
     thr.join();
     printProgress(1);
     reportSuccess("Succesfully joined.");
-    DATA->io_data.info_handler.updateAt(msgIndex, "", PLAIN);
+    endProcess(duration);
+    return (0);
+}
+
+void VideoState::endProcess(int duration) {
+    std::ofstream ofs(DATA->config.working_dir + "/" + job_id + ".out");
+    DATA->io_data.info_handler.updateAt(msgIndex, "DONE", SUCCESS);
     reportTime("/joining.j", duration / 1000);
     clearProgress();
     utilities::rmrDir(DATA->config.working_dir + "/received/", true);
     DATA->state.working = false;
-    return (0);
+    std::vector<TransferInfo *> tis = DATA->chunks_returned.getValues();
+    std::sort(tis.begin(), tis.end(), [&](
+              TransferInfo *t1, TransferInfo *t2)
+    {return (t1->encoding_time < t2->encoding_time);});
+    for (auto &ti : tis) {
+        ofs << ti->toString();
+    }
+    ofs.close();
+    DATA->chunks_returned.clear();
+    DATA->chunks_to_send.clear();
 }
-
 
 void VideoState::printVideoState() {
     DATA->io_data.info_handler.print();

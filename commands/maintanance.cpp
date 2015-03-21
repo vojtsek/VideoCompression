@@ -19,11 +19,11 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
             return false;
         }
         addr = DATA->neighbors.getRandomNeighbor();
-        if (sendSth(count, fd) == -1) {
+        if (sendInt32(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
-        if (sendSth(addr, fd) == -1) {
+        if (sendStruct(fd, addr) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
@@ -31,12 +31,12 @@ bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     if (!count) {
         return false;
     }
-        if (sendSth(count, fd) == -1) {
+        if (sendInt32(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
         for (auto &address: DATA->neighbors.getNeighborAdresses(count)) {
-            if (sendSth(address, fd) == -1) {
+            if (sendStruct(fd, address) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
             }
@@ -49,18 +49,20 @@ bool CmdAskHost::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKHOST", 5);
     struct sockaddr_storage addr;
     int count;
-    if (recvSth(count, fd) == -1) {
+    if (receiveInt32(fd, count) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
         for (int i = 0; i < count; ++i) {
-            if (recvSth(addr, fd) == -1) {
+            if (receiveStruct(fd, addr) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
             }
         addr.ss_family = AF_INET6;
-        if (((sockaddr_in6 *) &addr)->sin6_port != htons(DATA->config.intValues.at("LISTENING_PORT")))
-            handler->addNewNeighbor(true, 		addr);
+        //TODO: compare storages
+        if (((sockaddr_in6 *) &addr)->sin6_port != htons(
+                    DATA->config.intValues.at("LISTENING_PORT")))
+            handler->addNewNeighbor(true, addr);
     }
         reportDebug("ASKHOST END", 5);
         return true;
@@ -82,7 +84,7 @@ bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
             return false;
     }
 
-    if (recvSth(port, fd) == -1) {
+    if (receiveInt32(fd, port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -99,11 +101,11 @@ bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     close(sock);
     ((struct sockaddr_in6 *) &addr)->sin6_port = htons(DATA->config.getValue("LISTENING_PORT"));
 
-    if (sendSth(resp, fd) == -1) {
+    if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    if (sendSth(addr, fd) == -1) {
+    if (sendStruct(fd, addr) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -115,12 +117,12 @@ bool CmdConfirmHost::execute(int fd, struct sockaddr_storage &address, void *) {
     RESPONSE_T resp;
     struct sockaddr_storage addr;
 
-    if (sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd) == -1) {
+    if (sendInt32(fd, DATA->config.intValues.at("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
 
-    if (recvSth(resp, fd) == -1) {
+    if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -128,7 +130,7 @@ bool CmdConfirmHost::execute(int fd, struct sockaddr_storage &address, void *) {
         reportDebug("Failed to confirm neighbor " + MyAddr(address).get(), 1);
         return false;
     }
-    if (recvSth(addr, fd) == -1) {
+    if (receiveStruct(fd, addr) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -145,7 +147,7 @@ bool CmdConfirmHost::execute(int fd, struct sockaddr_storage &address, void *) {
 bool CmdPingHost::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("PONG", 5);
     RESPONSE_T resp;
-    if (recvSth(resp, fd) == -1) {
+    if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -159,7 +161,7 @@ bool CmdPingHost::execute(int fd, struct sockaddr_storage &address, void *) {
     } else {
         DATA->neighbors.setNeighborFree(address, true);
     }
-    if (sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd) == -1) {
+    if (sendInt32(fd, DATA->config.intValues.at("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -180,11 +182,11 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    if (sendSth(resp, fd) == -1) {
+    if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    if (recvSth(peer_port, fd) == -1) {
+    if (receiveInt32(fd, peer_port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -219,14 +221,14 @@ bool CmdGoodbyePeer::execute(int fd, struct sockaddr_storage &address, void *) {
             return false;
     }
 
-    if (recvSth(port, fd) == -1) {
+    if (receiveInt32(fd, port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
 
     ((struct sockaddr_in6 *) &address)->sin6_port = htons(port);
     DATA->neighbors.removeNeighbor(address);
-    if (sendSth(resp, fd) == -1) {
+    if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -236,12 +238,13 @@ bool CmdGoodbyePeer::execute(int fd, struct sockaddr_storage &address, void *) {
 bool CmdGoodbyeHost::execute(int fd, sockaddr_storage &address, void *) {
     RESPONSE_T resp;
 
-    if (sendSth(DATA->config.intValues.at("LISTENING_PORT"), fd) == -1) {
+    if (sendInt32(fd, DATA->config.intValues.at(
+                      "LISTENING_PORT")) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
 
-    if (recvSth(resp, fd) == -1) {
+    if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }

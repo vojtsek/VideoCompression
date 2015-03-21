@@ -21,7 +21,8 @@ SOURCES +=  \
     sources/main.cpp \
     sources/networkhandler.cpp \
     sources/utilities.cpp \
-    structures/NeighborStorage.cpp
+    structures/NeighborStorage.cpp \
+    helpers/senders_receivers.cpp
 
 HEADERS += \
     commands/interactive.h \
@@ -47,7 +48,8 @@ HEADERS += \
     headers/templates.h \
     headers/utilities.h \
     structures/SynchronizedQueue.h \
-    structures/NeighborStorage.h
+    structures/NeighborStorage.h \
+    helpers/senders_receivers.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

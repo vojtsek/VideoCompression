@@ -55,6 +55,7 @@ struct SynchronizedMap {
             values.push_back(v.second);
         }
         lck.unlock();
+        return values;
     }
 
     bool remove(T *item) {
@@ -65,7 +66,6 @@ struct SynchronizedMap {
         int size_after = map.size();
         lck.unlock();
         if (size_before != size_after) {
-            reportError("Removed: " + item->getHash());
             return true;
         }
         return false;
@@ -93,6 +93,10 @@ struct SynchronizedMap {
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         lck.unlock();
+    }
+
+    void clear() {
+        map.clear();
     }
 };
 
@@ -147,6 +151,13 @@ struct SynchronizedQueue {
         lck.unlock();
         cond.notify_one();
         return item;
+    }
+
+    void clear() {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        queue.clear();
+        lck.unlock();
     }
 
     bool remove(T *item) {

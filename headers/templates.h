@@ -36,15 +36,6 @@ int sendSth(T what, int fd) {
 }
 
 template<typename T>
-int sendSth(T *what, int fd, int len) {
-    int w;
-    if ((w = write(fd, what, len * sizeof(T))) == -1) {
-        reportDebug("Problem occured while sending the data.", 1);
-        return (-1);
-    }
-    return (w);
-}
-template<typename T>
 int recvSth(T &where, int fd) {
     int r;
      if ((r = read(fd, &where, sizeof (T))) != sizeof(T)) {
@@ -53,15 +44,5 @@ int recvSth(T &where, int fd) {
     }
     return (r);
 }
-template<typename T>
-int recvSth(T *where, int fd, int len) {
-    int r;
-    if ((r = read(fd, where, len * sizeof (T))) < 1) {
-        reportDebug("Problem occured while accepting the data.", 1);
-        return (-1);
-    }
-    return (r);
-}
-
 
 #endif // TEMPLATES_H

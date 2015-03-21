@@ -16,7 +16,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
             return false;
     }
     try {
-    if (sendSth(resp, fd) == -1) {
+    if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
     }
@@ -33,7 +33,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     if (DATA->chunks_received.find(
                 ti->getHash()) != DATA->chunks_received.end()) {
         resp = ABORT;
-        if (sendSth(resp, fd) == -1) {
+        if (sendResponse(fd, resp) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 throw 1;
         }
@@ -42,7 +42,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     }
 
     resp = AWAITING;
-    if (sendSth(resp, fd) == -1) {
+    if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
     }
@@ -84,7 +84,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
     TransferInfo *ti = (TransferInfo *) data;
 
     try {
-        if (recvSth(resp, fd) == -1) {
+        if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
         }
@@ -101,7 +101,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
             throw 1;
         }
 
-        if (recvSth(resp, fd) == -1) {
+        if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
         }

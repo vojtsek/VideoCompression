@@ -29,6 +29,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                 sleep(5);
                 continue;
             }
+            //ngh should not be here
             DATA->periodic_listeners.remove(ti);
             int sock = net_handler->checkNeighbor(ngh->address);
             ti->address = ngh->address;
@@ -39,9 +40,11 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
             { PING_PEER, DISTRIBUTE_PEER }, false, (void *) ti);
             DATA->chunks_to_send.signal();
             DATA->periodic_listeners.push(ti);
+            ti->sent_times++;
             DATA->neighbors.setNeighborFree(ngh->address, false);
-            reportSuccess(ti->name + " was sent.");
+            reportDebug(ti->name + " was sent.", 3);
         } else {
+            reportSuccess("Returning: " + ti->getHash());
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
@@ -68,6 +71,7 @@ void processReturnedChunk(TransferInfo *ti,
     DATA->chunks_to_send.remove(ti);
     int comp_time = atoi(utilities::getTimestamp().c_str())
         - atoi(ti->timestamp.c_str());
+    ti->encoding_time = comp_time;
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
         if (cmpStorages(entry.second->address, ti->address)) {

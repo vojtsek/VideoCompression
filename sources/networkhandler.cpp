@@ -22,6 +22,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                                     int fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
+        int32_t i;
         int fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
@@ -31,10 +32,11 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                 break;
             }
 
-            if (recvSth(action, fd) == -1) {
+            if (receiveInt32(fd, i) == -1) {
                 reportError("Failed to process the action.");
                 break;
             }
+            action = CMDS(i);
             response = true;
             if (action == TERM){
                 sendSth(response, fd);
@@ -84,6 +86,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
     std::thread handling_thread([=]() {
         CMDS action;
         ssize_t r;
+        int32_t i;
         int fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;

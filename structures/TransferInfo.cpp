@@ -1,5 +1,6 @@
 #include "headers/defines.h"
 #include "headers/include_list.h"
+#include <sstream>
 
 void TransferInfo::print() {
     reportStatus("Path: " + path);
@@ -33,6 +34,11 @@ void TransferInfo::invoke(NetworkHandler &handler) {
 int TransferInfo::send(int fd) {
     if (sendSth(chunk_size, fd) == -1) {
         reportDebug("Failed to send size.", 1);
+        return -1;
+    }
+
+    if (sendSth(sent_times, fd) == -1) {
+        reportDebug("Failed to send times sent.", 1);
         return -1;
     }
 
@@ -83,10 +89,16 @@ int TransferInfo::receive(int fd) {
         reportDebug("Failed to receive size.", 1);
         return -1;
     }
+
+     if (recvSth(sent_times, fd) == -1) {
+        reportDebug("Failed to receive times sent.", 1);
+        return -1;
+    }
+
     struct sockaddr_storage srca;
 
     if (recvSth(srca, fd) == -1) {
-        reportDebug("Failed to receive source address.", 1);
+        reportDebug("Failed to receive address.", 1);
         return -1;
     }
     address = srca;
@@ -128,6 +140,17 @@ int TransferInfo::receive(int fd) {
         return -1;
     }
     return 0;
+}
+
+std::string TransferInfo::toString() {
+    std::stringstream ss;
+    ss << "----------------------------------" << std::endl;
+    ss << "Name: " << name << std::endl;
+    ss << "Times sent: " << sent_times << std::endl;
+    ss << "Encoding time: " << encoding_time << std::endl;
+    ss << "Encoded by: " << MyAddr(address).get() << std::endl;
+    ss << "---------------------------------" << std::endl;
+    return ss.str();
 }
 
 std::string TransferInfo::getHash() {

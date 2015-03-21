@@ -26,6 +26,7 @@ struct VideoState {
     void loadFileInfo(struct FileInfo &finfo);
     void resetFileInfo();
     void abort();
+    void endProcess(int duration);
 };
 
 #endif // VIDEOSTATE_H
