@@ -5,7 +5,7 @@
 class HistoryStorage {
     std::vector<std::string> history;
     std::string filename;
-    unsigned int c_index;
+    uint32_t c_index;
 public:
     HistoryStorage(const std::string &fn);
     void prev();

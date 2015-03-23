@@ -13,13 +13,13 @@
 struct NetworkHandler {
     std::vector<struct sockaddr_storage> potential_neighbors;
     std::mutex potential_mtx;
-    int listening_sock;
-    void spawnOutgoingConnection(struct sockaddr_storage addr, int fd,
+    int32_t listening_sock;
+    void spawnOutgoingConnection(struct sockaddr_storage addr, int32_t fd,
                                  std::vector<CMDS> cmds, bool async, void *data);
-    void spawnIncomingConnection(struct sockaddr_storage addr, int fd, bool async);
-    int start_listening(int port);
-    int checkNeighbor(struct sockaddr_storage addr);
-    int getPotentialNeighborsCount();
+    void spawnIncomingConnection(struct sockaddr_storage addr, int32_t fd, bool async);
+    int32_t start_listening(int32_t port);
+    int32_t checkNeighbor(struct sockaddr_storage addr);
+    int32_t getPotentialNeighborsCount();
     void confirmNeighbor(struct sockaddr_storage addr);
     void obtainNeighbors();
     void collectNeighbors();

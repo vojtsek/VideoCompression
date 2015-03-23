@@ -24,14 +24,14 @@ class NetworkCommand: public Command {
 protected:
     NetworkHandler *handler;
 public:
-    int connectPeer(struct sockaddr_storage *addr);
+    int32_t connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
     virtual std::string getName() {
         return(typeid(this).name());
     }
     virtual void execute() {}
-    virtual bool execute(int fd, struct sockaddr_storage &addr, void *data) = 0;
+    virtual bool execute(int32_t fd, struct sockaddr_storage &addr, void *data) = 0;
 };
 
 #endif

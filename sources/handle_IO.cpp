@@ -67,7 +67,7 @@ string loadInput(const std::string &histf, const std::string &msg, bool save) {
 
 void reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
-    int tries = 10;
+    int32_t tries = 10;
     double percent;
     while (fs < desired) {
         fs = utilities::getFileSize(file);
@@ -103,7 +103,7 @@ void reportStatus(const std::string &msg) {
     DATA->io_data.status_handler.print();
 }
 
-void reportDebug(const std::string &msg, int lvl) {
+void reportDebug(const std::string &msg, int32_t lvl) {
     if (lvl <= DEBUG_LEVEL) {
         DATA->io_data.status_handler.add(msg, DEBUG);
         DATA->io_data.status_handler.print();
@@ -138,7 +138,7 @@ void printProgress(double percent) {
     clrtoeol();
     printw("(%d%%)", (int) (percent * 100));
     attron(COLOR_PAIR(CYANALL));
-    for(int i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
+    for(int32_t i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
         printw("#");
     attroff(COLOR_PAIR(CYANALL));
     refresh();
@@ -147,7 +147,7 @@ void printProgress(double percent) {
 }
 
 void cursToCmd() {
-    int max_x, max_y;
+    int32_t max_x, max_y;
     getmaxyx(stdscr, max_y, max_x);
     move(max_y - 1, 0);
     clrtoeol();
@@ -162,7 +162,7 @@ void cursToStatus() {
     if (!DATA->io_data.status_y) {
         DATA->io_data.status_y = getmaxy(stdscr) - 4;
     }
-    static int status_y = DATA->io_data.status_y;
+    static int32_t status_y = DATA->io_data.status_y;
     move(status_y, 0);
 }
 
@@ -183,13 +183,13 @@ void clearProgress() {
     clrtoeol();
 }
 
-void cursorToX(int nx) {
-    int y, x;
+void cursorToX(int32_t nx) {
+    int32_t y, x;
     getyx(stdscr, y, x);
     move(y, nx);
 }
 
-int getLine(char *line, int len, const std::string &histf, bool save) {
+int32_t getLine(char *line, int32_t len, const std::string &histf, bool save) {
     HistoryStorage hist(histf);
     char *start = line;
     *line = '\0';
@@ -197,7 +197,7 @@ int getLine(char *line, int len, const std::string &histf, bool save) {
     nocbreak();
     cbreak();
     wchar_t c;
-    int read = 0;
+    int32_t read = 0;
     while(++read <= len) {
         c = getch();
         if (c == KEY_UP) {
@@ -221,7 +221,7 @@ int getLine(char *line, int len, const std::string &histf, bool save) {
                 line = start + read;
             } catch (...) {}
         } else if (c == 8) {
-            int y, x;
+            int32_t y, x;
             getyx(stdscr, y, x);
             --x;
             if (x < 1)

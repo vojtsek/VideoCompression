@@ -18,13 +18,13 @@ struct Listener {
 };
 
 struct Sendable {
-    virtual int send(int fd) = 0;
-    virtual int receive(int fd) = 0;
+    virtual int32_t send(int32_t fd) = 0;
+    virtual int32_t receive(int32_t fd) = 0;
 };
 
 struct MyAddr {
     std::string addr;
-    int port;
+    int32_t port;
     void print();
     std::string get();
     //bool equalsTo(const struct sockaddr_storage &that);

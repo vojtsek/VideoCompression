@@ -26,8 +26,8 @@ void Command::execute() {
 }
 
 
-int NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
-    int sock, family;
+int32_t NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
+    int32_t sock, family;
     family = ((struct sockaddr *) addr)->sa_family;
     if ((sock = socket(family, SOCK_STREAM, 6)) == -1) {
         reportDebug("Failed to create socket for connection." + std::string(strerror(errno)), 1);

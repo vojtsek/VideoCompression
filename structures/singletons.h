@@ -22,7 +22,7 @@ struct IO_Data {
     IO_Data(std::string log_location): info_handler(STATIC, false, TOP, log_location),
         status_handler(UP, true, BOTTOM, log_location) {}
     WindowPrinter info_handler, status_handler;
-    int status_y = 0, perc_y = 0, question_y = 0;
+    int32_t status_y = 0, perc_y = 0, question_y = 0;
     WINDOW *status_win, *info_win;
     void changeLogLocation(std::string log_location) {
         status_handler.changeLogLocation(log_location);
@@ -39,7 +39,7 @@ struct Configuration {
     bool is_superpeer = false, IPv4_ONLY;
     std::map<std::string, int> intValues;
     std::string working_dir, superpeer_addr;
-    int getValue(std::string key);
+    int32_t getValue(std::string key);
 };
 
 struct Data {

@@ -12,7 +12,7 @@ void NeighborInfo::printInfo() {
 }
 
 void NeighborInfo::invoke(NetworkHandler &net_handler) {
-    int sock;
+    int32_t sock;
     if (!--intervals) {
         sock = net_handler.checkNeighbor(address);
         net_handler.spawnOutgoingConnection(address, sock, { PING_PEER }, true, nullptr);

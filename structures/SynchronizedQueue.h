@@ -61,9 +61,9 @@ struct SynchronizedMap {
     bool remove(T *item) {
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
-        int size_before = map.size();
+        int32_t size_before = map.size();
         map.erase(item->getHash());
-        int size_after = map.size();
+        int32_t size_after = map.size();
         lck.unlock();
         if (size_before != size_after) {
             return true;
@@ -125,8 +125,8 @@ struct SynchronizedQueue {
         cond.notify_one();
     }
 
-    int getSize() {
-        int size;
+    int32_t getSize() {
+        int32_t size;
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         while (being_used) {
@@ -170,12 +170,12 @@ struct SynchronizedQueue {
             cond.wait(lck);
         }
         being_used = true;
-        int size_before = queue.size();
+        int32_t size_before = queue.size();
         queue.erase(
             std::remove_if(queue.begin(), queue.end(), [=](T *it) {
                 return (item->equalsTo(it));
             }), queue.end());
-        int size_after = queue.size();
+        int32_t size_after = queue.size();
         being_used = false;
         lck.unlock();
         cond.notify_one();

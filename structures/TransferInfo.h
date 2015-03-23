@@ -6,7 +6,7 @@
 
 struct TransferInfo : public Listener, Sendable {
     bool addressed;
-    int chunk_size, time_left, tries_left,
+    int32_t chunk_size, time_left, tries_left,
     sending_time, receiving_time,
     sent_times, processing_time, encoding_time;
     struct sockaddr_storage address, src_address;
@@ -20,15 +20,15 @@ struct TransferInfo : public Listener, Sendable {
 
     virtual void invoke(NetworkHandler &handler);
     virtual std::string getHash();
-    virtual int send(int fd);
-    virtual int receive(int fd);
+    virtual int32_t send(int32_t fd);
+    virtual int32_t receive(int32_t fd);
     std::string toString();
     void print();
     virtual bool equalsTo(Listener *that);
 
     TransferInfo(): addressed(false) {};
 
-    TransferInfo(struct sockaddr_storage addr, int size,
+    TransferInfo(struct sockaddr_storage addr, int32_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
                  std::string p, std::string oc): addressed(true), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
@@ -40,7 +40,7 @@ struct TransferInfo : public Listener, Sendable {
         src_address = addr;
     }
 
-    TransferInfo(int size,
+    TransferInfo(int32_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
                  std::string p, std::string oc): addressed(false), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),

@@ -10,7 +10,7 @@
 struct VideoState {
     struct FileInfo finfo;
     size_t secs_per_chunk, c_chunks, chunk_size;
-    int msgIndex, processed_chunks;
+    int32_t msgIndex, processed_chunks;
     std::string dir_location, job_id, o_format, o_codec;
     std::ofstream ofs;
     NetworkHandler *net_handler;
@@ -20,15 +20,15 @@ struct VideoState {
         net_handler = nh;
     }
 
-    int split();
-    int join();
+    int32_t split();
+    int32_t join();
     void printVideoState();
     void changeChunkSize(size_t nsize);
     void loadFileInfo(struct FileInfo &finfo);
     void resetFileInfo();
     void abort();
     void reportTime(std::string msg, int32_t time);
-    void endProcess(int duration);
+    void endProcess(int32_t duration);
 };
 
 #endif // VIDEOSTATE_H

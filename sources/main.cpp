@@ -32,8 +32,8 @@ bool argsContains(char **argv, const char *str) {
     return false;
 }
 
-int parseOptions(int argc, char **argv) {
-    int opt;
+int32_t parseOptions(int32_t argc, char **argv) {
+    int32_t opt;
     while ((opt = getopt(argc, argv, "p:")) != -1) {
         switch (opt) {
         case 'p':
@@ -47,10 +47,10 @@ int parseOptions(int argc, char **argv) {
     return (optind);
 }
 
-int readConfiguration(const std::string &cf) {
+int32_t readConfiguration(const std::string &cf) {
     ifstream ifs(cf);
     std::string param, value, line;
-    int intvalue;
+    int32_t intvalue;
     while(ifs.good()) {
         getline(ifs, line);
         std::stringstream ss(line);
@@ -84,7 +84,7 @@ void initConfiguration() {
         }
     }
     data->config.IPv4_ONLY = false;
-    int x,y, y_space;
+    int32_t x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
     data->io_data.status_win = derwin(stdscr, y_space / 2 - 1, x, 3 + y_space / 2, 0);
@@ -137,7 +137,7 @@ void periodicActions(NetworkHandler &net_handler) {
                 [&](Listener *l) { l->invoke(net_handler);  });
 }
 
-int main(int argc, char **argv) {
+int32_t main(int32_t argc, char **argv) {
 	if (argc > 2) {
 		usage();
     }
@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
         reportError("Error reading configuration!");
         return (1);
     }
-    int optidx = parseOptions(argc, argv);
+    int32_t optidx = parseOptions(argc, argv);
     initConfiguration();
     DATA->config.working_dir += "/" +
             utilities::m_itoa(DATA->config.getValue("LISTENING_PORT"));

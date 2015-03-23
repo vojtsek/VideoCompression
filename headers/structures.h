@@ -8,8 +8,8 @@ struct Listener {
 };
 
 struct Sendable {
-    virtual int send(int fd) = 0;
-    virtual int receive(int fd) = 0;
+    virtual int32_t send(int32_t fd) = 0;
+    virtual int32_t receive(int32_t fd) = 0;
 };
 
 

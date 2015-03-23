@@ -71,8 +71,8 @@ bool networkHelper::addrIn(
     return false;
 }
 
-int networkHelper::getHostAddr(
-        struct sockaddr_storage &addr, int fd) {
+int32_t networkHelper::getHostAddr(
+        struct sockaddr_storage &addr, int32_t fd) {
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
@@ -96,8 +96,8 @@ int networkHelper::getHostAddr(
     return -1;
 }
 
-int networkHelper::getPeerAddr(
-        struct sockaddr_storage &addr, int fd) {
+int32_t networkHelper::getPeerAddr(
+        struct sockaddr_storage &addr, int32_t fd) {
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
@@ -120,7 +120,7 @@ int networkHelper::getPeerAddr(
 }
 
 struct sockaddr_storage networkHelper::addr2storage(
-        const char *addrstr, int port, int family) {
+        const char *addrstr, int32_t port, int32_t family) {
     struct sockaddr_storage addr;
     if (family == AF_INET) {
         struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
@@ -149,13 +149,13 @@ std::string networkHelper::storage2addr(
     }
 }
 
-void networkHelper::changeAddressPort(struct sockaddr_storage &addr, int port) {
-
+void networkHelper::changeAddressPort(struct sockaddr_storage &addr, int32_t port) {
+    port = (in_port_t) port;
     if (addr.ss_family == AF_INET) {
         ((struct sockaddr_in *) &addr)->sin_port =
-                htonl(port);
+                htons(port);
     } else {
         ((struct sockaddr_in6 *) &addr)->sin6_port =
-                htonl(port);
+                htons(port);
     }
 }

@@ -5,7 +5,7 @@
 #include <algorithm>
 
 
-int VideoState::split() {
+int32_t VideoState::split() {
     DATA->state.working = true;
     processed_chunks = false;
     std::string out, err;
@@ -34,7 +34,7 @@ int VideoState::split() {
         DATA->io_data.info_handler.updateAt(msgIndex, infoMsg, DEBUG);
     }
     DATA->io_data.info_handler.print();
-    for (unsigned int i = 0; i < c_chunks; ++i) {
+    for (uint32_t i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
 
         printProgress(percent);
@@ -84,7 +84,7 @@ void VideoState::abort() {
     DATA->state.working = false;
 }
 
-int VideoState::join() {
+int32_t VideoState::join() {
     std::string out, err, list_loc(DATA->config.working_dir + "/received/" + job_id + "/join_list.txt"),
             output(DATA->config.working_dir + "/" + finfo.basename + "_output" + o_format);
     std::string file, file_item;
@@ -96,7 +96,7 @@ int VideoState::join() {
     errno = 0;
     reportStatus("Joining the file: " + output);
     snprintf(cmd, BUF_LENGTH, "ffmpeg");
-    for (unsigned int i = 0; i < c_chunks; ++i) {
+    for (uint32_t i = 0; i < c_chunks; ++i) {
         snprintf(fn, BUF_LENGTH, "%03d_splitted", i);
         file = DATA->config.working_dir +
                 "/received/" + job_id + "/" + fn + o_format;
@@ -132,7 +132,7 @@ void VideoState::reportTime(std::string msg, int32_t time) {
                  utilities::m_itoa(time) + " seconds.");
 }
 
-void VideoState::endProcess(int duration) {
+void VideoState::endProcess(int32_t duration) {
     DATA->io_data.info_handler.updateAt(msgIndex, "DONE", SUCCESS);
     printProgress(1);
     reportSuccess("Succesfully joined.");

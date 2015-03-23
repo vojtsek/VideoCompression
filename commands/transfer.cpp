@@ -2,11 +2,11 @@
 
 using namespace utilities;
 
-bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
+bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     CMDS action = DISTRIBUTE_HOST;
     TransferInfo *ti(new TransferInfo);
     RESPONSE_T resp = ACK_FREE;
-    int can_accept = std::atomic_fetch_sub(&DATA->state.can_accept, 1);
+    int32_t can_accept = std::atomic_fetch_sub(&DATA->state.can_accept, 1);
     if ((can_accept <= 0) || (DATA->state.working)) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
         resp = ACK_BUSY;
@@ -72,7 +72,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     return true;
 }
 
-bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
+bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *data) {
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
@@ -129,7 +129,7 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
 }
 //TODO:generic function to send chunk
 
-bool CmdReturnHost::execute(int fd, sockaddr_storage &, void *data) {
+bool CmdReturnHost::execute(int32_t fd, sockaddr_storage &, void *data) {
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
@@ -149,7 +149,7 @@ bool CmdReturnHost::execute(int fd, sockaddr_storage &, void *data) {
     return true;
 }
 
-bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
+bool CmdReturnPeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
     //TODO: delete in case of failure
     TransferInfo *ti(new TransferInfo);

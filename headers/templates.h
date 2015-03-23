@@ -26,8 +26,8 @@ void applyToMap(std::map<T, S *> map, void (*op)(S *)) {
 }
 
 template<typename T>
-int sendSth(T what, int fd) {
-    int w;
+int32_t sendSth(T what, int32_t fd) {
+    int32_t w;
     if ((w = write(fd, &what, sizeof (T))) != sizeof(T)) {
         reportDebug("Problem occured while sending the data.", 1);
         return (-1);
@@ -36,8 +36,8 @@ int sendSth(T what, int fd) {
 }
 
 template<typename T>
-int recvSth(T &where, int fd) {
-    int r;
+int32_t recvSth(T &where, int32_t fd) {
+    int32_t r;
      if ((r = read(fd, &where, sizeof (T))) != sizeof(T)) {
         reportDebug("Problem occured while accepting the data.", 1);
         return (-1);

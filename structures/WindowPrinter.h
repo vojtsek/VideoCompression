@@ -20,8 +20,8 @@ public:
         win = stdscr;
     }
     void changeWin(WINDOW *nwin);
-    int add(std::string msg, MSG_T type);
-    void updateAt(int idx, std::string value, MSG_T type);
+    int32_t add(std::string msg, MSG_T type);
+    void updateAt(int32_t idx, std::string value, MSG_T type);
     void changeLogLocation(std::string log_location);
     void clear();
     void print();

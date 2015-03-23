@@ -37,7 +37,7 @@ using namespace std;
 
 std::shared_ptr<Data> Data::inst = nullptr;
 
-int utilities::acceptCmd(cmd_storage_t &cmds) {
+int32_t utilities::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     do {
@@ -76,8 +76,8 @@ void utilities::listCmds() {
     show("quit", "");
 }
 
-void clearNlines(int n) {
-    int orig_x, orig_y, x, y;
+void clearNlines(int32_t n) {
+    int32_t orig_x, orig_y, x, y;
     getyx(stdscr, y, x);
     orig_x = x;
     orig_y = y;
@@ -89,9 +89,9 @@ void clearNlines(int n) {
 }
 
 
-string utilities::m_itoa(int n) {
+string utilities::m_itoa(int32_t n) {
     std::string res;
-    int nn;
+    int32_t nn;
     bool negative = false;
     if (n < 0) {
         negative = true;
@@ -112,11 +112,11 @@ string utilities::m_itoa(int n) {
     return res;
 }
 
-int utilities::computeDuration(std::string t1, std::string t2) {
+int32_t utilities::computeDuration(std::string t1, std::string t2) {
     return (atoi(t1.c_str()) - atoi(t2.c_str()));
 }
 
-vector<string> utilities::extract(const std::string text, const std::string from, int count) {
+vector<string> utilities::extract(const std::string text, const std::string from, int32_t count) {
     vector<string> result;
     std::string word;
     std::stringstream ss(text);
@@ -185,7 +185,7 @@ vector<std::string> utilities::split(const std::string &content, char sep) {
     return result;
 }
 
-int Configuration::getValue(string key) {
+int32_t Configuration::getValue(string key) {
     try {
         return intValues.at(key);
     } catch (std::out_of_range e) {

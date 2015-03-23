@@ -31,7 +31,7 @@ void TransferInfo::invoke(NetworkHandler &handler) {
     }
 }
 
-int TransferInfo::send(int fd) {
+int32_t TransferInfo::send(int32_t fd) {
     if (sendSth(chunk_size, fd) == -1) {
         reportDebug("Failed to send size.", 1);
         return -1;
@@ -99,7 +99,7 @@ int TransferInfo::send(int fd) {
     return 0;
 }
 
-int TransferInfo::receive(int fd) {
+int32_t TransferInfo::receive(int32_t fd) {
     if (recvSth(chunk_size, fd) == -1) {
         reportDebug("Failed to receive size.", 1);
         return -1;

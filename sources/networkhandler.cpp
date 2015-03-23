@@ -19,11 +19,11 @@ using namespace std;
 using namespace utilities;
 
 void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
-                                    int fdi, vector<CMDS> cmds, bool async, void *data) {
+                                    int32_t fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
         int32_t i;
-        int fd = fdi;
+        int32_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
         for (auto cmd : cmds) {
@@ -81,11 +81,11 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
 }
 
 void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
-                                    int fdi, bool async) {
+                                    int32_t fdi, bool async) {
     std::thread handling_thread([=]() {
         CMDS action;
         ssize_t r;
-        int fd = fdi;
+        int32_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
         while ((r = read(fd, &action, sizeof (action))) == sizeof(action)) {
@@ -130,8 +130,8 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
     handling_thread.join();
 }
 
-int NetworkHandler::start_listening(int port) {
-    int sock, accepted, ip6_only = 0, reuse = 1;
+int32_t NetworkHandler::start_listening(int32_t port) {
+    int32_t sock, accepted, ip6_only = 0, reuse = 1;
     struct sockaddr_in6 in6;
     socklen_t in6_size = sizeof (in6), psize = sizeof (struct sockaddr_storage);
     struct sockaddr_storage peer_addr;
@@ -191,13 +191,13 @@ void NetworkHandler::contactSuperPeer() {
         addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
     else
         addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
-    int sock =  checkNeighbor(addr);
+    int32_t sock =  checkNeighbor(addr);
     if (sock == -1) return;
     spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
 }
 
-int NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
-    int sock;
+int32_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
+    int32_t sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
@@ -208,15 +208,15 @@ int NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     return sock;
 }
 
-int NetworkHandler::getPotentialNeighborsCount() {
+int32_t NetworkHandler::getPotentialNeighborsCount() {
     potential_mtx.lock();
-    int count = potential_neighbors.size();
+    int32_t count = potential_neighbors.size();
     potential_mtx.unlock();
     return count;
 }
 
 void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
-    int sock =  checkNeighbor(addr);
+    int32_t sock =  checkNeighbor(addr);
     if (sock == -1) return;
     spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false, nullptr);
 }
@@ -276,7 +276,7 @@ void NetworkHandler::collectNeighbors() {
 }
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
-    int sock;
+    int32_t sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);

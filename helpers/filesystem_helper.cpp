@@ -5,7 +5,7 @@
 #include <dirent.h>
 #include <string.h>
 
-int utilities::checkFile(std::string &path) {
+int32_t utilities::checkFile(std::string &path) {
     struct stat info;
 
     if (stat (path.c_str(), &info) == -1){
@@ -25,7 +25,7 @@ int utilities::checkFile(std::string &path) {
     return (0);
 }
 
-int utilities::rmrDir(std::string dir, bool recursive) {
+int32_t utilities::rmrDir(std::string dir, bool recursive) {
   DIR *d, *t;
   struct dirent *entry;
   char abs_fn[256];
@@ -53,7 +53,7 @@ int utilities::rmrDir(std::string dir, bool recursive) {
   return (0);
 }
 
-int utilities::rmFile(std::string fp) {
+int32_t utilities::rmFile(std::string fp) {
     if (unlink(fp.c_str()) == -1) {
         reportDebug(fp + ": Failed to remove.", 1);
         return -1;
@@ -61,7 +61,7 @@ int utilities::rmFile(std::string fp) {
     return 0;
 }
 
-int utilities::prepareDir(std::string location, bool destroy) {
+int32_t utilities::prepareDir(std::string location, bool destroy) {
     std::string directory, current;
     location = location.substr(
                 std::string(WD).size() + 1, location.length());
@@ -82,7 +82,7 @@ int utilities::prepareDir(std::string location, bool destroy) {
     return utilities::mkDir(current, destroy);
 }
 
-int utilities::mkDir(std::string location, bool destroy) {
+int32_t utilities::mkDir(std::string location, bool destroy) {
     if (mkdir(location.c_str(), 0700) == -1) {
         switch (errno) {
         case EEXIST:
@@ -101,9 +101,9 @@ int utilities::mkDir(std::string location, bool destroy) {
     return (0);
 }
 
-int utilities::runExternal(std::string &stdo, std::string &stde, char *cmd, int numargs, ...) {
+int32_t utilities::runExternal(std::string &stdo, std::string &stde, char *cmd, int32_t numargs, ...) {
     pid_t pid;
-    int pd_o[2], pd_e[2], j;
+    int32_t pd_o[2], pd_e[2], j;
     size_t bufsize = 65536;
     char buf_o[bufsize], buf_e[bufsize];
     char *bo = buf_o, *be = buf_e;
@@ -146,7 +146,7 @@ int utilities::runExternal(std::string &stdo, std::string &stde, char *cmd, int 
         close(pd_o[1]);
         close(pd_e[1]);
         stdo = stde = "";
-        int st;
+        int32_t st;
         wait(&st);
         while(read(pd_o[0], bo, 1) == 1){
             bo++;

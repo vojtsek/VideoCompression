@@ -12,18 +12,18 @@ class NeighborStorage
     neighbor_storageT neighbors;
     std::vector<NeighborInfo *> free_neighbors;
     std::vector<struct sockaddr_storage> potential_neighbors;
-    int listening_sock;
+    int32_t listening_sock;
     std::mutex n_mtx;
 public:
-    int getNeighborCount();
+    int32_t getNeighborCount();
     NeighborInfo *getNeighborInfo(const struct sockaddr_storage &addr);
-    int getFreeNeighbor(struct sockaddr_storage &addr);
+    int32_t getFreeNeighbor(struct sockaddr_storage &addr);
     struct sockaddr_storage getRandomNeighbor();
-    std::vector<struct sockaddr_storage> getNeighborAdresses(int count);
-    int removeNeighbor(const struct sockaddr_storage &addr);
+    std::vector<struct sockaddr_storage> getNeighborAdresses(int32_t count);
+    int32_t removeNeighbor(const struct sockaddr_storage &addr);
     void addNewNeighbor(const struct sockaddr_storage &addr);
-    void setInterval(const struct sockaddr_storage &addr, int i);
-    void updateQuality(const struct sockaddr_storage &addr, int q);
+    void setInterval(const struct sockaddr_storage &addr, int32_t i);
+    void updateQuality(const struct sockaddr_storage &addr, int32_t q);
     void setNeighborFree(const struct sockaddr_storage &addr, bool free);
     void applyToNeighbors(
             std::function<void (std::pair<std::string, NeighborInfo *>)> func);

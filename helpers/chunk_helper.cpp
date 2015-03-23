@@ -47,7 +47,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                 continue;
             }
             DATA->periodic_listeners.remove(ti);
-            int sock = net_handler->checkNeighbor(free_address);
+            int32_t sock = net_handler->checkNeighbor(free_address);
             ti->address = free_address;
             // get host address which is being used for communication
             // on this address the chunk should be returned.
@@ -65,7 +65,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
             reportDebug(ti->name + " was sent.", 3);
         } else {
             // in case of returning chunk
-            int sock = net_handler->checkNeighbor(ti->src_address);
+            int32_t sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
             DATA->chunks_received.remove(ti);
@@ -118,7 +118,7 @@ void pushChunkSend(TransferInfo *ti) {
     DATA->chunks_to_send.push(ti);
 }
 
-int encodeChunk(TransferInfo *ti) {
+int32_t encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
     res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
@@ -137,7 +137,7 @@ int encodeChunk(TransferInfo *ti) {
             ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in, 2);
     snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
-    int duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 10, cmd,
+    int32_t duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
              "-c:v", ti->output_codec.c_str(),
              "-preset", "ultrafast",

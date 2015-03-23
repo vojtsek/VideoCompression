@@ -12,6 +12,6 @@ void pushChunkProcess(TransferInfo *ti);
 void pushChunkSend(TransferInfo *ti);
 void processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *handler, VideoState *state);
-int encodeChunk(TransferInfo *ti);
+int32_t encodeChunk(TransferInfo *ti);
 
 #endif // CHUNK_HELPER_H

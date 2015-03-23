@@ -2,20 +2,20 @@
 #include "headers/enums_types.h"
 #include <fcntl.h>
 
-int sendInt32(int fd, int32_t i) {
+int32_t sendInt32(int32_t fd, int32_t i) {
     i = htonl(i);
-    int w;
-    if ((w = write(fd, &i, sizeof (int32_t))) != sizeof(int32_t)) {
+    int32_t w;
+    if ((w = write(fd, &i, sizeof (int32_t ))) != sizeof(int32_t )) {
         reportDebug("Problem occured while sending the data.", 1);
         return -1;
     }
     return 0;
 }
 
-int receiveInt32(int fd, int32_t &i) {
+int32_t receiveInt32(int32_t fd, int32_t &i) {
     int32_t ir;
-    int r;
-     if ((r = read(fd, &ir, sizeof (int32_t))) != sizeof(int32_t)) {
+    int32_t r;
+     if ((r = read(fd, &ir, sizeof (int32_t ))) != sizeof(int32_t )) {
         reportDebug("Problem occured while accepting the data.", 1);
         return (-1);
     }
@@ -23,14 +23,14 @@ int receiveInt32(int fd, int32_t &i) {
     return 0;
 }
 
-int sendResponse(int fd, RESPONSE_T &resp) {
+int32_t sendResponse(int32_t fd, RESPONSE_T &resp) {
     int32_t i;
     if (sendInt32(fd, resp) == -1) {
         return -1;
     }
 }
 
-int receiveResponse(int fd, RESPONSE_T &resp) {
+int32_t receiveResponse(int32_t fd, RESPONSE_T &resp) {
     int32_t i;
     if (receiveInt32(fd, i) == -1) {
         return -1;
@@ -39,7 +39,7 @@ int receiveResponse(int fd, RESPONSE_T &resp) {
     return 0;
 }
 
-int sendStruct(int fd, const sockaddr_storage &st) {
+int32_t sendStruct(int32_t fd, const sockaddr_storage &st) {
     MyAddr mad(st);
     if (sendString(fd, mad.addr) == -1) {
         reportDebug("Problem occured while sending the address string.", 1);
@@ -54,7 +54,7 @@ int sendStruct(int fd, const sockaddr_storage &st) {
     return 0;
 }
 
-int receiveStruct(int fd, struct sockaddr_storage &st) {
+int32_t receiveStruct(int32_t fd, struct sockaddr_storage &st) {
     std::string addr_string;
     int32_t port;
     if ((addr_string = receiveString(fd)).empty()) {
@@ -72,7 +72,7 @@ int receiveStruct(int fd, struct sockaddr_storage &st) {
     return 0;
 }
 
-int sendString(int fd, std::string str) {
+int32_t sendString(int32_t fd, std::string str) {
     if (sendSth(str.length(), fd) == -1)
         return (-1);
     for (char c : str) {
@@ -82,13 +82,13 @@ int sendString(int fd, std::string str) {
     return (0);
 }
 
-std::string receiveString(int fd) {
-    int len;
+std::string receiveString(int32_t fd) {
+    int32_t len;
     std::string res;
     char c;
     if (recvSth(len, fd) == -1)
         return res;
-    for (int i = 0; i < len; ++i) {
+    for (int32_t i = 0; i < len; ++i) {
         if (recvSth(c, fd) == -1) {
             res.clear();
             return res;
@@ -98,9 +98,9 @@ std::string receiveString(int fd) {
     return res;
 }
 
-int receiveFile(int fd, std::string fn) {
+int32_t receiveFile(int32_t fd, std::string fn) {
     off_t fsize, received = 0, r, w;
-    int o_file;
+    int32_t o_file;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
     try {
         if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
@@ -137,8 +137,8 @@ int receiveFile(int fd, std::string fn) {
     return 0;
 }
 
-int sendFile(int fd, std::string fn) {
-    int file;
+int32_t sendFile(int32_t fd, std::string fn) {
+    int32_t file;
     off_t fsize, to_sent = 0, r, w;
     char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
     try {
@@ -178,7 +178,7 @@ int sendFile(int fd, std::string fn) {
     return 0;
 }
 
-int sendCmd(int fd, CMDS cmd) {
+int32_t sendCmd(int32_t fd, CMDS cmd) {
     bool response;
     if (sendSth(cmd, fd) == -1) {
         reportError("Error send CMD");

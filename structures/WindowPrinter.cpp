@@ -7,8 +7,8 @@
 #include <vector>
 
 //the indexing is not permanent
-int WindowPrinter::add(std::string str, MSG_T type) {
-    int retval;
+int32_t WindowPrinter::add(std::string str, MSG_T type) {
+    int32_t retval;
     DATA->m_data.report_mtx.lock();
     ofs << str << std::endl;
     ofs.flush();
@@ -31,7 +31,7 @@ void WindowPrinter::clear() {
     q.clear();
 }
 
-void WindowPrinter::updateAt(int idx, std::string value, MSG_T type) {
+void WindowPrinter::updateAt(int32_t idx, std::string value, MSG_T type) {
     q.at(idx) = std::make_pair<>(value, type);
     print();
 }
@@ -52,7 +52,7 @@ void WindowPrinter::print() {
     wbkgd(win, COLOR_PAIR(BG));
     wmove(win, 0, 0);
     werase(win);
-    int y, col;
+    int32_t y, col;
     if (start == BOTTOM)
         y = DATA->config.intValues.at("STATUS_LENGTH") - 1;
     else

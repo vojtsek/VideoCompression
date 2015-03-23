@@ -7,15 +7,15 @@ NeighborStorage::NeighborStorage()
 {
 }
 
-int NeighborStorage::getNeighborCount() {
-    int size;
+int32_t NeighborStorage::getNeighborCount() {
+    int32_t size;
     n_mtx.lock();
     size = neighbors.size();
     n_mtx.unlock();
     return size;
 }
 
-int NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
+int32_t NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
     //TODO: check differently
     if (getNeighborInfo(addr) == nullptr)
         return 0;
@@ -56,7 +56,7 @@ void NeighborStorage::applyToNeighbors(
 }
 
 void NeighborStorage::setInterval(
-        const struct sockaddr_storage &addr, int i) {
+        const struct sockaddr_storage &addr, int32_t i) {
     applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, addr)) {
@@ -66,7 +66,7 @@ void NeighborStorage::setInterval(
 }
 
 void NeighborStorage::updateQuality(
-        const struct sockaddr_storage &addr, int q) {
+        const struct sockaddr_storage &addr, int32_t q) {
         applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
             if (networkHelper::cmpStorages(entry.second->address, addr)) {
@@ -113,7 +113,7 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
     ngh->free = free;
 }
 
-int NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
+int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     n_mtx.lock();
     if (free_neighbors.empty()) {
         n_mtx.unlock();
@@ -129,7 +129,7 @@ int NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
 }
 
 struct sockaddr_storage NeighborStorage::getRandomNeighbor() {
-    int rand_n = rand() % getNeighborCount();
+    int32_t rand_n = rand() % getNeighborCount();
     SYNCHRONIZED_SECTION(
         auto it = neighbors.begin();
         while (rand_n--) {
@@ -140,7 +140,7 @@ struct sockaddr_storage NeighborStorage::getRandomNeighbor() {
 }
 
 std::vector<struct sockaddr_storage>
-        NeighborStorage::getNeighborAdresses(int count) {
+        NeighborStorage::getNeighborAdresses(int32_t count) {
     SYNCHRONIZED_SECTION(
         std::vector<struct sockaddr_storage> result;
         for (auto neighbor : neighbors) {

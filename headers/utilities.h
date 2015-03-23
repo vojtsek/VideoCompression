@@ -16,14 +16,14 @@ class Command;
 class TransferInfo;
 namespace utilities
 {
-    int readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
-    int acceptCmd(cmd_storage_t &cmds);
-    int computeDuration(std::string t1, std::string t2);
-    std::vector<std::string> extract(const std::string text, const std::string from, int count);
+    int32_t readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
+    int32_t acceptCmd(cmd_storage_t &cmds);
+    int32_t computeDuration(std::string t1, std::string t2);
+    std::vector<std::string> extract(const std::string text, const std::string from, int32_t count);
     std::vector<std::string> split(const std::string &content, char sep);
     std::vector<std::string> getKnownCodecs();
     std::string getTimestamp();
-    std::string m_itoa(int n);
+    std::string m_itoa(int32_t n);
     std::string getHash(NeighborInfo &n);
     std::string formatString(std::string str1, std::string str2);
     void listCmds();

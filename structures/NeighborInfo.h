@@ -6,10 +6,10 @@
 
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
-    int intervals;
-    int quality;
-    int overall_time;
-    int processed_chunks;
+    int32_t intervals;
+    int32_t quality;
+    int32_t overall_time;
+    int32_t processed_chunks;
     bool confirmed;
     bool active;
     bool free;
