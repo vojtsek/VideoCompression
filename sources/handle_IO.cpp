@@ -189,17 +189,6 @@ void cursorToX(int nx) {
     move(y, nx);
 }
 
-void reportTime(const std::string &file, double time) {
-    std::string fn("results/" + utilities::getBasename(file) + ".measured");
-    ofstream out;
-    out.open(fn, ofstream::app);
-    std::stringstream msg;
-    out << time << endl;
-    out.close();
-    msg << "The operation took " << time << " seconds.";
-    reportStatus(msg.str());
-}
-
 int getLine(char *line, int len, const std::string &histf, bool save) {
     HistoryStorage hist(histf);
     char *start = line;

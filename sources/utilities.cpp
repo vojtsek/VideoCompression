@@ -112,48 +112,10 @@ string utilities::m_itoa(int n) {
     return res;
 }
 
-int utilities::encodeChunk(TransferInfo *ti) {
-    std::string out, err, res_dir;
-    char cmd[BUF_LENGTH];
-    res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
-    /*
-    if (prepareDir(res_dir, false) == -1) {
-        reportDebug("Failed to create working dir.", 2);
-        return -1;
-    }
-    */
-    if (prepareDir(res_dir, false) == -1) {
-        reportDebug("Failed to create job dir.", 2);
-        return -1;
-    }
-    std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
-    std::string file_in = DATA->config.working_dir + "/to_process/" +
-            ti->job_id + "/" + ti->name + ti->original_extension;
-    reportDebug("Encoding: " + file_in, 2);
-    snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
-    int duration = Measured<>::exec_measure(runExternal, out, err, cmd, 10, cmd,
-             "-i", file_in.c_str(),
-             "-c:v", ti->output_codec.c_str(),
-             "-preset", "ultrafast",
-             "-qp", "0",
-             file_out.c_str());
-    if (err.find("Conversion failed") != std::string::npos) {
-        reportDebug("Failed to encode chunk!", 2);
-        std::ofstream os(ti->job_id + ".err");
-        os << err << std::endl;
-        os.flush();
-        os.close();
-        //should retry?
-        delete ti;
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
-        return -1;
-    }
-    reportDebug("Chunk " + ti->name + " encoded.", 2);
-    utilities::rmFile(file_in);
-    std::atomic_fetch_add(&DATA->state.can_accept, 1);
-    pushChunkSend(ti);
-    return 0;
+int utilities::computeDuration(std::string t1, std::string t2) {
+    return (atoi(t1.c_str()) - atoi(t2.c_str()));
 }
+
 vector<string> utilities::extract(const std::string text, const std::string from, int count) {
     vector<string> result;
     std::string word;
@@ -221,4 +183,12 @@ vector<std::string> utilities::split(const std::string &content, char sep) {
     }
     result.push_back(remaining);
     return result;
+}
+
+int Configuration::getValue(string key) {
+    try {
+        return intValues.at(key);
+    } catch (std::out_of_range e) {
+        return 0;
+    }
 }

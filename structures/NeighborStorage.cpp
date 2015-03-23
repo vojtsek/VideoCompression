@@ -23,19 +23,19 @@ int NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
     free_neighbors.erase(
         std::remove_if(free_neighbors.begin(), free_neighbors.end(),
                    [&](NeighborInfo *ngh) {
-                        return cmpStorages(ngh->address, addr);
+                        return networkHelper::cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
     //todo: removing neighbor with algorithms?
     //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
-        if (cmpStorages(it->second->address, addr)) {
+        if (networkHelper::cmpStorages(it->second->address, addr)) {
             //TODO: structures handling synchronization of listeners
           //  DATA->periodic_listeners.erase(
                //         it->second->getHash());
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
-                return cmpStorages(ti->address, it->second->address);
+                return networkHelper::cmpStorages(ti->address, it->second->address);
             });
             //delete it->second;
             neighbors.erase(it);
@@ -59,7 +59,7 @@ void NeighborStorage::setInterval(
         const struct sockaddr_storage &addr, int i) {
     applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
-        if (cmpStorages(entry.second->address, addr)) {
+        if (networkHelper::cmpStorages(entry.second->address, addr)) {
             entry.second->intervals = i;
         }});
     return;
@@ -69,7 +69,7 @@ void NeighborStorage::updateQuality(
         const struct sockaddr_storage &addr, int q) {
         applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
-            if (cmpStorages(entry.second->address, addr)) {
+            if (networkHelper::cmpStorages(entry.second->address, addr)) {
                 entry.second->quality += q;
             }});
     return;
@@ -81,7 +81,7 @@ NeighborInfo *NeighborStorage::getNeighborInfo(
     n_mtx.lock();
     std::for_each (neighbors.begin(), neighbors.end(),
                    [&](std::pair<std::string, NeighborInfo *> entry) {
-        if (cmpStorages(entry.second->address, addr)) {
+        if (networkHelper::cmpStorages(entry.second->address, addr)) {
             res = entry.second;
         }
     });
@@ -103,7 +103,7 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
         free_neighbors.erase(
             std::remove_if (free_neighbors.begin(), free_neighbors.end(),
                [&](NeighborInfo *ngh) {
-            return (cmpStorages(ngh->address, addr));
+            return (networkHelper::cmpStorages(ngh->address, addr));
         }), free_neighbors.end());
         n_mtx.unlock();
     } else {
@@ -113,21 +113,19 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
     ngh->free = free;
 }
 
-NeighborInfo *NeighborStorage::getFreeNeighbor() {
-    NeighborInfo *ngh = nullptr;
+int NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     n_mtx.lock();
     if (free_neighbors.empty()) {
         n_mtx.unlock();
-        return ngh;
+        return 0;
     }
     std::sort(free_neighbors.begin(), free_neighbors.end(),
               [&](NeighborInfo *n1, NeighborInfo *n2) {
         return (n1->quality < n2->quality);
     });
-    ngh = *free_neighbors.begin();
-        //free_neighbors.erase(free_neighbors.begin());
+    addr = (*free_neighbors.begin())->address;
     n_mtx.unlock();
-    return ngh;
+    return 1;
 }
 
 struct sockaddr_storage NeighborStorage::getRandomNeighbor() {
@@ -156,7 +154,7 @@ std::vector<struct sockaddr_storage>
 
 void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     n_mtx.lock();
-    if (!addrIn(addr, neighbors)) {
+    if (!networkHelper::addrIn(addr, neighbors)) {
         NeighborInfo *ngh = new NeighborInfo(addr);
         ngh->intervals = DATA->config.getValue(
             "NEIGHBOR_CHECK_TIMEOUT");

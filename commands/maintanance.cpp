@@ -1,7 +1,6 @@
 #include "headers/include_list.h"
 #include <netinet/in.h>
 
-using namespace utilities;
 bool CmdAskPeer::execute(int fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKPEER", 5);
     CMDS action = ASK_HOST;
@@ -88,18 +87,18 @@ bool CmdConfirmPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
-    ((struct sockaddr_in6 *) &address)->sin6_port = htons(port);
+    networkHelper::changeAddressPort(address, port);
     if ((sock = handler->checkNeighbor(address)) == -1) {
         reportDebug("Error getting host address.", 2);
         return false;
     }
-    if ((getHostAddr(addr, sock)) == -1) {
+    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
         reportDebug("Error getting host address.", 2);
         close(sock);
         return false;
     }
     close(sock);
-    ((struct sockaddr_in6 *) &addr)->sin6_port = htons(DATA->config.getValue("LISTENING_PORT"));
+    networkHelper::changeAddressPort(addr, port);
 
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -179,7 +178,7 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         resp = ACK_BUSY;
     }
     if (sendCmd(fd, action) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
+            reportError("Error while communiiicating with peer." + MyAddr(address).get());
             return false;
     }
     if (sendResponse(fd, resp) == -1) {
@@ -191,18 +190,18 @@ bool CmdPingPeer::execute(int fd, struct sockaddr_storage &address, void *) {
         return false;
     }
 
-    ((struct sockaddr_in6 *) &address)->sin6_port = htons(peer_port);
+    networkHelper::changeAddressPort(address, peer_port);
     if ((sock = handler->checkNeighbor(address)) == -1) {
         reportDebug("Error getting host address.", 2);
         return false;
     }
-    if ((getHostAddr(addr, sock)) == -1) {
+    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
         reportDebug("Error getting host address.", 2);
         close(sock);
         return false;
     }
     close(sock);
-    ((struct sockaddr_in6 *) &addr)->sin6_port = htons(peer_port);
+    networkHelper::changeAddressPort(addr, peer_port);
 
     if (DATA->config.is_superpeer)
         handler->addNewNeighbor(false, addr);
@@ -264,9 +263,9 @@ void CmdSayGoodbye::execute() {
     }
     struct sockaddr_storage address;
     if (DATA->config.IPv4_ONLY)
-        address = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+        address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
     else
-        address = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+        address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
    sock = handler->checkNeighbor(address);
     handler->spawnOutgoingConnection(address,
                                      sock, { GOODBYE_PEER }, false, nullptr);

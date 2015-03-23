@@ -18,7 +18,7 @@ namespace utilities
 {
     int readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
     int acceptCmd(cmd_storage_t &cmds);
-    int encodeChunk(TransferInfo *ti);
+    int computeDuration(std::string t1, std::string t2);
     std::vector<std::string> extract(const std::string text, const std::string from, int count);
     std::vector<std::string> split(const std::string &content, char sep);
     std::vector<std::string> getKnownCodecs();

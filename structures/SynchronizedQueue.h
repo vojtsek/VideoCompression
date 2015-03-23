@@ -110,6 +110,9 @@ struct SynchronizedQueue {
     SynchronizedQueue(): being_used(false) {}
 
     void push(T *item) {
+        if (contains(item)) {
+            return;
+        }
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         while (being_used) {
@@ -177,6 +180,16 @@ struct SynchronizedQueue {
         lck.unlock();
         cond.notify_one();
         return (size_before != size_after);
+    }
+
+    bool contains(T *item) {
+        bool cont = false;
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        cont = !(std::find(
+                    queue.begin(), queue.end(), item) == queue.end());
+        lck.unlock();
+        return cont;
     }
 
     bool removeIf(std::function<bool (T *)> func) {

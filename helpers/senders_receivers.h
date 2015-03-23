@@ -8,7 +8,7 @@ int sendStruct(int fd, const struct sockaddr_storage &st);
 int sendInt32(int fd, int32_t i);
 int sendString(int fd, std::string str);
 int sendFile(int fd, std::string str);
-
+int sendCmd(int fd, CMDS cmd);
 int receiveResponse(int fd, RESPONSE_T &resp) ;
 int receiveStruct(int fd, struct sockaddr_storage &st);
 int receiveInt32(int fd, int32_t &i);

@@ -17,7 +17,6 @@ void reportSuccess(const std::string &msg);
 void reportStatus(const std::string &msg);
 void reportDebug(const std::string &msg, int lvl);
 void printProgress(double percent);
-void reportTime(const std::string &file, double time);
 std::string loadInput(const std::string &histf, const std::string &msg, bool save);
 
 #endif

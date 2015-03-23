@@ -30,8 +30,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
         throw 1;
     }
 
-    if (DATA->chunks_received.find(
-                ti->getHash()) != DATA->chunks_received.end()) {
+    if (DATA->chunks_received.contains(ti->getHash())) {
         resp = ABORT;
         if (sendResponse(fd, resp) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -48,12 +47,6 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
     }
 
     std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
-    /*
-    if (prepareDir(dir, false) == -1) {
-        reportError(ti->name + ": Error creating received di
-        throw 1;
-    }
-    */
     if (prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating job dir.");
         throw 1;
@@ -69,7 +62,7 @@ bool CmdDistributePeer::execute(int fd, sockaddr_storage &address, void *) {
                            "/" + ti->name + ti->desired_extension);
     ti->addressed = true;
     //todo remove when done
-    DATA->chunks_received.insert(std::make_pair(ti->getHash(), ti));
+    DATA->chunks_received.push(ti);
     pushChunkProcess(ti);
     } catch (int) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
@@ -114,17 +107,19 @@ bool CmdDistributeHost::execute(int fd, sockaddr_storage &address, void *data) {
             throw 1;
         }
 
+        ti->timestamp = utilities::getTimestamp();
         if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
              "/" + ti->name + ti->original_extension) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
+        ti->sending_time = utilities::computeDuration(
+                    utilities::getTimestamp(), ti->timestamp);
     } catch (int) {
         pushChunkSend(ti);
         return false;
     }
 
-    ti->timestamp = getTimestamp();
 
    // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
     //                  "/" + ti->name + ti->original_extension);
@@ -177,11 +172,12 @@ bool CmdReturnPeer::execute(int fd, sockaddr_storage &address, void *) {
         reportError(ti->name + ": Error creating received job dir.");
         return false;
     }
-
+    ti->timestamp = utilities::getTimestamp();
     if (receiveFile(fd, dir + "/" + ti->name + ti->desired_extension) == -1) {
         reportError(ti->name + ": Failed to transfer file.");
         return false;
     }
+    ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     // do I need two containers?
     if (!DATA->chunks_returned.contains(ti->getHash())) {
         processReturnedChunk(ti, handler, state);

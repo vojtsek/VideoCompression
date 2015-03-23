@@ -42,6 +42,21 @@ int TransferInfo::send(int fd) {
         return -1;
     }
 
+    if (sendInt32(fd, receiving_time) == -1) {
+        reportDebug("Failed to send encoding_time.", 1);
+        return -1;
+    }
+
+    if (sendInt32(fd, sending_time) == -1) {
+        reportDebug("Failed to send encoding_time.", 1);
+        return -1;
+    }
+
+    if (sendInt32(fd, encoding_time) == -1) {
+        reportDebug("Failed to send encoding_time.", 1);
+        return -1;
+    }
+
     if (sendSth(address, fd) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
@@ -95,6 +110,21 @@ int TransferInfo::receive(int fd) {
         return -1;
     }
 
+     if (receiveInt32(fd, receiving_time) == -1){
+         reportDebug("Failed to receive encoding time.", 1);
+         return -1;
+     }
+
+     if (receiveInt32(fd, sending_time) == -1){
+         reportDebug("Failed to receive encoding time.", 1);
+         return -1;
+     }
+
+     if (receiveInt32(fd, encoding_time) == -1){
+         reportDebug("Failed to receive encoding time.", 1);
+         return -1;
+     }
+
     struct sockaddr_storage srca;
 
     if (recvSth(srca, fd) == -1) {
@@ -147,6 +177,9 @@ std::string TransferInfo::toString() {
     ss << "----------------------------------" << std::endl;
     ss << "Name: " << name << std::endl;
     ss << "Times sent: " << sent_times << std::endl;
+    ss << "Processing time: " << processing_time << std::endl;
+    ss << "Sending time: " << sending_time << std::endl;
+    ss << "Receiving time: " << receiving_time << std::endl;
     ss << "Encoding time: " << encoding_time << std::endl;
     ss << "Encoded by: " << MyAddr(address).get() << std::endl;
     ss << "---------------------------------" << std::endl;

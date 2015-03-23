@@ -7,7 +7,8 @@
 struct TransferInfo : public Listener, Sendable {
     bool addressed;
     int chunk_size, time_left, tries_left,
-    sent_times, encoding_time;
+    sending_time, receiving_time,
+    sent_times, processing_time, encoding_time;
     struct sockaddr_storage address, src_address;
     std::string job_id;
     std::string name; // without extension
@@ -32,7 +33,8 @@ struct TransferInfo : public Listener, Sendable {
                  std::string p, std::string oc): addressed(true), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
-        sent_times(0), encoding_time(0),
+        sending_time(0), receiving_time(0),
+        sent_times(0), processing_time(0), encoding_time(0),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
         src_address = addr;
@@ -43,6 +45,8 @@ struct TransferInfo : public Listener, Sendable {
                  std::string p, std::string oc): addressed(false), chunk_size(size),
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
+        sending_time(0), receiving_time(0),
+        sent_times(0), processing_time(0), encoding_time(0),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {}
 

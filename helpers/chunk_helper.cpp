@@ -15,40 +15,60 @@
 #include <curses.h>
 
 using namespace std;
-using namespace utilities;
+
+/**
+ * @brief chunkSendRoutine
+ * @param net_handler
+ *
+ * This procedure is supposed to run in separate thread.
+ * It uses the @struct SychronizedQueue, during each iteration it pops
+ * next chunk to be sent. Then it checks, whether the chunks is addressed,
+ * or not. In the latter case it tries to pick suitable neighbor for it,
+ * queue it for resent otherwise.
+ *
+ * Adressed chunks are those, which are encoded already.
+ * Then the connection is spawned and transfer begins.
+ */
 
 void chunkSendRoutine(NetworkHandler *net_handler) {
     TransferInfo *ti;
-    NeighborInfo *ngh;
+    struct sockaddr_storage free_address;
     while (true) {
         ti = DATA->chunks_to_send.pop();
+        if (DATA->chunks_to_send.contains(ti)) {
+            continue;
+        }
         if (!ti->addressed) {
-            if ((ngh = DATA->neighbors.getFreeNeighbor()) == nullptr) {
+            if (DATA->neighbors.getFreeNeighbor(
+                     free_address) == 0) {
                 reportDebug("No free neighbor!", 2);
                 pushChunkSend(ti);
                 sleep(5);
                 continue;
             }
-            //ngh should not be here
             DATA->periodic_listeners.remove(ti);
-            int sock = net_handler->checkNeighbor(ngh->address);
-            ti->address = ngh->address;
-            getHostAddr(ti->src_address, sock);
-            ((struct sockaddr_in*) &ti->src_address)->sin_port =
-                    htons(DATA->config.getValue("LISTENING_PORT"));
-            net_handler->spawnOutgoingConnection(ngh->address, sock,
-            { PING_PEER, DISTRIBUTE_PEER }, false, (void *) ti);
-            DATA->chunks_to_send.signal();
+            int sock = net_handler->checkNeighbor(free_address);
+            ti->address = free_address;
+            // get host address which is being used for communication
+            // on this address the chunk should be returned.
+            networkHelper::getHostAddr(ti->src_address, sock);
+            networkHelper::changeAddressPort(ti->src_address,
+                              DATA->config.getValue("LISTENING_PORT"));
+            net_handler->spawnOutgoingConnection(free_address, sock,
+            { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
+            // start checking the processing time
+            // is done here, so in case of failure it is handled
             DATA->periodic_listeners.push(ti);
             ti->sent_times++;
-            DATA->neighbors.setNeighborFree(ngh->address, false);
+            // update neighbor information
+            DATA->neighbors.setNeighborFree(free_address, false);
             reportDebug(ti->name + " was sent.", 3);
         } else {
-            reportSuccess("Returning: " + ti->getHash());
+            // in case of returning chunk
             int sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
-            DATA->chunks_received.erase(ti->getHash());
+            DATA->chunks_received.remove(ti);
         }
     }
 }
@@ -69,13 +89,11 @@ void processReturnedChunk(TransferInfo *ti,
     utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
     DATA->chunks_to_send.remove(ti);
-    int comp_time = atoi(utilities::getTimestamp().c_str())
-        - atoi(ti->timestamp.c_str());
-    ti->encoding_time = comp_time;
+    ti->processing_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
-        if (cmpStorages(entry.second->address, ti->address)) {
-            entry.second->overall_time += comp_time;
+        if (networkHelper::cmpStorages(entry.second->address, ti->address)) {
+            entry.second->overall_time += ti->encoding_time;
             entry.second->processed_chunks++;
             entry.second->quality = entry.second->overall_time /
                     entry.second->processed_chunks;
@@ -100,10 +118,47 @@ void pushChunkSend(TransferInfo *ti) {
     DATA->chunks_to_send.push(ti);
 }
 
-int Configuration::getValue(string key) {
-    try {
-        return intValues.at(key);
-    } catch (std::out_of_range e) {
-        return 0;
+int encodeChunk(TransferInfo *ti) {
+    std::string out, err, res_dir;
+    char cmd[BUF_LENGTH];
+    res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
+    /*
+    if (prepareDir(res_dir, false) == -1) {
+        reportDebug("Failed to create working dir.", 2);
+        return -1;
     }
+    */
+    if (utilities::prepareDir(res_dir, false) == -1) {
+        reportDebug("Failed to create job dir.", 2);
+        return -1;
+    }
+    std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
+    std::string file_in = DATA->config.working_dir + "/to_process/" +
+            ti->job_id + "/" + ti->name + ti->original_extension;
+    reportDebug("Encoding: " + file_in, 2);
+    snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
+    int duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 10, cmd,
+             "-i", file_in.c_str(),
+             "-c:v", ti->output_codec.c_str(),
+             "-preset", "ultrafast",
+             "-qp", "0",
+             file_out.c_str());
+    if (err.find("Conversion failed") != std::string::npos) {
+        reportDebug("Failed to encode chunk!", 2);
+        std::ofstream os(ti->job_id + ".err");
+        os << err << std::endl;
+        os.flush();
+        os.close();
+        //should retry?
+        delete ti;
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
+        return -1;
+    }
+    reportDebug("Chunk " + ti->name + " encoded.", 2);
+    ti->encoding_time = duration;
+    utilities::rmFile(file_in);
+    std::atomic_fetch_add(&DATA->state.can_accept, 1);
+    pushChunkSend(ti);
+    return 0;
 }
+

@@ -12,6 +12,7 @@ struct VideoState {
     size_t secs_per_chunk, c_chunks, chunk_size;
     int msgIndex, processed_chunks;
     std::string dir_location, job_id, o_format, o_codec;
+    std::ofstream ofs;
     NetworkHandler *net_handler;
     VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0),
         chunk_size(DATA->config.getValue("CHUNK_SIZE")), msgIndex(-1),
@@ -26,6 +27,7 @@ struct VideoState {
     void loadFileInfo(struct FileInfo &finfo);
     void resetFileInfo();
     void abort();
+    void reportTime(std::string msg, int32_t time);
     void endProcess(int duration);
 };
 

@@ -58,9 +58,9 @@ struct Data {
     State state;
     NeighborStorage neighbors;
     SynchronizedQueue<TransferInfo> chunks_to_send, chunks_to_encode;
+    SynchronizedMap<TransferInfo> chunks_received;
     SynchronizedMap<TransferInfo>chunks_returned;
     SynchronizedMap<Listener> periodic_listeners;
-    std::unordered_map<std::string, TransferInfo *> chunks_received;
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
     }

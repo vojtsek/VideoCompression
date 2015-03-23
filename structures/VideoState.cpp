@@ -65,7 +65,7 @@ int VideoState::split() {
                 output);
             reportError(msg);
             abort();
-            return (-1);
+            return -1;
         }
         TransferInfo *ti = new TransferInfo(utilities::getFileSize(output),
                                             job_id, chunk_id, finfo.extension, o_format,
@@ -73,10 +73,10 @@ int VideoState::split() {
         pushChunkSend(ti);
     }
     printProgress(1);
-    reportSuccess("File successfuly splitted.");
-    reportTime("/splitting.sp", sum / 1000);
+    ofs.open(DATA->config.working_dir + "/" + job_id + ".out");
+    reportTime("Splitting: ", sum / 1000);
     clearProgress();
-    return (0);
+    return 0;
 }
 
 void VideoState::abort() {
@@ -88,7 +88,7 @@ int VideoState::join() {
     std::string out, err, list_loc(DATA->config.working_dir + "/received/" + job_id + "/join_list.txt"),
             output(DATA->config.working_dir + "/" + finfo.basename + "_output" + o_format);
     std::string file, file_item;
-    std::ofstream ofs(list_loc);
+    std::ofstream ofs_loc(list_loc);
     char fn[BUF_LENGTH], cmd[BUF_LENGTH];
     long sum_size = 0;
     double duration = 0;
@@ -98,16 +98,16 @@ int VideoState::join() {
     snprintf(cmd, BUF_LENGTH, "ffmpeg");
     for (unsigned int i = 0; i < c_chunks; ++i) {
         snprintf(fn, BUF_LENGTH, "%03d_splitted", i);
-        //HARDCODE
-        file = DATA->config.working_dir + "/received/" + job_id + "/" + fn + o_format;
+        file = DATA->config.working_dir +
+                "/received/" + job_id + "/" + fn + o_format;
 //        if (!utilities::getFileSize())
         //check existence
         file_item = "file '" + file + "'";
         sum_size += utilities::getFileSize(file);
-        ofs << file_item << std::endl;
+        ofs_loc << file_item << std::endl;
     }
-    ofs.flush();
-    ofs.close();
+    ofs_loc.flush();
+    ofs_loc.close();
     std::thread thr(reportFileProgress, output, sum_size);
     duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 8, cmd,
                     "-f", "concat",
@@ -122,26 +122,33 @@ int VideoState::join() {
         return (-1);
     }
     thr.join();
-    printProgress(1);
-    reportSuccess("Succesfully joined.");
     endProcess(duration);
     return (0);
 }
 
+void VideoState::reportTime(std::string msg, int32_t time) {
+    ofs << msg  << time << std::endl;
+    reportStatus("The operation took " +
+                 utilities::m_itoa(time) + " seconds.");
+}
+
 void VideoState::endProcess(int duration) {
-    std::ofstream ofs(DATA->config.working_dir + "/" + job_id + ".out");
     DATA->io_data.info_handler.updateAt(msgIndex, "DONE", SUCCESS);
-    reportTime("/joining.j", duration / 1000);
+    printProgress(1);
+    reportSuccess("Succesfully joined.");
+    reportTime("Joining: ", duration / 1000);
     clearProgress();
     utilities::rmrDir(DATA->config.working_dir + "/received/", true);
     DATA->state.working = false;
+    ofs << "Information about particular chunks:" << std::endl;
     std::vector<TransferInfo *> tis = DATA->chunks_returned.getValues();
     std::sort(tis.begin(), tis.end(), [&](
               TransferInfo *t1, TransferInfo *t2)
-    {return (t1->encoding_time < t2->encoding_time);});
+    {return (t1->processing_time < t2->processing_time);});
     for (auto &ti : tis) {
         ofs << ti->toString();
     }
+    ofs.flush();
     ofs.close();
     DATA->chunks_returned.clear();
     DATA->chunks_to_send.clear();

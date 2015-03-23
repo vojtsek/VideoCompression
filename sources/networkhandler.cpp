@@ -32,11 +32,10 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                 break;
             }
 
-            if (receiveInt32(fd, i) == -1) {
+            if (recvSth(action, fd) == -1) {
                 reportError("Failed to process the action.");
                 break;
             }
-            action = CMDS(i);
             response = true;
             if (action == TERM){
                 sendSth(response, fd);
@@ -86,7 +85,6 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
     std::thread handling_thread([=]() {
         CMDS action;
         ssize_t r;
-        int32_t i;
         int fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
@@ -101,6 +99,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                break;
            }
            NetworkCommand *cmd = DATA->net_cmds.at(action);
+           reportDebug(cmd->getName(), 3);
            if (cmd == nullptr) {
                response = false;
                if (sendSth(response, fd) == -1) {
@@ -189,9 +188,9 @@ int NetworkHandler::start_listening(int port) {
 void NetworkHandler::contactSuperPeer() {
     struct sockaddr_storage addr;
     if (DATA->config.IPv4_ONLY)
-        addr = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+        addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
     else
-        addr = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+        addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
     int sock =  checkNeighbor(addr);
     if (sock == -1) return;
     spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
@@ -269,9 +268,9 @@ void NetworkHandler::collectNeighbors() {
             (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
         if (DATA->config.IPv4_ONLY)
-            address = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+            address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
         else
-            address = addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+            address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
         askForAddresses(address);
     }
 }

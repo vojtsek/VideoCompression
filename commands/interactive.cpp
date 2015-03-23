@@ -40,8 +40,14 @@ void CmdStart::execute() {
         reportError("Please load the file first.");
         return;
     }
+
     if (utilities::checkFile(state->finfo.fpath) == -1) {
         reportError("Invalid file.");
+        return;
+    }
+
+    if (DATA->state.working) {
+        reportError("Already in working process.");
         return;
     }
     cursToInfo();

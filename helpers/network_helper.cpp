@@ -37,13 +37,14 @@
 #include "helpers/network_helper.h"
 
 
-bool cmpStorages(const struct sockaddr_storage &s1,
+bool networkHelper::cmpStorages(
+        const struct sockaddr_storage &s1,
                  const struct sockaddr_storage &s2) {
     if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
         return false;
     if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
         if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port) &&
-                (storage2addr(s1) == storage2addr(s2)))
+                (networkHelper::storage2addr(s1) == networkHelper::storage2addr(s2)))
             return true;
         else {
             return false;
@@ -51,7 +52,7 @@ bool cmpStorages(const struct sockaddr_storage &s1,
     }
     if (((struct sockaddr *) &s1)->sa_family == AF_INET6) {
         if ((((struct sockaddr_in6 *) &s1)->sin6_port == ((struct sockaddr_in6 *) &s2)->sin6_port) &&
-                (storage2addr(s1) == storage2addr(s2))) {
+                (networkHelper::storage2addr(s1) == networkHelper::storage2addr(s2))) {
             return true;
         } else {
             return false;
@@ -60,7 +61,8 @@ bool cmpStorages(const struct sockaddr_storage &s1,
     return false;
 }
 
-bool addrIn(const struct sockaddr_storage &addr,
+bool networkHelper::addrIn(
+        const struct sockaddr_storage &addr,
             neighbor_storageT &list) {
     for (auto &n : list) {
         if (cmpStorages(n.second->address, addr))
@@ -69,7 +71,8 @@ bool addrIn(const struct sockaddr_storage &addr,
     return false;
 }
 
-int getHostAddr(struct sockaddr_storage &addr, int fd) {
+int networkHelper::getHostAddr(
+        struct sockaddr_storage &addr, int fd) {
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
@@ -93,7 +96,8 @@ int getHostAddr(struct sockaddr_storage &addr, int fd) {
     return -1;
 }
 
-int getPeerAddr(struct sockaddr_storage &addr, int fd) {
+int networkHelper::getPeerAddr(
+        struct sockaddr_storage &addr, int fd) {
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
@@ -115,7 +119,8 @@ int getPeerAddr(struct sockaddr_storage &addr, int fd) {
     return -1;
 }
 
-struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) {
+struct sockaddr_storage networkHelper::addr2storage(
+        const char *addrstr, int port, int family) {
     struct sockaddr_storage addr;
     if (family == AF_INET) {
         struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
@@ -131,7 +136,8 @@ struct sockaddr_storage addr2storage(const char *addrstr, int port, int family) 
     return addr;
 }
 
-std::string storage2addr(const sockaddr_storage &addr) {
+std::string networkHelper::storage2addr(
+        const sockaddr_storage &addr) {
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr, buf, INET_ADDRSTRLEN);
@@ -143,19 +149,13 @@ std::string storage2addr(const sockaddr_storage &addr) {
     }
 }
 
-int sendCmd(int fd, CMDS cmd) {
-    bool response;
-    if (sendInt32(fd, cmd) == -1) {
-        reportError("Error send CMD");
-        return (-1);
+void networkHelper::changeAddressPort(struct sockaddr_storage &addr, int port) {
+
+    if (addr.ss_family == AF_INET) {
+        ((struct sockaddr_in *) &addr)->sin_port =
+                htonl(port);
+    } else {
+        ((struct sockaddr_in6 *) &addr)->sin6_port =
+                htonl(port);
     }
-    if (recvSth(response, fd) == -1) {
-        reportError("ERROR conf CMD");
-        return (-1);
-    }
-    if (!response) {
-        reportDebug("The command was not accepted.", 1);
-        return (-1);
-    }
-    return (0);
 }

@@ -66,7 +66,7 @@ int receiveStruct(int fd, struct sockaddr_storage &st) {
         reportDebug("Problem occured while accepting the address port.", 1);
         return -1;
     }
-    st = addr2storage(
+    st = networkHelper::addr2storage(
                 DATA->config.superpeer_addr.c_str(),
                 port, AF_INET6);
     return 0;
@@ -176,4 +176,21 @@ int sendFile(int fd, std::string fn) {
     }
     close(file);
     return 0;
+}
+
+int sendCmd(int fd, CMDS cmd) {
+    bool response;
+    if (sendSth(cmd, fd) == -1) {
+        reportError("Error send CMD");
+        return (-1);
+    }
+    if (recvSth(response, fd) == -1) {
+        reportError("ERROR conf CMD");
+        return (-1);
+    }
+    if (!response) {
+        reportDebug("The command was not accepted.", 1);
+        return (-1);
+    }
+    return (0);
 }

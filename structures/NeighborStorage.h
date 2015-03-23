@@ -17,7 +17,7 @@ class NeighborStorage
 public:
     int getNeighborCount();
     NeighborInfo *getNeighborInfo(const struct sockaddr_storage &addr);
-    NeighborInfo *getFreeNeighbor();
+    int getFreeNeighbor(struct sockaddr_storage &addr);
     struct sockaddr_storage getRandomNeighbor();
     std::vector<struct sockaddr_storage> getNeighborAdresses(int count);
     int removeNeighbor(const struct sockaddr_storage &addr);
