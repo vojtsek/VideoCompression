@@ -201,7 +201,7 @@ int32_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
-        DATA->neighbors.removeNeighbor(addr);
+        //DATA->neighbors.removeNeighbor(addr);
         return -1;
     }
     DATA->neighbors.setInterval(addr, DATA->config.getValue("CHECK_INTERVALS"));
@@ -276,7 +276,7 @@ void NetworkHandler::collectNeighbors() {
 }
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
-    int32_t sock;
+    socklen_t sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);

@@ -13,9 +13,15 @@ void NeighborInfo::printInfo() {
 
 void NeighborInfo::invoke(NetworkHandler &net_handler) {
     int32_t sock;
-    if (!--intervals) {
+    if (--intervals <= 0) {
         sock = net_handler.checkNeighbor(address);
-        net_handler.spawnOutgoingConnection(address, sock, { PING_PEER }, true, nullptr);
+        if (sock == -1) {
+            dirty = true;
+            free = false;
+            return;
+        }
+        net_handler.spawnOutgoingConnection(
+                    address, sock, { PING_PEER }, true, nullptr);
     }
 }
 

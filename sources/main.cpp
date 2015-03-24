@@ -135,6 +135,7 @@ void periodicActions(NetworkHandler &net_handler) {
     net_handler.contactSuperPeer();
     DATA->periodic_listeners.applyTo(
                 [&](Listener *l) { l->invoke(net_handler);  });
+    DATA->neighbors.removeDirty();
 }
 
 int32_t main(int32_t argc, char **argv) {

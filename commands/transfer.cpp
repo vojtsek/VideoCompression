@@ -179,6 +179,7 @@ bool CmdReturnPeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     }
     ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     // do I need two containers?
+    // xhunks returned ... chunks received?
     if (!DATA->chunks_returned.contains(ti->getHash())) {
         processReturnedChunk(ti, handler, state);
         if (!DATA->state.to_recv) {

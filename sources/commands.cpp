@@ -39,10 +39,12 @@ int32_t NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
     if (setsockopt(sock, SOL_SOCKET, SO_LINGER,
             &so_linger, sizeof (so_linger)) == -1) {
         reportDebug("Failed to set option to listening socket." + std::string(strerror(errno)), 1);
+        close(sock);
         return (-1);
    }
     if (connect(sock, (struct sockaddr *) addr, sizeof (*addr)) == -1) {
         reportDebug("Failed to connect to remote peer." + std::string(strerror(errno)) + MyAddr(*addr).get(), 1);
+        close(sock);
         return(-1);
     }
     MyAddr mad(*addr);

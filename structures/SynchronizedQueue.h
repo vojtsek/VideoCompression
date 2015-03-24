@@ -16,27 +16,24 @@ template <typename T>
 struct SynchronizedMap {
     std::unordered_map<std::string, T *> map;
     std::mutex mtx;
-    std::condition_variable cond;
     bool being_used;
 
     SynchronizedMap(): being_used(false) {}
 
     void push(T *item) {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
+        mtx.lock();
         map.insert(
                     std::make_pair(item->getHash(), item));
-        lck.unlock();
+        mtx.unlock();
     }
 
     T *get(std::string key) {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         T *item = nullptr;
-        lck.lock();
+        mtx.lock();
         try {
             item = map.at(key);
         } catch (std::out_of_range) { }
-        lck.unlock();
+        mtx.unlock();
         return item;
     }
 
@@ -49,22 +46,20 @@ struct SynchronizedMap {
 
     std::vector<T *> getValues() {
         std::vector<T *> values;
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
+        mtx.lock();
         for (auto &v : map) {
             values.push_back(v.second);
         }
-        lck.unlock();
+        mtx.unlock();
         return values;
     }
 
     bool remove(T *item) {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
+        mtx.lock();
         int32_t size_before = map.size();
         map.erase(item->getHash());
         int32_t size_after = map.size();
-        lck.unlock();
+        mtx.unlock();
         if (size_before != size_after) {
             return true;
         }
@@ -72,31 +67,28 @@ struct SynchronizedMap {
     }
 
     void applyTo(std::function<void (T *)> func) {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
+        mtx.lock();
         std::for_each(map.begin(), map.end(),
-                      [&](std::pair<std::string, T*> entry) { func(entry.second); });
-        lck.unlock();
+                      [&](std::pair<std::string, T *> entry) { func(entry.second); });
+        mtx.unlock();
         return false;
     }
 
     bool removeIf(std::function<bool (T *)> func) {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
+        mtx.lock();
         map.erase(
-            std::remove_if(map.begin(), map.end(), func), map.end());
-        lck.unlock();
+                    std::remove_if(map.begin(), map.end(),
+                                   [&](std::pair<std::string, T *> entry) {
+                        return func(entry.second);
+                    }), map.end());
+        mtx.unlock();
         return false;
     }
 
-    void signal() {
-        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
-        lck.lock();
-        lck.unlock();
-    }
-
     void clear() {
+        mtx.lock();
         map.clear();
+        mtx.unlock();
     }
 };
 

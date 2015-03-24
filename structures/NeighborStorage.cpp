@@ -15,7 +15,8 @@ int32_t NeighborStorage::getNeighborCount() {
     return size;
 }
 
-int32_t NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
+int32_t NeighborStorage::removeNeighbor(
+        const struct sockaddr_storage &addr) {
     //TODO: check differently
     if (getNeighborInfo(addr) == nullptr)
         return 0;
@@ -35,7 +36,13 @@ int32_t NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
                //         it->second->getHash());
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
-                return networkHelper::cmpStorages(ti->address, it->second->address);
+                return networkHelper::cmpStorages(
+                            ti->address, it->second->address);
+            });
+
+            DATA->periodic_listeners.removeIf(
+                        [&](Listener *listener) -> bool {
+                return (listener->getHash() == it->second->getHash());
             });
             //delete it->second;
             neighbors.erase(it);
@@ -46,6 +53,20 @@ int32_t NeighborStorage::removeNeighbor(const struct sockaddr_storage &addr) {
     }
     n_mtx.unlock();
     return 0;
+}
+
+void NeighborStorage::removeDirty() {
+    std::vector<struct sockaddr_storage> to_remove;
+    n_mtx.lock();
+    for (const auto &n : neighbors) {
+        if (n.second->dirty) {
+            to_remove.push_back(n.second->address);
+        }
+    }
+    n_mtx.unlock();
+    for (const auto &a : to_remove) {
+        removeNeighbor(a);
+    }
 }
 
 void NeighborStorage::applyToNeighbors(
@@ -163,7 +184,7 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
         DATA->periodic_listeners.push(ngh);
         free_neighbors.push_back(ngh);
         MyAddr mad(addr);
-        reportDebug("Neighbor added; " + mad.get(), 3);
+        reportDebug("Neighbor added; " + mad.get(), 1);
         if (neighbors.size() == (unsigned)
             DATA->config.getValue("MAX_NEIGHBOR_COUNT")) {
         reportSuccess("Enough neighbors gained.");

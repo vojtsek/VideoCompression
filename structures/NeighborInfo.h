@@ -13,6 +13,7 @@ struct NeighborInfo : public Listener {
     bool confirmed;
     bool active;
     bool free;
+    bool dirty;
 
     void printInfo();
     virtual bool equalsTo(Listener *that);
@@ -21,7 +22,7 @@ struct NeighborInfo : public Listener {
     virtual ~NeighborInfo() {}
 
     NeighborInfo(const struct sockaddr_storage &addr):
-        quality(0), free(true) {
+        quality(0), free(true), dirty(false) {
         address = addr;
     }
 };

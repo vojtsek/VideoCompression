@@ -137,6 +137,7 @@ int32_t encodeChunk(TransferInfo *ti) {
             ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in, 2);
     snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
+    unlink(file_out.c_str());
     int32_t duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
              "-c:v", ti->output_codec.c_str(),
@@ -154,6 +155,7 @@ int32_t encodeChunk(TransferInfo *ti) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
         return -1;
     }
+        reportStatus("Signaled.");
     reportDebug("Chunk " + ti->name + " encoded.", 2);
     ti->encoding_time = duration;
     utilities::rmFile(file_in);

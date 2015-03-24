@@ -2,6 +2,11 @@
 #define STRUCTURES_H
 
 
+/**
+ * @brief The Listener struct
+ *
+ * Is able to react on events, via the invoke() method call.
+ */
 struct Listener {
     virtual void invoke(NetworkHandler &handler) = 0;
     virtual std::string getHash() = 0;
