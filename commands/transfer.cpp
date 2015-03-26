@@ -129,7 +129,8 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
 }
 //TODO:generic function to send chunk
 
-bool CmdReturnHost::execute(int32_t fd, sockaddr_storage &, void *data) {
+bool CmdReturnHost::execute(
+        int32_t fd, sockaddr_storage &, void *data) {
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
@@ -149,9 +150,11 @@ bool CmdReturnHost::execute(int32_t fd, sockaddr_storage &, void *data) {
     return true;
 }
 
-bool CmdReturnPeer::execute(int32_t fd, sockaddr_storage &address, void *) {
+bool CmdReturnPeer::execute(
+        int32_t fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
     //TODO: delete in case of failure
+    // should get already created Info!!
     TransferInfo *ti(new TransferInfo);
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -179,7 +182,7 @@ bool CmdReturnPeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     }
     ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     // do I need two containers?
-    // xhunks returned ... chunks received?
+    // chunks returned ... chunks received?
     if (!DATA->chunks_returned.contains(ti->getHash())) {
         processReturnedChunk(ti, handler, state);
         if (!DATA->state.to_recv) {
@@ -190,5 +193,54 @@ bool CmdReturnPeer::execute(int32_t fd, sockaddr_storage &address, void *) {
         //utilities::rmFile(dir + "/" + ti->name + ti->desired_extension);
     }
 
+    return true;
+}
+
+bool CmdGatherNeighborsPeer::execute(
+        int32_t fd, sockaddr_storage &address, void *) {
+    CMDS action = GATHER_HOST;
+    MyAddr requester_maddr;
+    struct sockaddr_storage requester_addr;
+
+    if (sendCmd(fd, action) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+
+    if (requester_maddr.receive(fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+    reportSuccess("FROM: " +
+                 requester_maddr.get() + "; " +
+                  utilities::m_itoa(requester_maddr.TTL));
+
+    if (--requester_maddr.TTL <= 0) {
+        reportStatus("Throwing away.");
+        return true;
+    }
+
+    requester_addr = requester_maddr.getAddress();
+    for (const auto &addr :
+         DATA->neighbors.getNeighborAdresses(
+             DATA->neighbors.getNeighborCount())) {
+        handler->gatherNeighbors(requester_maddr.TTL, // already lowered
+                    requester_addr, addr);
+        reportStatus("Sending to: " + MyAddr(addr).get());
+    }
+
+    return true;
+}
+
+bool CmdGatherNeighborsHost::execute(
+        int32_t fd, sockaddr_storage &address, void *data) {
+    MyAddr *requester_addr = (MyAddr *) data;
+
+    if (requester_addr->send(fd) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+
+    // TODO: delete
     return true;
 }

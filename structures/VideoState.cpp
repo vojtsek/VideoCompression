@@ -34,6 +34,13 @@ int32_t VideoState::split() {
         DATA->io_data.info_handler.updateAt(msgIndex, infoMsg, DEBUG);
     }
     DATA->io_data.info_handler.print();
+    struct sockaddr_storage maddr;
+    if (networkHelper::getMyAddress(maddr, net_handler) == -1) {
+        reportDebug("Failed to get my adress while contacting peers.", 2);
+    } else {
+        net_handler->gatherNeighbors(DATA->config.getValue("TTL"), maddr,
+                                     DATA->neighbors.getRandomNeighbor());
+    }
     for (uint32_t i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
 

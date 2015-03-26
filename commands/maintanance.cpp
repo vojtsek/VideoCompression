@@ -87,6 +87,7 @@ bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void 
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
+    //use function
     networkHelper::changeAddressPort(address, port);
     if ((sock = handler->checkNeighbor(address)) == -1) {
         reportDebug("Error getting host address.", 2);

@@ -119,6 +119,26 @@ int32_t networkHelper::getPeerAddr(
     return -1;
 }
 
+int32_t networkHelper::getMyAddress(
+        struct sockaddr_storage &addr, NetworkHandler *handler) {
+    socklen_t sock;
+
+    if ((sock = handler->checkNeighbor(
+             DATA->neighbors.getRandomNeighbor())) == -1) {
+        reportDebug("Error getting host address.", 2);
+        return -1;
+    }
+    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
+        reportDebug("Error getting host address.", 2);
+        close(sock);
+        return -1;
+    }
+    close(sock);
+    networkHelper::changeAddressPort(addr,
+                                     DATA->config.getValue("LISTENING_PORT"));
+    return 0;
+}
+
 struct sockaddr_storage networkHelper::addr2storage(
         const char *addrstr, int32_t port, int32_t family) {
     struct sockaddr_storage addr;

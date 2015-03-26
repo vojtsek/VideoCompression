@@ -41,7 +41,14 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
         if (!ti->addressed) {
             if (DATA->neighbors.getFreeNeighbor(
                      free_address) == 0) {
-                reportDebug("No free neighbor!", 2);
+                reportDebug("No free neighbors!", 2);
+                struct sockaddr_storage maddr;
+                if (networkHelper::getMyAddress(maddr, net_handler) == -1) {
+                    reportDebug("Failed to get my adress while contacting peers.", 2);
+                } else {
+                    net_handler->gatherNeighbors(2, maddr,
+                                                 DATA->neighbors.getRandomNeighbor());
+                }
                 pushChunkSend(ti);
                 sleep(5);
                 continue;
@@ -115,6 +122,7 @@ void pushChunkProcess(TransferInfo *ti) {
 }
 
 void pushChunkSend(TransferInfo *ti) {
+    // TODO: check somewhere if the file is OK
     DATA->chunks_to_send.push(ti);
 }
 
@@ -155,7 +163,6 @@ int32_t encodeChunk(TransferInfo *ti) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
         return -1;
     }
-        reportStatus("Signaled.");
     reportDebug("Chunk " + ti->name + " encoded.", 2);
     ti->encoding_time = duration;
     utilities::rmFile(file_in);

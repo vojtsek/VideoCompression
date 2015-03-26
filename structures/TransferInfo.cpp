@@ -43,12 +43,12 @@ int32_t TransferInfo::send(int32_t fd) {
     }
 
     if (sendInt32(fd, receiving_time) == -1) {
-        reportDebug("Failed to send encoding_time.", 1);
+        reportDebug("Failed to send receiving_time.", 1);
         return -1;
     }
 
     if (sendInt32(fd, sending_time) == -1) {
-        reportDebug("Failed to send encoding_time.", 1);
+        reportDebug("Failed to send sending_time.", 1);
         return -1;
     }
 
@@ -111,12 +111,12 @@ int32_t TransferInfo::receive(int32_t fd) {
     }
 
      if (receiveInt32(fd, receiving_time) == -1){
-         reportDebug("Failed to receive encoding time.", 1);
+         reportDebug("Failed to receive receiving time.", 1);
          return -1;
      }
 
      if (receiveInt32(fd, sending_time) == -1){
-         reportDebug("Failed to receive encoding time.", 1);
+         reportDebug("Failed to receive sending time.", 1);
          return -1;
      }
 

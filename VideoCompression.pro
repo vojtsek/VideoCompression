@@ -44,7 +44,6 @@ HEADERS += \
     headers/handle_IO.h \
     headers/include_list.h \
     headers/networkhandler.h \
-    headers/structures.h \
     headers/templates.h \
     headers/utilities.h \
     structures/SynchronizedQueue.h \

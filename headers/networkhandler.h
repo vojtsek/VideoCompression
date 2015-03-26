@@ -22,6 +22,9 @@ struct NetworkHandler {
     int32_t getPotentialNeighborsCount();
     void confirmNeighbor(struct sockaddr_storage addr);
     void obtainNeighbors();
+    void gatherNeighbors(int32_t TTL,
+            const struct sockaddr_storage &requester_addr,
+            const struct sockaddr_storage &ngh_addr);
     void collectNeighbors();
     void contactSuperPeer();
     void askForAddresses(struct sockaddr_storage &addr);

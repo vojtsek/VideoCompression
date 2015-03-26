@@ -25,7 +25,7 @@ public:
     CmdReturnPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int32_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
-        return ("Return Peer");
+        return ("Return peer");
     }
 };
 
@@ -34,7 +34,25 @@ public:
     CmdReturnHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int32_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
-        return ("Return Host");
+        return ("Return host");
+    }
+};
+
+class CmdGatherNeighborsPeer: public NetworkCommand {
+public:
+    CmdGatherNeighborsPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int32_t fd, struct sockaddr_storage &address, void *data);
+    virtual std::string getName() {
+        return ("Gather neighbors peer");
+    }
+};
+
+class CmdGatherNeighborsHost: public NetworkCommand {
+public:
+    CmdGatherNeighborsHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int32_t fd, struct sockaddr_storage &address, void *data);
+    virtual std::string getName() {
+        return ("Gather neighbors host");
     }
 };
 

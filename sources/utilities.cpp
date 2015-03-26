@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <time.h>
 #include <string.h>
 #include <dirent.h>
@@ -142,10 +143,16 @@ std::string utilities::formatString(std::string str1, std::string str2) {
     return std::string(value);
 }
 
+/**
+ * @brief utilities::getTimestamp
+ * @return current time since epoch start, in MILIseconds
+ */
 std::string utilities::getTimestamp() {
-    char stamp[16];
-    sprintf(stamp, "%d", (int) time(NULL));
-    return std::string(stamp);
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    int32_t us = tv.tv_sec * 1000000 + tv.tv_usec;
+    us /= 1000;
+    return utilities::m_itoa(us);
 }
 
 bool utilities::isAcceptable(char c) {

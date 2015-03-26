@@ -115,6 +115,8 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_HOST, new CmdPingHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler)));
+    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GATHER_HOST, new CmdGatherNeighborsHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_PEER, new CmdReturnPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_HOST, new CmdReturnHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler)));

@@ -28,12 +28,12 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
         bool response;
         for (auto cmd : cmds) {
             if ((sendCmd(fd, cmd)) == -1) {
-                reportError("Failed to process the action.");
+                reportDebug("Failed to send command.", 2);
                 break;
             }
 
             if (recvSth(action, fd) == -1) {
-                reportError("Failed to process the action.");
+                reportDebug("Failed to get response.", 2);
                 break;
             }
             response = true;
@@ -112,7 +112,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                break;
            }
            if (!cmd->execute(fd, addr, nullptr)) {
-               reportError(cmd->getName());
+               reportDebug("Failed to process: " + cmd->getName(), 3);
                throw exception();
            }
         }catch (exception e) {
@@ -204,7 +204,8 @@ int32_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
         //DATA->neighbors.removeNeighbor(addr);
         return -1;
     }
-    DATA->neighbors.setInterval(addr, DATA->config.getValue("CHECK_INTERVALS"));
+    DATA->neighbors.setInterval(addr,
+                                DATA->config.getValue("CHECK_INTERVALS"));
     return sock;
 }
 
@@ -215,9 +216,24 @@ int32_t NetworkHandler::getPotentialNeighborsCount() {
     return count;
 }
 
+void NetworkHandler::gatherNeighbors(int32_t TTL,
+        const struct sockaddr_storage &requester_addr,
+        const struct sockaddr_storage &ngh_addr) {
+    int32_t sock;
+    if ((sock = checkNeighbor(ngh_addr)) == -1) {
+        return;
+    }
+    MyAddr *requester_maddr = new MyAddr(requester_addr);
+    requester_maddr->TTL = TTL;
+    spawnOutgoingConnection(ngh_addr, sock, { GATHER_PEER }, true,
+                (void *) requester_maddr);
+}
+
 void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
     int32_t sock =  checkNeighbor(addr);
-    if (sock == -1) return;
+    if (sock == -1) {
+        return;
+    }
     spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false, nullptr);
 }
 
