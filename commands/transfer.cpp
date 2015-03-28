@@ -1,4 +1,5 @@
 #include "headers/include_list.h"
+#include <ctime>
 
 using namespace utilities;
 
@@ -111,8 +112,7 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
-        if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
-             "/" + ti->name + ti->original_extension) == -1) {
+        if (sendFile(fd, ti->path) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
@@ -121,9 +121,6 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
         return false;
     }
 
-
-   // OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
-    //                  "/" + ti->name + ti->original_extension);
     reportDebug("Chunk transferred. " + m_itoa(
                     DATA->chunks_to_send.getSize()) + " remaining.", 2);
     return true;
@@ -174,11 +171,14 @@ bool CmdReturnPeer::execute(
         return false;
     }
     ti->timestamp = utilities::getTimestamp();
+    //clock_t start = clock();
     if (receiveFile(fd, dir + "/" + ti->name + ti->desired_extension) == -1) {
         reportError(ti->name + ": Failed to transfer file.");
         return false;
     }
     ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
+    //ti->receiving_time = ((clock() - start) / CLOCKS_PER_SEC);
+    handler->confirmNeighbor(ti->address);
     // do I need two containers?
     // chunks returned ... chunks received?
     if (!DATA->chunks_returned.contains(ti->toString())) {
@@ -211,6 +211,7 @@ bool CmdGatherNeighborsPeer::execute(
     }
 
     requester_addr = requester_maddr.getAddress();
+    requester_maddr.print();
     int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
     if ((can_accept > 0) && (!DATA->state.working)) {
         int32_t sock;

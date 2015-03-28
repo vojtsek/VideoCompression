@@ -35,12 +35,12 @@ void TransferInfo::invoke(NetworkHandler &handler) {
 }
 
 int32_t TransferInfo::send(int32_t fd) {
-    if (sendSth(chunk_size, fd) == -1) {
+    if (sendInt32(fd, chunk_size) == -1) {
         reportDebug("Failed to send size.", 1);
         return -1;
     }
 
-    if (sendSth(sent_times, fd) == -1) {
+    if (sendInt32(fd, sent_times) == -1) {
         reportDebug("Failed to send times sent.", 1);
         return -1;
     }
@@ -60,12 +60,12 @@ int32_t TransferInfo::send(int32_t fd) {
         return -1;
     }
 
-    if (sendSth(address, fd) == -1) {
+    if (sendStruct(fd, address) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
     }
 
-    if (sendSth(src_address, fd) == -1) {
+    if (sendStruct(fd, src_address) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
     }
@@ -103,12 +103,12 @@ int32_t TransferInfo::send(int32_t fd) {
 }
 
 int32_t TransferInfo::receive(int32_t fd) {
-    if (recvSth(chunk_size, fd) == -1) {
+    if (receiveInt32(fd, chunk_size) == -1) {
         reportDebug("Failed to receive size.", 1);
         return -1;
     }
 
-     if (recvSth(sent_times, fd) == -1) {
+     if (receiveInt32(fd, sent_times) == -1) {
         reportDebug("Failed to receive times sent.", 1);
         return -1;
     }
@@ -130,13 +130,13 @@ int32_t TransferInfo::receive(int32_t fd) {
 
     struct sockaddr_storage srca;
 
-    if (recvSth(srca, fd) == -1) {
+    if (receiveStruct(fd, srca) == -1) {
         reportDebug("Failed to receive address.", 1);
         return -1;
     }
     address = srca;
 
-    if (recvSth(srca, fd) == -1) {
+    if (receiveStruct(fd, srca) == -1) {
         reportDebug("Failed to receive source address.", 1);
         return -1;
     }
@@ -185,6 +185,17 @@ std::string TransferInfo::getInfo() {
     ss << "Encoding time: " << encoding_time << std::endl;
     ss << "Encoded by: " << MyAddr(address).get() << std::endl;
     ss << "---------------------------------" << std::endl;
+    return ss.str();
+}
+
+std::string TransferInfo::getCSV() {
+    std::stringstream ss;
+    ss << name << ", ";
+    ss << sent_times << ", ";
+    ss << sending_time << ", ";
+    ss << receiving_time << ", ";
+    ss << encoding_time << ", ";
+    ss << "Encoded by: " << MyAddr(address).get() << std::endl;
     return ss.str();
 }
 

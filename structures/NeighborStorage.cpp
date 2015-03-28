@@ -195,7 +195,7 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
             reportSuccess("Enough neighbors gained.");
         }
     } else {
-        reportDebug("Already known neighbor.", 2);
+        reportDebug("Already known neighbor.", 3);
     }
     n_mtx.unlock();
 }

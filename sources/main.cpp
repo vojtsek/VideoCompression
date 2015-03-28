@@ -33,11 +33,18 @@ bool argsContains(char **argv, const char *str) {
 }
 
 int32_t parseOptions(int32_t argc, char **argv) {
-    int32_t opt;
-    while ((opt = getopt(argc, argv, "p:")) != -1) {
+    int opt;
+    while ((opt = getopt(argc, argv, "sp:d:")) != -1) {
         switch (opt) {
         case 'p':
             DATA->config.intValues.at("LISTENING_PORT") = atoi(optarg);
+            break;
+        case 's':
+            DATA->config.is_superpeer = true;
+            break;
+        case 'd':
+            reportError(optarg);
+            DATA->config.debug_level = atoi(optarg);
             break;
         case '?':
             usage();
@@ -116,21 +123,21 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.emplace(SET_CODEC, new CmdSetCodec(&state));
     DATA->cmds.emplace(SET_SIZE, new CmdSetChSize(&state));
     DATA->cmds.emplace(SET_FORMAT, new CmdSetFormat(&state));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_PEER, new CmdAskPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_HOST, new CmdAskHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_PEER, new CmdPingPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(PING_HOST, new CmdPingHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GATHER_HOST, new CmdGatherNeighborsHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_PEER, new CmdReturnPeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(RETURN_HOST, new CmdReturnHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler)));
-    DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler)));
+    DATA->net_cmds.emplace(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(ASK_PEER, new CmdAskPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(ASK_HOST, new CmdAskHost(&state, &net_handler));
+    DATA->net_cmds.emplace(PING_PEER, new CmdPingPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(PING_HOST, new CmdPingHost(&state, &net_handler));
+    DATA->net_cmds.emplace(DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler));
+    DATA->net_cmds.emplace(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler));
+    DATA->net_cmds.emplace(GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(GATHER_HOST, new CmdGatherNeighborsHost(&state, &net_handler));
+    DATA->net_cmds.emplace(RETURN_PEER, new CmdReturnPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(RETURN_HOST, new CmdReturnHost(&state, &net_handler));
+    DATA->net_cmds.emplace(GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler));
+    DATA->net_cmds.emplace(GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler));
+    DATA->net_cmds.emplace(SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
@@ -159,8 +166,8 @@ int32_t main(int32_t argc, char **argv) {
         reportError("Error reading configuration!");
         return 1;
     }
-    int32_t optidx = parseOptions(argc, argv);
     initConfiguration();
+    parseOptions(argc, argv);
     DATA->config.working_dir += "/" +
             utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
     if (OSHelper::prepareDir(DATA->config.working_dir, false) == -1) {
@@ -177,8 +184,7 @@ int32_t main(int32_t argc, char **argv) {
     curs_set(0);
     wrefresh(win);
     refresh();
-    if (argsContains(argv + optidx, std::string("super").c_str())) {
-        DATA->config.is_superpeer = true;
+    if (DATA->config.is_superpeer) {
         std::thread thr ([&]() {
             superPeerRoutine(net_handler);
         });

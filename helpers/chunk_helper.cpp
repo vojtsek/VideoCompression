@@ -96,7 +96,7 @@ void chunkProcessRoutine() {
 
 void processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *, VideoState *state) {
-    DATA->periodic_listeners.remove(ti);
+    while (DATA->periodic_listeners.remove(ti)) {};
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
     OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
@@ -130,8 +130,9 @@ void pushChunkProcess(TransferInfo *ti) {
 }
 
 void pushChunkSend(TransferInfo *ti) {
-    // TODO: check somewhere if the file is OK
-    DATA->chunks_to_send.push(ti);
+    if (OSHelper::getFileSize(ti->path) != -1) {
+        DATA->chunks_to_send.push(ti);
+    }
 }
 
 int32_t encodeChunk(TransferInfo *ti) {

@@ -104,7 +104,7 @@ void reportStatus(const std::string &msg) {
 }
 
 void reportDebug(const std::string &msg, int32_t lvl) {
-    if (lvl <= DEBUG_LEVEL) {
+    if (lvl <= DATA->config.debug_level) {
         DATA->io_data.status_handler.add(msg, DEBUG);
         DATA->io_data.status_handler.print();
     }

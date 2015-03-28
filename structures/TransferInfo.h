@@ -17,12 +17,13 @@ struct TransferInfo : public Listener, Sendable {
     std::string path;
     std::string output_codec;
     std::string timestamp;
+    std::string getInfo();
+    std::string getCSV();
 
     virtual void invoke(NetworkHandler &handler);
     virtual std::string toString();
     virtual int32_t send(int32_t fd);
     virtual int32_t receive(int32_t fd);
-    std::string getInfo();
     void print();
     virtual bool equalsTo(Listener *that);
 

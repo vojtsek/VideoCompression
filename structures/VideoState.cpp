@@ -81,6 +81,8 @@ int32_t VideoState::split() {
         TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
                                             job_id, chunk_id, finfo.extension, o_format,
                                             std::string(output), o_codec);
+        ti->path = DATA->config.working_dir + "/" + ti->job_id +
+                "/" + ti->name + ti->original_extension;
         pushChunkSend(ti);
     }
     printProgress(1);
@@ -109,12 +111,17 @@ int32_t VideoState::join() {
     reportStatus("Joining the file: " + output);
     snprintf(cmd, BUF_LENGTH,
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
+
+    // create the joining text file
     for (uint32_t i = 0; i < c_chunks; ++i) {
         snprintf(fn, BUF_LENGTH, "%03d_splitted", i);
         file = DATA->config.working_dir +
                 "/received/" + job_id + "/" + fn + o_format;
-//        if (!OSHelper::getFileSize())
-        //check existence
+        if (OSHelper::getFileSize(file) <= 0) {
+            reportError("file: '" + file + "'' is not ok, failed.");
+            abort();
+            return -1;
+        }
         file_item = "file '" + file + "'";
         sum_size += OSHelper::getFileSize(file);
         ofs_loc << file_item << std::endl;
@@ -132,11 +139,11 @@ int32_t VideoState::join() {
         reportError(output + ": Error while joining file.");
         reportError(err);
         clearProgress();
-        return (-1);
+        return -1;
     }
     thr.join();
     endProcess(duration);
-    return (0);
+    return 0;
 }
 
 void VideoState::reportTime(std::string msg, int32_t time) {
@@ -146,6 +153,7 @@ void VideoState::reportTime(std::string msg, int32_t time) {
 }
 
 void VideoState::endProcess(int32_t duration) {
+    std::ofstream csv_stream(DATA->config.working_dir + "/data.csv");
     DATA->io_data.info_handler.updateAt(msgIndex, "DONE", SUCCESS);
     printProgress(1);
     reportSuccess("Succesfully joined.");
@@ -160,10 +168,13 @@ void VideoState::endProcess(int32_t duration) {
     {return (t1->encoding_time < t2->encoding_time);});
     for (auto &ti : tis) {
         ofs << ti->getInfo();
+        csv_stream << ti->getCSV();
         delete ti;
     }
     ofs.flush();
     ofs.close();
+    csv_stream.flush();
+    csv_stream.close();
     DATA->chunks_returned.clear();
     DATA->chunks_to_send.clear();
 }

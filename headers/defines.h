@@ -22,7 +22,6 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define DEBUG_LEVEL 2
 #define STATUS_LENGTH 10
 #define INFO_LINES 15
 #define LINE_LENGTH 80

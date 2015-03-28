@@ -151,7 +151,15 @@ bool CmdConfirmHost::execute(int32_t fd, struct sockaddr_storage &address, void 
 
 bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PONG", 5);
-    RESPONSE_T resp;
+    RESPONSE_T resp = ACK_FREE;
+    int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
+    if ((can_accept <= 0) || (DATA->state.working)) {
+        resp = ACK_BUSY;
+    }
+    if (sendResponse(fd, resp) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
     if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -180,19 +188,28 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     CMDS action = PING_HOST;
     int32_t sock;
     int32_t peer_port;
-    RESPONSE_T resp = ACK_FREE;
+    RESPONSE_T resp = ACK_FREE, neighbor_state;
     int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
+
     if ((can_accept <= 0) || (DATA->state.working)) {
         resp = ACK_BUSY;
     }
+
     if (sendCmd(fd, action) == -1) {
-            reportError("Error while communiiicating with peer." + MyAddr(address).get());
+            reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
+
+    if (receiveResponse(fd, neighbor_state) == -1) {
+        reportError("Error while communicating with peer." + MyAddr(address).get());
+        return false;
+    }
+
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
+
     if (receiveInt32(fd, peer_port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
@@ -210,13 +227,18 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     }
     close(sock);
     networkHelper::changeAddressPort(addr, peer_port);
-    reportSuccess(MyAddr(addr).get());
 
-    //TODO: thinks about it
-    if (DATA->config.is_superpeer)
+    // in case that I am working, I want more neighbors
+    if (DATA->config.is_superpeer ||
+            DATA->state.working) {
         handler->addNewNeighbor(false, addr);
-    else
-        handler->addNewNeighbor(false, addr);
+    } else {
+        handler->addNewNeighbor(true, addr);
+    }
+
+    if (neighbor_state == ACK_FREE) {
+        DATA->neighbors.setNeighborFree(addr, true);
+    }
     return true;
 }
 

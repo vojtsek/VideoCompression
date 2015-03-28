@@ -36,8 +36,10 @@ struct Mutexes_Data {
 };
 
 struct Configuration {
-    bool is_superpeer = false, IPv4_ONLY, serve_while_working;
-    std::map<std::string, int> intValues;
+    bool is_superpeer = false,
+    IPv4_ONLY, serve_while_working;
+    int32_t debug_level = 0;
+    std::map<std::string, int32_t> intValues;
     std::map<std::string, std::string> strValues;
     std::string working_dir, superpeer_addr;
     int32_t getIntValue(std::string key);
