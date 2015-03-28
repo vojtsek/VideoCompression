@@ -11,21 +11,24 @@ void TransferInfo::print() {
 }
 
 void TransferInfo::invoke(NetworkHandler &handler) {
+    // timeout is up
     if (--time_left <= 0) {
+        // the are still some tries left -> try to contact the neighbor
         if ((--tries_left > 0) && (handler.checkNeighbor(address) != -1)) {
-            time_left = DATA->config.getValue(
+            time_left = DATA->config.getIntValue(
                         "COMPUTATION_TIMEOUT");
             return;
-        } else {}
+        }
         try {
-            if (DATA->chunks_returned.contains(getHash())) {
+            // it has already returned
+            if (DATA->chunks_returned.contains(toString())) {
                 return;
             }
-            reportError(name + ": Still in queue, resending.");
+            reportDebug(name + ": Still in queue, resending.", 2);
             pushChunkSend(this);
-            time_left = DATA->config.getValue(
+            time_left = DATA->config.getIntValue(
                         "COMPUTATION_TIMEOUT");
-            tries_left = DATA->config.getValue(
+            tries_left = DATA->config.getIntValue(
                         "TRIES_BEFORE_RESEND");
         } catch (...) {}
     }
@@ -172,12 +175,11 @@ int32_t TransferInfo::receive(int32_t fd) {
     return 0;
 }
 
-std::string TransferInfo::toString() {
+std::string TransferInfo::getInfo() {
     std::stringstream ss;
     ss << "----------------------------------" << std::endl;
     ss << "Name: " << name << std::endl;
     ss << "Times sent: " << sent_times << std::endl;
-    ss << "Processing time: " << processing_time << std::endl;
     ss << "Sending time: " << sending_time << std::endl;
     ss << "Receiving time: " << receiving_time << std::endl;
     ss << "Encoding time: " << encoding_time << std::endl;
@@ -186,10 +188,10 @@ std::string TransferInfo::toString() {
     return ss.str();
 }
 
-std::string TransferInfo::getHash() {
+std::string TransferInfo::toString() {
     return (name + job_id);
 }
 
 bool TransferInfo::equalsTo(Listener *that) {
-    return (getHash() == that->getHash());
+    return (toString() == that->toString());
 }

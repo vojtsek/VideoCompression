@@ -18,7 +18,7 @@ struct NeighborInfo : public Listener {
     void printInfo();
     virtual bool equalsTo(Listener *that);
     virtual void invoke(NetworkHandler &handler);
-    virtual std::string getHash();
+    virtual std::string toString();
     virtual ~NeighborInfo() {}
 
     NeighborInfo(const struct sockaddr_storage &addr):

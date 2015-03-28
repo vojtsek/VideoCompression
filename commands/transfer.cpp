@@ -30,7 +30,7 @@ bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
         throw 1;
     }
 
-    if (DATA->chunks_received.contains(ti->getHash())) {
+    if (DATA->chunks_received.contains(ti->toString())) {
         resp = ABORT;
         if (sendResponse(fd, resp) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -47,14 +47,18 @@ bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     }
 
     std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
-    if (prepareDir(dir, false) == -1) {
+    if (OSHelper::prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating job dir.");
         throw 1;
     }
+
+    ti->timestamp = utilities::getTimestamp();
     if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
         reportError(ti->name + ": Failed to transfer file.");
         throw 1;
     }
+    ti->sending_time = utilities::computeDuration(
+                utilities::getTimestamp(), ti->timestamp);
 
     reportDebug("Pushing chunk " + ti->name + "(" +
                 utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
@@ -107,21 +111,18 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
-        ti->timestamp = utilities::getTimestamp();
         if (sendFile(fd, DATA->config.working_dir + "/" + ti->job_id +
              "/" + ti->name + ti->original_extension) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
-        ti->sending_time = utilities::computeDuration(
-                    utilities::getTimestamp(), ti->timestamp);
     } catch (int) {
         pushChunkSend(ti);
         return false;
     }
 
 
-   // utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+   // OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
     //                  "/" + ti->name + ti->original_extension);
     reportDebug("Chunk transferred. " + m_itoa(
                     DATA->chunks_to_send.getSize()) + " remaining.", 2);
@@ -145,7 +146,7 @@ bool CmdReturnHost::execute(
     }
 
     DATA->chunks_to_send.signal();
-    utilities::rmFile(ti->path);
+    OSHelper::rmFile(ti->path);
     //delete ti;
     return true;
 }
@@ -167,11 +168,8 @@ bool CmdReturnPeer::execute(
     }
 
     std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
-    /*if (prepareDir(dir false) == -1) {
-        reportError(ti->name + ": Error creating received dir.");
-        return false;
-    }*/
-    if (prepareDir(dir, false) == -1) {
+
+    if (OSHelper::prepareDir(dir, false) == -1) {
         reportError(ti->name + ": Error creating received job dir.");
         return false;
     }
@@ -183,14 +181,14 @@ bool CmdReturnPeer::execute(
     ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     // do I need two containers?
     // chunks returned ... chunks received?
-    if (!DATA->chunks_returned.contains(ti->getHash())) {
+    if (!DATA->chunks_returned.contains(ti->toString())) {
         processReturnedChunk(ti, handler, state);
         if (!DATA->state.to_recv) {
             state->join();
         }
     } else {
         reportError(ti->name + ": Too late.");
-        //utilities::rmFile(dir + "/" + ti->name + ti->desired_extension);
+        delete ti;
     }
 
     return true;
@@ -211,22 +209,28 @@ bool CmdGatherNeighborsPeer::execute(
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
-    reportSuccess("FROM: " +
-                 requester_maddr.get() + "; " +
-                  utilities::m_itoa(requester_maddr.TTL));
+
+    requester_addr = requester_maddr.getAddress();
+    int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
+    if ((can_accept > 0) && (!DATA->state.working)) {
+        int32_t sock;
+        if ((sock = handler->checkNeighbor(requester_addr)) == -1) {
+            reportDebug("Failed to contact: " + requester_maddr.get(), 3);
+        } else {
+            handler->spawnOutgoingConnection(requester_addr, sock,
+            { PING_PEER }, true, nullptr);
+        }
+    }
 
     if (--requester_maddr.TTL <= 0) {
-        reportStatus("Throwing away.");
         return true;
     }
 
-    requester_addr = requester_maddr.getAddress();
     for (const auto &addr :
          DATA->neighbors.getNeighborAdresses(
              DATA->neighbors.getNeighborCount())) {
         handler->gatherNeighbors(requester_maddr.TTL, // already lowered
                     requester_addr, addr);
-        reportStatus("Sending to: " + MyAddr(addr).get());
     }
 
     return true;
@@ -241,6 +245,6 @@ bool CmdGatherNeighborsHost::execute(
         return false;
     }
 
-    // TODO: delete
+    delete requester_addr;
     return true;
 }

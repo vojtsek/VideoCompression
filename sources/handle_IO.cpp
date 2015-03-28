@@ -70,7 +70,7 @@ void reportFileProgress(const std::string &file, long desired) {
     int32_t tries = 10;
     double percent;
     while (fs < desired) {
-        fs = utilities::getFileSize(file);
+        fs = OSHelper::getFileSize(file);
         if (fs < 0)
             fs = 0;
         if (fs == old) {

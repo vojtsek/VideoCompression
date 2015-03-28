@@ -15,7 +15,7 @@ struct VideoState {
     std::ofstream ofs;
     NetworkHandler *net_handler;
     VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0),
-        chunk_size(DATA->config.getValue("CHUNK_SIZE")), msgIndex(-1),
+        chunk_size(DATA->config.getIntValue("CHUNK_SIZE")), msgIndex(-1),
     dir_location(DATA->config.working_dir), o_format(".mkv"), o_codec("libx264") {
         net_handler = nh;
     }

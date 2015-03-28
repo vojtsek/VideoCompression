@@ -32,10 +32,10 @@ struct Listener {
      */
     virtual void invoke(NetworkHandler &handler) = 0;
 
-    /*! \fn getHash
+    /*! \fn toString
      * get string representation of object
      */
-    virtual std::string getHash() = 0;
+    virtual std::string toString() = 0;
 
     /*! \fn equalsTo
      * decide, whether the provided object is equal to this

@@ -25,12 +25,12 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
     }
 }
 
-std::string NeighborInfo::getHash() {
+std::string NeighborInfo::toString() {
     std::string hash(networkHelper::storage2addr(address) +
                      utilities::m_itoa(((struct sockaddr_in *)&address)->sin_port));
     return hash;
 }
 
 bool NeighborInfo::equalsTo(Listener *that) {
-    return (getHash() == that->getHash());
+    return (toString() == that->toString());
 }

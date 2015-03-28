@@ -36,7 +36,8 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
     while (true) {
         ti = DATA->chunks_to_send.pop();
         if (DATA->chunks_to_send.contains(ti)) {
-            continue;
+            DATA->chunks_to_send.remove(ti);
+           // continue;
         }
         if (!ti->addressed) {
             if (DATA->neighbors.getFreeNeighbor(
@@ -46,8 +47,13 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
                 if (networkHelper::getMyAddress(maddr, net_handler) == -1) {
                     reportDebug("Failed to get my adress while contacting peers.", 2);
                 } else {
-                    net_handler->gatherNeighbors(2, maddr,
-                                                 DATA->neighbors.getRandomNeighbor());
+                    struct sockaddr_storage neighbor_addr;
+                    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == -1) {
+                        reportDebug("No neighbors!", 3);
+                    } else {
+                        net_handler->gatherNeighbors(
+                                    DATA->config.getIntValue("TTL"), maddr, neighbor_addr);
+                    }
                 }
                 pushChunkSend(ti);
                 sleep(5);
@@ -60,7 +66,7 @@ void chunkSendRoutine(NetworkHandler *net_handler) {
             // on this address the chunk should be returned.
             networkHelper::getHostAddr(ti->src_address, sock);
             networkHelper::changeAddressPort(ti->src_address,
-                              DATA->config.getValue("LISTENING_PORT"));
+                              DATA->config.getIntValue("LISTENING_PORT"));
             net_handler->spawnOutgoingConnection(free_address, sock,
             { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
             // start checking the processing time
@@ -91,12 +97,15 @@ void chunkProcessRoutine() {
 void processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *, VideoState *state) {
     DATA->periodic_listeners.remove(ti);
-    reportDebug("Chunk returned: " + ti->getHash(), 2);
+    reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
-    utilities::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+    OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
+    // old structure which was created originally with the chunk
+    TransferInfo *old_ti =
+            (TransferInfo *) DATA->periodic_listeners.get(ti->toString());
+    delete old_ti;
     DATA->chunks_to_send.remove(ti);
-    ti->processing_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, ti->address)) {
@@ -109,7 +118,6 @@ void processReturnedChunk(TransferInfo *ti,
     if (!--DATA->state.to_recv) {
         type = SUCCESS;
     }
-    //TODO: add to free negihbors?
     DATA->io_data.info_handler.updateAt(state->msgIndex,
                         utilities::formatString(
                         "processed chunks:",
@@ -130,13 +138,8 @@ int32_t encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
     res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
-    /*
-    if (prepareDir(res_dir, false) == -1) {
-        reportDebug("Failed to create working dir.", 2);
-        return -1;
-    }
-    */
-    if (utilities::prepareDir(res_dir, false) == -1) {
+
+    if (OSHelper::prepareDir(res_dir, false) == -1) {
         reportDebug("Failed to create job dir.", 2);
         return -1;
     }
@@ -144,9 +147,10 @@ int32_t encodeChunk(TransferInfo *ti) {
     std::string file_in = DATA->config.working_dir + "/to_process/" +
             ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in, 2);
-    snprintf(cmd, BUF_LENGTH, "/usr/bin/ffmpeg");
+    snprintf(cmd, BUF_LENGTH,
+             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
     unlink(file_out.c_str());
-    int32_t duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 10, cmd,
+    int32_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
              "-c:v", ti->output_codec.c_str(),
              "-preset", "ultrafast",
@@ -165,7 +169,7 @@ int32_t encodeChunk(TransferInfo *ti) {
     }
     reportDebug("Chunk " + ti->name + " encoded.", 2);
     ti->encoding_time = duration;
-    utilities::rmFile(file_in);
+    OSHelper::rmFile(file_in);
     std::atomic_fetch_add(&DATA->state.can_accept, 1);
     pushChunkSend(ti);
     return 0;

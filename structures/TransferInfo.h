@@ -8,7 +8,7 @@ struct TransferInfo : public Listener, Sendable {
     bool addressed;
     int32_t chunk_size, time_left, tries_left,
     sending_time, receiving_time,
-    sent_times, processing_time, encoding_time;
+    sent_times, encoding_time;
     struct sockaddr_storage address, src_address;
     std::string job_id;
     std::string name; // without extension
@@ -19,14 +19,14 @@ struct TransferInfo : public Listener, Sendable {
     std::string timestamp;
 
     virtual void invoke(NetworkHandler &handler);
-    virtual std::string getHash();
+    virtual std::string toString();
     virtual int32_t send(int32_t fd);
     virtual int32_t receive(int32_t fd);
-    std::string toString();
+    std::string getInfo();
     void print();
     virtual bool equalsTo(Listener *that);
 
-    TransferInfo(): addressed(false) {};
+    TransferInfo(): addressed(false) {}
 
     TransferInfo(struct sockaddr_storage addr, int32_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
@@ -34,7 +34,7 @@ struct TransferInfo : public Listener, Sendable {
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
         sending_time(0), receiving_time(0),
-        sent_times(0), processing_time(0), encoding_time(0),
+        sent_times(0), encoding_time(0),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
         src_address = addr;
@@ -46,7 +46,7 @@ struct TransferInfo : public Listener, Sendable {
         time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
         tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
         sending_time(0), receiving_time(0),
-        sent_times(0), processing_time(0), encoding_time(0),
+        sent_times(0), encoding_time(0),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {}
 

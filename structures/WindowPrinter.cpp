@@ -54,7 +54,7 @@ void WindowPrinter::print() {
     werase(win);
     int32_t y, col;
     if (start == BOTTOM)
-        y = DATA->config.intValues.at("STATUS_LENGTH") - 1;
+        y = STATUS_LENGTH - 1;
     else
         y = 0;
     bool first = true;
@@ -62,8 +62,8 @@ void WindowPrinter::print() {
     if (direction == UP) {
         s = q.begin();
     } else {
-        s = q.size() > (unsigned) DATA->config.intValues.at("STATUS_LENGTH") ?
-                    q.end() - DATA->config.intValues.at("STATUS_LENGTH") +1 : q.begin();
+        s = q.size() > (unsigned) STATUS_LENGTH ?
+                    q.end() - STATUS_LENGTH +1 : q.begin();
     }
     e = q.end();
     while (s != e) {

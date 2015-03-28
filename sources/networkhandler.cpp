@@ -22,7 +22,6 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                                     int32_t fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
-        int32_t i;
         int32_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
@@ -205,7 +204,7 @@ int32_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
         return -1;
     }
     DATA->neighbors.setInterval(addr,
-                                DATA->config.getValue("CHECK_INTERVALS"));
+                                DATA->config.getIntValue("CHECK_INTERVALS"));
     return sock;
 }
 
@@ -234,10 +233,11 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
     if (sock == -1) {
         return;
     }
-    spawnOutgoingConnection(addr, sock, { CONFIRM_PEER }, false, nullptr);
+    spawnOutgoingConnection(addr, sock, { PING_PEER, CONFIRM_PEER }, false, nullptr);
 }
 
-void NetworkHandler::addNewNeighbor(bool potential, struct sockaddr_storage &addr) {
+void NetworkHandler::addNewNeighbor(
+        bool potential, struct sockaddr_storage &addr) {
     if (potential) {
         potential_mtx.lock();
         potential_neighbors.push_back(addr);
@@ -292,7 +292,7 @@ void NetworkHandler::collectNeighbors() {
 }
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
-    socklen_t sock;
+    int32_t sock;
     CmdAskPeer cmd(nullptr, nullptr);
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);

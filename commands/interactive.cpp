@@ -41,7 +41,7 @@ void CmdStart::execute() {
         return;
     }
 
-    if (utilities::checkFile(state->finfo.fpath) == -1) {
+    if (OSHelper::checkFile(state->finfo.fpath) == -1) {
         reportError("Invalid file.");
         return;
     }
@@ -55,7 +55,7 @@ void CmdStart::execute() {
     refresh();
     if (state->split() == -1) {
         reportError("Error while splitting the video file.");
-        utilities::rmrDir(state->dir_location.c_str(), false);
+        OSHelper::rmrDir(state->dir_location.c_str(), false);
         return;
     }
     /*
@@ -85,7 +85,7 @@ void CmdSetCodec::execute() {
 
 void CmdSetChSize::execute() {
     std::string in = loadInput("", "Enter new chunk size (kB):", false);
-    size_t nsize = DATA->config.getValue("CHUNK_SIZE");
+    size_t nsize = DATA->config.getIntValue("CHUNK_SIZE");
     std::stringstream ss(in), msg;
     ss >> nsize;
     state->changeChunkSize(nsize * 1024);
@@ -132,14 +132,17 @@ void CmdLoad::execute(){
         reportError("File path not provided.");
         return;
     }
-    if (utilities::checkFile(path) == -1){
+    if (OSHelper::checkFile(path) == -1){
         reportError("Loading the file " + path + " failed");
         return;
     }
     finfo.fpath = path;
-    finfo.extension = "." + utilities::getExtension(path);
-    finfo.basename = utilities::getBasename(path);
-    if (utilities::runExternal(out, err, "ffprobe", 6, "ffprobe", finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+    finfo.extension = "." + OSHelper::getExtension(path);
+    finfo.basename = OSHelper::getBasename(path);
+    if (OSHelper::runExternal(out, err,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
+                               finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
         reportError("Error while getting video information.");
         return;
     }

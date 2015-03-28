@@ -150,9 +150,9 @@ std::string utilities::formatString(std::string str1, std::string str2) {
 std::string utilities::getTimestamp() {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    int32_t us = tv.tv_sec * 1000000 + tv.tv_usec;
+    uint64_t us = tv.tv_sec * 1000000 + tv.tv_usec;
     us /= 1000;
-    return utilities::m_itoa(us);
+    return utilities::m_itoa((int32_t) us);
 }
 
 bool utilities::isAcceptable(char c) {
@@ -192,10 +192,22 @@ vector<std::string> utilities::split(const std::string &content, char sep) {
     return result;
 }
 
-int32_t Configuration::getValue(string key) {
+int32_t Configuration::getIntValue(std::string key) {
+    int32_t res = 0;
     try {
-        return intValues.at(key);
-    } catch (std::out_of_range e) {
+        res = intValues.at(key);
+    } catch (std::out_of_range) {
         return 0;
     }
+    return res;
+}
+
+std::string Configuration::getStringValue(std::string key) {
+    std::string res("");
+    try {
+        res = strValues.at(key);
+    } catch (std::out_of_range) {
+        return "";
+    }
+    return res;
 }

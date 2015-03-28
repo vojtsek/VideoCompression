@@ -49,19 +49,28 @@ int32_t parseOptions(int32_t argc, char **argv) {
 
 int32_t readConfiguration(const std::string &cf) {
     ifstream ifs(cf);
-    std::string param, value, line;
+    std::string param_name, value, line;
     int32_t intvalue;
     while(ifs.good()) {
         getline(ifs, line);
         std::stringstream ss(line);
-        ss >> param;
+        ss >> param_name;
         ss >> value;
-        intvalue = atoi(value.c_str());
         try {
-            DATA->config.intValues.insert(make_pair(param, intvalue));
-        } catch (...) {
-            // read also std::strings - determine exceptions
-            reportError("Failed to read parameter " + param);
+            intvalue = std::stoi(value);
+            try {
+                DATA->config.intValues.insert(
+                            std::make_pair(param_name, intvalue));
+            } catch (...) {
+                reportError("Failed to read parameter " + param_name);
+            }
+        } catch (std::invalid_argument) {
+            try {
+                DATA->config.strValues.insert(
+                            std::make_pair(param_name, value));
+            } catch (...) {
+                reportError("Failed to read parameter " + param_name);
+            }
         }
     }
    return (0);
@@ -73,8 +82,8 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 
 void initConfiguration() {
     std::shared_ptr<Data> data = DATA;
-    DATA->state.can_accept = DATA->config.getValue("MAX_ACCEPTED_CHUNKS");
-    data->config.working_dir = WD;
+    DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
+    DATA->config.working_dir = DATA->config.getStringValue("WD");
     if (data->config.working_dir == "") {
         char dirp[BUF_LENGTH];
         if (getcwd(dirp, BUF_LENGTH) == NULL) {
@@ -91,22 +100,22 @@ void initConfiguration() {
     data->io_data.info_win = derwin(stdscr, y_space/ 2, 80, 3, 0);
     data->io_data.status_handler.changeWin(data->io_data.status_win);
     data->io_data.info_handler.changeWin(data->io_data.info_win);
-    data->config.superpeer_addr = SUPERPEER_ADDR;
-    data->config.intValues.emplace("STATUS_LENGTH", y_space / 2 - 1);
+    data->config.superpeer_addr = DATA->config.getStringValue("SUPERPEER_ADDR");
     data->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
                                     utilities::getTimestamp() + "_" +
-                                    utilities::m_itoa(DATA->config.getValue("LISTENING_PORT")));
+                                    utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
-    DATA->cmds.insert(make_pair<CMDS, Command *>(DEFCMD, new CmdDef));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(SHOW, new CmdShow(&state, &net_handler)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(START, new CmdStart(&state)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(LOAD, new CmdLoad(&state)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(SET, new CmdSet(&state)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(SET_CODEC, new CmdSetCodec(&state)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(SET_SIZE, new CmdSetChSize(&state)));
-    DATA->cmds.insert(make_pair<CMDS, Command *>(SET_FORMAT, new CmdSetFormat(&state)));
+    // TODO: initialize more reasonably
+    DATA->cmds.emplace(DEFCMD, new CmdDef);
+    DATA->cmds.emplace(SHOW, new CmdShow(&state, &net_handler));
+    DATA->cmds.emplace(START, new CmdStart(&state));
+    DATA->cmds.emplace(LOAD, new CmdLoad(&state));
+    DATA->cmds.emplace(SET, new CmdSet(&state));
+    DATA->cmds.emplace(SET_CODEC, new CmdSetCodec(&state));
+    DATA->cmds.emplace(SET_SIZE, new CmdSetChSize(&state));
+    DATA->cmds.emplace(SET_FORMAT, new CmdSetFormat(&state));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler)));
     DATA->net_cmds.insert(make_pair<CMDS, NetworkCommand *>(ASK_PEER, new CmdAskPeer(&state, &net_handler)));
@@ -130,7 +139,7 @@ void cleanCommands(cmd_storage_t &cmds) {
 }
 
 void periodicActions(NetworkHandler &net_handler) {
-    if (DATA->neighbors.getNeighborCount() < DATA->config.getValue(
+    if (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
                 "MAX_NEIGHBOR_COUNT")) {
         net_handler.obtainNeighbors();
     }
@@ -148,13 +157,13 @@ int32_t main(int32_t argc, char **argv) {
     initCurses();
     if (readConfiguration("CONF") == -1) {
         reportError("Error reading configuration!");
-        return (1);
+        return 1;
     }
     int32_t optidx = parseOptions(argc, argv);
     initConfiguration();
     DATA->config.working_dir += "/" +
-            utilities::m_itoa(DATA->config.getValue("LISTENING_PORT"));
-    if (prepareDir(DATA->config.working_dir, false) == -1) {
+            utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
+    if (OSHelper::prepareDir(DATA->config.working_dir, false) == -1) {
         reportError("Failed to prepare working directory.");
     }
     NetworkHandler net_handler;

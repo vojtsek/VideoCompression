@@ -5,7 +5,7 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKPEER", 5);
     CMDS action = ASK_HOST;
     int32_t size = DATA->neighbors.getNeighborCount();
-    int32_t count = (size < DATA->config.getValue("MAX_NEIGHBOR_COUNT")) ? size : DATA->config.getValue("MAX_NEIGHBOR_COUNT");
+    int32_t count = (size < DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) ? size : DATA->config.getIntValue("MAX_NEIGHBOR_COUNT");
     struct sockaddr_storage addr;
     if (sendCmd(fd, action) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -17,7 +17,12 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
             reportError("No neighbors yet");
             return false;
         }
-        addr = DATA->neighbors.getRandomNeighbor();
+
+        if (DATA->neighbors.getRandomNeighbor(addr) == -1) {
+            reportDebug("No neighbors!", 3);
+            return false;
+        }
+
         if (sendInt32(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -87,7 +92,6 @@ bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void 
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
-    //use function
     networkHelper::changeAddressPort(address, port);
     if ((sock = handler->checkNeighbor(address)) == -1) {
         reportDebug("Error getting host address.", 2);
@@ -100,7 +104,7 @@ bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void 
     }
     close(sock);
     networkHelper::changeAddressPort(addr,
-                                     DATA->config.getValue("LISTENING_PORT"));
+                                     DATA->config.getIntValue("LISTENING_PORT"));
 
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -162,7 +166,8 @@ bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     } else {
         DATA->neighbors.setNeighborFree(address, true);
     }
-    if (sendInt32(fd, DATA->config.intValues.at("LISTENING_PORT")) == -1) {
+    if (sendInt32(fd,
+                  DATA->config.intValues.at("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -205,11 +210,13 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     }
     close(sock);
     networkHelper::changeAddressPort(addr, peer_port);
+    reportSuccess(MyAddr(addr).get());
 
+    //TODO: thinks about it
     if (DATA->config.is_superpeer)
         handler->addNewNeighbor(false, addr);
     else
-        handler->addNewNeighbor(true, addr);
+        handler->addNewNeighbor(false, addr);
     return true;
 }
 

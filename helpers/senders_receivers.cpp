@@ -24,10 +24,10 @@ int32_t receiveInt32(int32_t fd, int32_t &i) {
 }
 
 int32_t sendResponse(int32_t fd, RESPONSE_T &resp) {
-    int32_t i;
     if (sendInt32(fd, resp) == -1) {
         return -1;
     }
+    return 0;
 }
 
 int32_t receiveResponse(int32_t fd, RESPONSE_T &resp) {
@@ -101,7 +101,7 @@ std::string receiveString(int32_t fd) {
 int32_t receiveFile(int32_t fd, std::string fn) {
     off_t fsize, received = 0, r, w;
     int32_t o_file;
-    char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
+    char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
             reportDebug(fn + ": Failed to open the output file. ", 2);
@@ -112,7 +112,7 @@ int32_t receiveFile(int32_t fd, std::string fn) {
             reportDebug(fn + ": Failed to get file size. ", 2);
             throw 1;
         }
-        while ((r = read(fd, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
+        while ((r = read(fd, buf, DATA->config.getIntValue("TRANSFER_BUF_LENGTH"))) > 0) {
             received += r;
             if ((w = write(o_file, buf, r)) == -1) {
                 reportDebug("Error; received " + utilities::m_itoa(received), 2);
@@ -129,7 +129,7 @@ int32_t receiveFile(int32_t fd, std::string fn) {
         reportError("Bad transfer");
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
         close(o_file);
-        utilities::rmFile(fn);
+        OSHelper::rmFile(fn);
         return -1;
     }
     reportDebug("received " + utilities::m_itoa(received), 3);
@@ -140,13 +140,13 @@ int32_t receiveFile(int32_t fd, std::string fn) {
 int32_t sendFile(int32_t fd, std::string fn) {
     int32_t file;
     off_t fsize, to_sent = 0, r, w;
-    char buf[DATA->config.getValue("TRANSFER_BUF_LENGTH")];
+    char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         if ((file = open(fn.c_str(), O_RDONLY)) == -1) {
             reportDebug(fn + ": Failed to open.", 2);
             throw 1;
         }
-        if ((fsize = utilities::getFileSize(fn)) == -1) {
+        if ((fsize = OSHelper::getFileSize(fn)) == -1) {
             reportDebug(fn + ": Failed to get file size", 2);
             throw 1;
         }
@@ -157,7 +157,7 @@ int32_t sendFile(int32_t fd, std::string fn) {
         }
 
         to_sent = fsize;
-        while ((r = read(file, buf, DATA->config.getValue("TRANSFER_BUF_LENGTH"))) > 0) {
+        while ((r = read(file, buf, DATA->config.getIntValue("TRANSFER_BUF_LENGTH"))) > 0) {
             if ((w = write(fd, buf, r)) != -1) {
                 to_sent -= w;
             } else {

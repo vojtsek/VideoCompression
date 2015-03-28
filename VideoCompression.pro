@@ -15,14 +15,14 @@ SOURCES +=  \
     structures/MyAddr.cpp \
     helpers/chunk_helper.cpp \
     helpers/network_helper.cpp \
-    helpers/filesystem_helper.cpp \
+    helpers/OShelper.cpp \
     sources/commands.cpp \
     sources/handle_IO.cpp \
     sources/main.cpp \
     sources/networkhandler.cpp \
     sources/utilities.cpp \
     structures/NeighborStorage.cpp \
-    helpers/senders_receivers.cpp
+    helpers/senders_receivers.cpp \
 
 HEADERS += \
     commands/interactive.h \
@@ -37,7 +37,7 @@ HEADERS += \
     structures/TransferInfo.h \
     helpers/chunk_helper.h \
     helpers/network_helper.h \
-    helpers/filesystem_helper.h \
+    helpers/OShelper.h \
     headers/commands.h \
     headers/defines.h \
     headers/enums_types.h \
@@ -48,7 +48,7 @@ HEADERS += \
     headers/utilities.h \
     structures/SynchronizedQueue.h \
     structures/NeighborStorage.h \
-    helpers/senders_receivers.h
+    helpers/senders_receivers.h \
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

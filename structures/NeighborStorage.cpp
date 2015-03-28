@@ -33,7 +33,7 @@ int32_t NeighborStorage::removeNeighbor(
         if (networkHelper::cmpStorages(it->second->address, addr)) {
             //TODO: structures handling synchronization of listeners
           //  DATA->periodic_listeners.erase(
-               //         it->second->getHash());
+               //         it->second->toString());
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
                 return networkHelper::cmpStorages(
@@ -42,7 +42,7 @@ int32_t NeighborStorage::removeNeighbor(
 
             DATA->periodic_listeners.removeIf(
                         [&](Listener *listener) -> bool {
-                return (listener->getHash() == it->second->getHash());
+                return (listener->toString() == it->second->toString());
             });
             //delete it->second;
             neighbors.erase(it);
@@ -149,7 +149,11 @@ int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     return 1;
 }
 
-struct sockaddr_storage NeighborStorage::getRandomNeighbor() {
+int32_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
+    int count;
+    if (!(count = getNeighborCount())) {
+        return -1;
+    }
     int32_t rand_n = rand() % getNeighborCount();
     SYNCHRONIZED_SECTION(
         auto it = neighbors.begin();
@@ -157,7 +161,8 @@ struct sockaddr_storage NeighborStorage::getRandomNeighbor() {
             it++;
         }
     )
-    return it->second->address;
+    addr = it->second->address;
+    return 0;
 }
 
 std::vector<struct sockaddr_storage>
@@ -177,19 +182,20 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     n_mtx.lock();
     if (!networkHelper::addrIn(addr, neighbors)) {
         NeighborInfo *ngh = new NeighborInfo(addr);
-        ngh->intervals = DATA->config.getValue(
+        ngh->intervals = DATA->config.getIntValue(
             "NEIGHBOR_CHECK_TIMEOUT");
         neighbors.insert(
-            std::make_pair(ngh->getHash(), ngh));
+            std::make_pair(ngh->toString(), ngh));
         DATA->periodic_listeners.push(ngh);
         free_neighbors.push_back(ngh);
         MyAddr mad(addr);
         reportDebug("Neighbor added; " + mad.get(), 1);
         if (neighbors.size() == (unsigned)
-            DATA->config.getValue("MAX_NEIGHBOR_COUNT")) {
-        reportSuccess("Enough neighbors gained.");
+            DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
+            reportSuccess("Enough neighbors gained.");
         }
-    } else
-        reportDebug("Already known neighbor.", 4);
+    } else {
+        reportDebug("Already known neighbor.", 2);
+    }
     n_mtx.unlock();
 }

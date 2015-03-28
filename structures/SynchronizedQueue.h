@@ -23,7 +23,7 @@ struct SynchronizedMap {
     void push(T *item) {
         mtx.lock();
         map.insert(
-                    std::make_pair(item->getHash(), item));
+                    std::make_pair(item->toString(), item));
         mtx.unlock();
     }
 
@@ -57,7 +57,7 @@ struct SynchronizedMap {
     bool remove(T *item) {
         mtx.lock();
         int32_t size_before = map.size();
-        map.erase(item->getHash());
+        map.erase(item->toString());
         int32_t size_after = map.size();
         mtx.unlock();
         if (size_before != size_after) {
@@ -204,6 +204,7 @@ struct SynchronizedQueue {
         lck.lock();
         lck.unlock();
         cond.notify_one();
+        reportStatus("Signaled.");
     }
 };
 

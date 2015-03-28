@@ -24,9 +24,7 @@
 #define DEFINES_H
 #define DEBUG_LEVEL 2
 #define STATUS_LENGTH 10
-#define WD "/home/vojcek/WD"
 #define INFO_LINES 15
-#define SUPERPEER_ADDR "::ffff:127.0.0.1"
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

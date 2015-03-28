@@ -16,7 +16,7 @@ int32_t VideoState::split() {
     sprintf(dir_name, "job_%s", utilities::getTimestamp().c_str());
     job_id = std::string(dir_name);
     std::string path(dir_location + std::string("/") + job_id);
-    if (utilities::prepareDir(path, false) == -1) {
+    if (OSHelper::prepareDir(path, false) == -1) {
         reportError("Failed to create the job directory.");
         return (-1);
     }
@@ -34,12 +34,14 @@ int32_t VideoState::split() {
         DATA->io_data.info_handler.updateAt(msgIndex, infoMsg, DEBUG);
     }
     DATA->io_data.info_handler.print();
-    struct sockaddr_storage maddr;
-    if (networkHelper::getMyAddress(maddr, net_handler) == -1) {
+    struct sockaddr_storage my_addr, neighbor_addr;
+    if (networkHelper::getMyAddress(my_addr, net_handler) == -1) {
         reportDebug("Failed to get my adress while contacting peers.", 2);
     } else {
-        net_handler->gatherNeighbors(DATA->config.getValue("TTL"), maddr,
-                                     DATA->neighbors.getRandomNeighbor());
+        if (DATA->neighbors.getRandomNeighbor(neighbor_addr) != -1) {
+            net_handler->gatherNeighbors(
+                    DATA->config.getIntValue("TTL"), my_addr, neighbor_addr);
+        }
     }
     for (uint32_t i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
@@ -55,9 +57,10 @@ int32_t VideoState::split() {
                  //TODO check if exists, HARDCODE
                  dir_location.c_str(), job_id.c_str(), i, ".avi");
         snprintf(chunk_id, BUF_LENGTH, "%03d_splitted", i);
-        snprintf(cmd, BUF_LENGTH, "ffmpeg");
+        snprintf(cmd, BUF_LENGTH,
+                 DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
         cursToStatus();
-        sum += Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 12, cmd,
+        sum += Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 12, cmd,
                     "-ss", current,
                     "-i", finfo.fpath.c_str(),
                     "-v", "quiet",
@@ -65,7 +68,8 @@ int32_t VideoState::split() {
                     "-t", chunk_duration,
                     output);
         if (err.find("Conversion failed") != std::string::npos) {
-            sprintf(msg, "%s %s %s %s %s %s %s %s\n", "ffmpeg",
+            sprintf(msg, "%s %s %s %s %s %s %s %s\n",
+                    DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
                 "-i", finfo.fpath.c_str(),
                 "-ss", current,
                 "-t", chunk_duration,
@@ -74,7 +78,7 @@ int32_t VideoState::split() {
             abort();
             return -1;
         }
-        TransferInfo *ti = new TransferInfo(utilities::getFileSize(output),
+        TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
                                             job_id, chunk_id, finfo.extension, o_format,
                                             std::string(output), o_codec);
         pushChunkSend(ti);
@@ -87,6 +91,7 @@ int32_t VideoState::split() {
 }
 
 void VideoState::abort() {
+    //TODO: delete structures
     clearProgress();
     DATA->state.working = false;
 }
@@ -102,21 +107,22 @@ int32_t VideoState::join() {
     unlink(output.c_str());
     errno = 0;
     reportStatus("Joining the file: " + output);
-    snprintf(cmd, BUF_LENGTH, "ffmpeg");
+    snprintf(cmd, BUF_LENGTH,
+             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
     for (uint32_t i = 0; i < c_chunks; ++i) {
         snprintf(fn, BUF_LENGTH, "%03d_splitted", i);
         file = DATA->config.working_dir +
                 "/received/" + job_id + "/" + fn + o_format;
-//        if (!utilities::getFileSize())
+//        if (!OSHelper::getFileSize())
         //check existence
         file_item = "file '" + file + "'";
-        sum_size += utilities::getFileSize(file);
+        sum_size += OSHelper::getFileSize(file);
         ofs_loc << file_item << std::endl;
     }
     ofs_loc.flush();
     ofs_loc.close();
     std::thread thr(reportFileProgress, output, sum_size);
-    duration = Measured<>::exec_measure(utilities::runExternal, out, err, cmd, 8, cmd,
+    duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 8, cmd,
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
@@ -145,15 +151,16 @@ void VideoState::endProcess(int32_t duration) {
     reportSuccess("Succesfully joined.");
     reportTime("Joining: ", duration / 1000);
     clearProgress();
-    utilities::rmrDir(DATA->config.working_dir + "/received/", true);
+    OSHelper::rmrDir(DATA->config.working_dir + "/received/", true);
     DATA->state.working = false;
     ofs << "Information about particular chunks:" << std::endl;
     std::vector<TransferInfo *> tis = DATA->chunks_returned.getValues();
     std::sort(tis.begin(), tis.end(), [&](
               TransferInfo *t1, TransferInfo *t2)
-    {return (t1->processing_time < t2->processing_time);});
+    {return (t1->encoding_time < t2->encoding_time);});
     for (auto &ti : tis) {
-        ofs << ti->toString();
+        ofs << ti->getInfo();
+        delete ti;
     }
     ofs.flush();
     ofs.close();
@@ -167,7 +174,7 @@ void VideoState::printVideoState() {
 
 void VideoState::loadFileInfo(struct FileInfo &finfo) {
     this->finfo = finfo;
-    changeChunkSize(DATA->config.getValue("CHUNK_SIZE"));
+    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE"));
     DATA->io_data.info_handler.clear();
     if (!finfo.fpath.empty()) {
         DATA->io_data.info_handler.add(utilities::formatString("File:",
@@ -192,7 +199,7 @@ void VideoState::loadFileInfo(struct FileInfo &finfo) {
     if (chunk_size) {
         DATA->io_data.info_handler.add(utilities::formatString("Chnuk size:",
                                                                utilities::m_itoa(
-                                                                   DATA->config.getValue("CHUNK_SIZE"))), PLAIN);
+                                                                   DATA->config.getIntValue("CHUNK_SIZE"))), PLAIN);
     }
     if (!o_codec.empty()) {
         DATA->io_data.info_handler.add(utilities::formatString("Output codec:",

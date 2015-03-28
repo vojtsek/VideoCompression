@@ -24,7 +24,7 @@ namespace utilities
     std::vector<std::string> getKnownCodecs();
     std::string getTimestamp();
     std::string m_itoa(int32_t n);
-    std::string getHash(NeighborInfo &n);
+    std::string toString(NeighborInfo &n);
     std::string formatString(std::string str1, std::string str2);
     void listCmds();
     bool knownCodec(const std::string &cod);
