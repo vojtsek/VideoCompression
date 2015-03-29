@@ -14,6 +14,18 @@ public:
     virtual void execute();
 };
 
+class CmdScrollUp: public Command {
+public:
+    CmdScrollUp(VideoState *st): Command(st) {}
+    virtual void execute();
+};
+
+class CmdScrollDown: public Command {
+public:
+    CmdScrollDown(VideoState *st): Command(st) {}
+    virtual void execute();
+};
+
 class CmdShow: public NetworkCommand {
 public:
     CmdShow(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}

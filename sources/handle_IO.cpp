@@ -34,7 +34,8 @@
 
 using namespace std;
 
-string loadInput(const std::string &histf, const std::string &msg, bool save) {
+std::string loadInput(const std::string &histf, const std::string &msg,
+                      bool save, bool changeable) {
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     std::unique_lock<std::mutex> lck2(DATA->m_data.O_mtx, std::defer_lock);
 
@@ -52,7 +53,7 @@ string loadInput(const std::string &histf, const std::string &msg, bool save) {
     lck2.unlock();
 
     DATA->m_data.using_I = true;
-    getLine(line, LINE_LENGTH, histf, save);
+    getLine(line, LINE_LENGTH, histf, save, changeable);
     curs_set(0);
     cursorToX(0);
     clrtoeol();
@@ -189,22 +190,40 @@ void cursorToX(int32_t nx) {
     move(y, nx);
 }
 
-int32_t getLine(char *line, int32_t len, const std::string &histf, bool save) {
+/*!
+ * \brief getLine gets one line of input from the user, handles history
+ * \param line pointer to bufer
+ * \param len buffer length
+ * \param histf path to the file with history
+ * \param save whether update history file
+ * \param changeable if input is actually accepted or just selection of choices
+ * \return zero on success
+ * reads characters until new line
+ * uses the file with history
+ */
+int32_t getLine(char *line, int32_t len,
+                const std::string &histf, bool save, bool changeable) {
     HistoryStorage hist(histf);
     char *start = line;
     *line = '\0';
-
     nocbreak();
     cbreak();
     wchar_t c;
+    bool first = true;
     int32_t read = 0;
     while(++read <= len) {
-        c = getch();
+        if (!first || changeable) {
+            c = getch();
+        } else {
+            c = KEY_UP;
+        }
+        first = false;
         if (c == KEY_UP) {
             cursorToX(1);
             clrtoeol();
             hist.prev();
             try {
+                cursToCmd();
                 printw(hist.getCurrent().c_str());
                 read = hist.getCurrent().size();
                 strncpy(start, hist.getCurrent().c_str(), read);

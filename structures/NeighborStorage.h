@@ -22,6 +22,7 @@ public:
     std::vector<struct sockaddr_storage> getNeighborAdresses(int32_t count);
     int32_t removeNeighbor(const struct sockaddr_storage &addr);
     void removeDirty();
+    void printNeighborsInfo();
     void addNewNeighbor(const struct sockaddr_storage &addr);
     void setInterval(const struct sockaddr_storage &addr, int32_t i);
     void updateQuality(const struct sockaddr_storage &addr, int32_t q);

@@ -27,6 +27,7 @@ namespace utilities
     std::string toString(NeighborInfo &n);
     std::string formatString(std::string str1, std::string str2);
     void listCmds();
+    void printOverallState(VideoState *state);
     bool knownCodec(const std::string &cod);
     bool knownFormat(const std::string &format);
     bool isAcceptable(char c);

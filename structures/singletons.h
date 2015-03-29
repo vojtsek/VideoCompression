@@ -62,8 +62,8 @@ struct Data {
     State state;
     NeighborStorage neighbors;
     SynchronizedQueue<TransferInfo> chunks_to_send, chunks_to_encode;
-    SynchronizedMap<TransferInfo> chunks_received;
-    SynchronizedMap<TransferInfo>chunks_returned;
+    SynchronizedMap<TransferInfo> chunks_received, chunks_returned,
+    chunks_to_process;
     SynchronizedMap<Listener> periodic_listeners;
     static std::vector<std::string> getKnownCodecs() {
         return {"libx264", "msmpeg"};
@@ -76,7 +76,10 @@ struct Data {
             { KEY_F(6), SHOW },
             { KEY_F(7), START },
             { KEY_F(8), LOAD },
-            { KEY_F(9), SET } };
+            { KEY_F(9), SET },
+            { KEY_UP, SCROLL_UP },
+            { KEY_DOWN, SCROLL_DOWN }
+        };
     }
     Data(std::string log_location) : io_data(log_location) {}
 

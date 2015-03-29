@@ -180,12 +180,6 @@ void VideoState::endProcess(int32_t duration) {
 }
 
 void VideoState::printVideoState() {
-    DATA->io_data.info_handler.print();
-}
-
-void VideoState::loadFileInfo(struct FileInfo &finfo) {
-    this->finfo = finfo;
-    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE"));
     DATA->io_data.info_handler.clear();
     if (!finfo.fpath.empty()) {
         DATA->io_data.info_handler.add(utilities::formatString("File:",
@@ -208,7 +202,7 @@ void VideoState::loadFileInfo(struct FileInfo &finfo) {
                                                                utilities::m_itoa(finfo.fsize)), PLAIN);
     }
     if (chunk_size) {
-        DATA->io_data.info_handler.add(utilities::formatString("Chnuk size:",
+        DATA->io_data.info_handler.add(utilities::formatString("Chunk size:",
                                                                utilities::m_itoa(
                                                                    DATA->config.getIntValue("CHUNK_SIZE"))), PLAIN);
     }
@@ -220,6 +214,12 @@ void VideoState::loadFileInfo(struct FileInfo &finfo) {
         DATA->io_data.info_handler.add(utilities::formatString("Output extension:",
                                                                o_format), PLAIN);
     }
+    DATA->io_data.info_handler.print();
+}
+
+void VideoState::loadFileInfo(struct FileInfo &finfo) {
+    this->finfo = finfo;
+    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE"));
 }
 
 void VideoState::resetFileInfo() {

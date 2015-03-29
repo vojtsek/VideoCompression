@@ -88,29 +88,30 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 }
 
 void initConfiguration() {
-    std::shared_ptr<Data> data = DATA;
     DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
     DATA->config.working_dir = DATA->config.getStringValue("WD");
-    if (data->config.working_dir == "") {
+    if (DATA->config.working_dir == "") {
         char dirp[BUF_LENGTH];
         if (getcwd(dirp, BUF_LENGTH) == NULL) {
-            data->config.working_dir = std::string(dirp);
+            DATA->config.working_dir = std::string(dirp);
         } else {
-            data->config.working_dir = ".";
+            DATA->config.working_dir = ".";
         }
     }
-    data->config.IPv4_ONLY = false;
+    DATA->config.IPv4_ONLY = false;
     int32_t x,y, y_space;
     getmaxyx(stdscr, y, x);
     y_space = y - 5;
-    data->io_data.status_win = derwin(stdscr, y_space / 2 - 1, x, 3 + y_space / 2, 0);
-    data->io_data.info_win = derwin(stdscr, y_space/ 2, 80, 3, 0);
-    data->io_data.status_handler.changeWin(data->io_data.status_win);
-    data->io_data.info_handler.changeWin(data->io_data.info_win);
-    data->config.superpeer_addr = DATA->config.getStringValue("SUPERPEER_ADDR");
-    data->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
+    DATA->io_data.status_win = derwin(stdscr, y_space / 2 - 1, x, 3 + y_space / 2, 0);
+    DATA->io_data.info_win = derwin(stdscr, y_space/ 2, x, 3, 0);
+    DATA->io_data.status_handler.changeWin(DATA->io_data.status_win);
+    DATA->io_data.info_handler.changeWin(DATA->io_data.info_win);
+    DATA->config.superpeer_addr = DATA->config.getStringValue("SUPERPEER_ADDR");
+    DATA->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
+    DATA->io_data.info_handler.setLength(3);
+    DATA->io_data.status_handler.setLength(STATUS_LENGTH);
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
@@ -123,6 +124,8 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.emplace(SET_CODEC, new CmdSetCodec(&state));
     DATA->cmds.emplace(SET_SIZE, new CmdSetChSize(&state));
     DATA->cmds.emplace(SET_FORMAT, new CmdSetFormat(&state));
+    DATA->cmds.emplace(SCROLL_DOWN, new CmdScrollDown(&state));
+    DATA->cmds.emplace(SCROLL_UP, new CmdScrollUp(&state));
     DATA->net_cmds.emplace(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler));
     DATA->net_cmds.emplace(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler));
     DATA->net_cmds.emplace(ASK_PEER, new CmdAskPeer(&state, &net_handler));

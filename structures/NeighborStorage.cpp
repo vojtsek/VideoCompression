@@ -128,7 +128,7 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
         }), free_neighbors.end());
         n_mtx.unlock();
     } else {
-        reportSuccess("Neighbor is now free: " + MyAddr(addr).get());
+        reportDebug("Neighbor is now free: " + MyAddr(addr).get(), 3);
         free_neighbors.push_back(ngh);
     }
     ngh->free = free;
@@ -176,6 +176,21 @@ std::vector<struct sockaddr_storage>
             }
         })
     return result;
+}
+
+void NeighborStorage::printNeighborsInfo() {
+    DATA->io_data.info_handler.clear();
+    MSG_T type = PLAIN;
+    n_mtx.lock();
+    for (const auto &n : neighbors) {
+        if (!n.second->free) {
+            type = ERROR;
+        }
+        DATA->io_data.info_handler.add(
+                    n.second->getInfo(), type);
+    }
+    n_mtx.unlock();
+    DATA->io_data.info_handler.print();
 }
 
 void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {

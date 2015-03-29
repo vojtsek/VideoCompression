@@ -118,11 +118,14 @@ void processReturnedChunk(TransferInfo *ti,
     if (!--DATA->state.to_recv) {
         type = SUCCESS;
     }
-    DATA->io_data.info_handler.updateAt(state->msgIndex,
+    ++state->processed_chunks;
+   /*
+    * DATA->io_data.info_handler.updateAt(state->msgIndex,
                         utilities::formatString(
                         "processed chunks:",
                         utilities::m_itoa(++state->processed_chunks) +
                         "/" + utilities::m_itoa(state->c_chunks)), type);
+                        */
 }
 
 void pushChunkProcess(TransferInfo *ti) {

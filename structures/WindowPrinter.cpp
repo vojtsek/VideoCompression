@@ -7,7 +7,7 @@
 #include <vector>
 
 //the indexing is not permanent
-int32_t WindowPrinter::add(std::string str, MSG_T type) {
+int32_t WindowPrinter::add(const std::string &str, MSG_T type) {
     int32_t retval;
     DATA->m_data.report_mtx.lock();
     ofs << str << std::endl;
@@ -27,6 +27,18 @@ void WindowPrinter::changeWin(WINDOW *nwin) {
     win = nwin;
 }
 
+void WindowPrinter::scrollQueue(bool up) {
+    if (up) {
+        if (idx + length < q.size()) {
+            ++idx;
+        }
+    } else {
+        if (idx > 0) {
+            --idx;
+        }
+    }
+}
+
 void WindowPrinter::clear() {
     q.clear();
 }
@@ -34,6 +46,10 @@ void WindowPrinter::clear() {
 void WindowPrinter::updateAt(int32_t idx, std::string value, MSG_T type) {
     q.at(idx) = std::make_pair<>(value, type);
     print();
+}
+
+void WindowPrinter::setLength(int32_t l) {
+    this->length = l;
 }
 
 void WindowPrinter::changeLogLocation(std::string log_location) {
@@ -54,27 +70,32 @@ void WindowPrinter::print() {
     werase(win);
     int32_t y, col;
     if (start == BOTTOM)
-        y = STATUS_LENGTH - 1;
+        y = length - 2;
     else
         y = 0;
     bool first = true;
     std::deque<printable_pair_T>::iterator s, e;
-    if (direction == UP) {
-        s = q.begin();
+    if (direction != DOWN) {
+        s = q.begin() + idx;
     } else {
-        s = q.size() > (unsigned) STATUS_LENGTH ?
-                    q.end() - STATUS_LENGTH +1 : q.begin();
+        s = q.size() > (unsigned) length ?
+                    q.end() - length : q.begin();
+        s -= idx;
     }
     e = q.end();
-    while (s != e) {
+    int32_t i = length;
+    while ((i-- > 0) && (s != e)) {
         auto a = *s++;
-        if (first && bolded)
+        if (first && bolded) {
             wattron(win, A_BOLD);
+        }
         col = DEFAULT;
-        if (a.second == ERROR)
+        if (a.second == ERROR) {
             col = RED;
-        if (a.second == SUCCESS)
+        }
+        if (a.second == SUCCESS) {
             col = GREEN;
+        }
         if (a.second == DEBUG) {
             col = BLUE;
         }
@@ -86,8 +107,9 @@ void WindowPrinter::print() {
             ++y;
         mvwprintw(win, y, 1, "%s\n", a.first.c_str());
         wrefresh(win);
-        if (col != DEFAULT)
+        if (col != DEFAULT) {
             wattroff(win,	COLOR_PAIR(col));
+        }
         if (first && bolded) {
             first = false;
             wattroff(win, A_BOLD);

@@ -144,7 +144,7 @@ bool CmdReturnHost::execute(
 
     DATA->chunks_to_send.signal();
     OSHelper::rmFile(ti->path);
-    //delete ti;
+    delete ti;
     return true;
 }
 
@@ -211,7 +211,6 @@ bool CmdGatherNeighborsPeer::execute(
     }
 
     requester_addr = requester_maddr.getAddress();
-    requester_maddr.print();
     int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
     if ((can_accept > 0) && (!DATA->state.working)) {
         int32_t sock;

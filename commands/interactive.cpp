@@ -15,17 +15,25 @@ void CmdDef::execute() {
     reportSuccess("iiii");
 }
 
-void CmdShow::execute() {
-    std::string what = loadInput("show.hist", "", false);
-    if (what == "jobs") {
+void CmdScrollDown::execute() {
+    DATA->io_data.info_handler.scrollQueue(true);
+    DATA->io_data.info_handler.print();
+}
 
+void CmdScrollUp::execute() {
+    DATA->io_data.info_handler.scrollQueue(false);
+    DATA->io_data.info_handler.print();
+}
+
+void CmdShow::execute() {
+    std::string what = loadInput("show.hist", "", false, false);
+    if (what == "state") {
+        cursToInfo();
+        utilities::printOverallState(state);
     } else if (what.find( "neighbors") != std::string::npos) {
         cursToInfo();
-        DATA->neighbors.applyToNeighbors(
-                   [&](std::pair<std::string, NeighborInfo *> entry) {
-            entry.second->printInfo();
-        });
-    } else {
+        DATA->neighbors.printNeighborsInfo();
+    } else if (what.find( "file") != std::string::npos){
         if (state->finfo.fpath.empty()) {
             reportError("Please load the file first.");
             return;
@@ -69,7 +77,7 @@ void CmdStart::execute() {
 }
 
 void CmdSetCodec::execute() {
-    std::string in = loadInput("codecs", "Enter desired output codec:", false);
+    std::string in = loadInput("codecs", "Enter desired output codec:", false, false);
     if (utilities::knownCodec(in)) {
         state->o_codec = in;
         reportSuccess("Output codec set to: " + in);
@@ -84,7 +92,7 @@ void CmdSetCodec::execute() {
 }
 
 void CmdSetChSize::execute() {
-    std::string in = loadInput("", "Enter new chunk size (kB):", false);
+    std::string in = loadInput("", "Enter new chunk size (kB):", false, false);
     size_t nsize = DATA->config.getIntValue("CHUNK_SIZE");
     std::stringstream ss(in), msg;
     ss >> nsize;
@@ -94,7 +102,7 @@ void CmdSetChSize::execute() {
 }
 
 void CmdSetFormat::execute() {
-    std::string in = loadInput("", "Enter desired output format:", false);
+    std::string in = loadInput("", "Enter desired output format:", false, false);
     if (utilities::knownFormat(in)) {
         state->o_format = "." + in;
         reportSuccess("Output format set to: " + in);
@@ -109,7 +117,7 @@ void CmdSetFormat::execute() {
 }
 
 void CmdSet::execute() {
-    std::string line = loadInput("set.history", "What option set?", false);
+    std::string line = loadInput("set.history", "What option set?", false, false);
     if (line.find("codec") != std::string::npos)
         DATA->cmds[SET_CODEC]->execute();
     else if (line.find("chunksize") != std::string::npos)
@@ -127,7 +135,7 @@ void CmdLoad::execute(){
     std::stringstream ssd;
     struct FileInfo finfo;
 
-    path = loadInput("paths.history", "Enter a file path:", true);
+    path = loadInput("paths.history", "Enter a file path:", true, true);
     if (path.empty()) {
         reportError("File path not provided.");
         return;

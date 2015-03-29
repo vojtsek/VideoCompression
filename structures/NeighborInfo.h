@@ -4,6 +4,10 @@
 #include "structures/structures.h"
 #include "headers/defines.h"
 
+/*!
+ * \brief The NeighborInfo struct
+ * holds information about particular neighbor
+ */
 struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
     int32_t intervals;
@@ -15,6 +19,7 @@ struct NeighborInfo : public Listener {
     bool free;
     bool dirty;
 
+    std::string getInfo();
     void printInfo();
     virtual bool equalsTo(Listener *that);
     virtual void invoke(NetworkHandler &handler);
@@ -26,14 +31,5 @@ struct NeighborInfo : public Listener {
         address = addr;
     }
 };
-
-/*
-template<typename T>
-struct StructureRef {
-    T *data;
-    bool valid;
-    T &operator->()
-};
-*/
 
 #endif // NEIGHBORINFO_H

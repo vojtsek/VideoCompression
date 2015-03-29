@@ -89,8 +89,20 @@ void clearNlines(int32_t n) {
     move(orig_y, orig_x);
 }
 
+void utilities::printOverallState(VideoState *state) {
+    DATA->io_data.info_handler.clear();
+    DATA->io_data.info_handler.add(utilities::formatString(
+                                       "processed chunks:",
+                                       utilities::m_itoa(state->processed_chunks) +
+                                       "/" + utilities::m_itoa(state->c_chunks)), SUCCESS);
+    for (const auto &c : DATA->chunks_received.getValues()) {
+        DATA->io_data.info_handler.add(c->name +
+                                       utilities::m_itoa(c->chunk_size), PLAIN);
+    }
+    DATA->io_data.info_handler.print();
+}
 
-string utilities::m_itoa(int32_t n) {
+std::string utilities::m_itoa(int32_t n) {
     std::string res;
     int32_t nn;
     bool negative = false;
@@ -144,7 +156,7 @@ std::string utilities::formatString(std::string str1, std::string str2) {
 }
 
 /**
- * @brief utilities::getTimestamp
+ * @brief utilities::getTimestamp gets string representation of the current time
  * @return current time since epoch start, in MILIseconds
  */
 std::string utilities::getTimestamp() {

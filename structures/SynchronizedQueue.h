@@ -204,7 +204,6 @@ struct SynchronizedQueue {
         lck.lock();
         lck.unlock();
         cond.notify_one();
-        reportStatus("Signaled.");
     }
 };
 
