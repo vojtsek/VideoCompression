@@ -184,9 +184,7 @@ bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) 
 
 bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PING " + MyAddr(address).get() , 5);
-    struct sockaddr_storage addr;
     CMDS action = PING_HOST;
-    int32_t sock;
     int32_t peer_port;
     RESPONSE_T resp = ACK_FREE, neighbor_state;
     int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
@@ -216,28 +214,17 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     }
 
     networkHelper::changeAddressPort(address, peer_port);
-    if ((sock = handler->checkNeighbor(address)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        return false;
-    }
-    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        close(sock);
-        return false;
-    }
-    close(sock);
-    networkHelper::changeAddressPort(addr, peer_port);
 
     // in case that I am working, I want more neighbors
     if (DATA->config.is_superpeer ||
             DATA->state.working) {
-        handler->addNewNeighbor(false, addr);
+        handler->addNewNeighbor(false, address);
     } else {
-        handler->addNewNeighbor(true, addr);
+        handler->addNewNeighbor(true, address);
     }
 
     if (neighbor_state == ACK_FREE) {
-        DATA->neighbors.setNeighborFree(addr, true);
+        DATA->neighbors.setNeighborFree(address, true);
     }
     return true;
 }

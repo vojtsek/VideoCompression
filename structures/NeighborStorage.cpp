@@ -18,7 +18,7 @@ int32_t NeighborStorage::getNeighborCount() {
 int32_t NeighborStorage::removeNeighbor(
         const struct sockaddr_storage &addr) {
     //TODO: check differently
-    if (getNeighborInfo(addr) == nullptr)
+    if (getNeighborInfo(addr, true) == nullptr)
         return 0;
     n_mtx.lock();
     free_neighbors.erase(
@@ -97,41 +97,48 @@ void NeighborStorage::updateQuality(
 }
 
 NeighborInfo *NeighborStorage::getNeighborInfo(
-        const sockaddr_storage &addr) {
+        const sockaddr_storage &addr, bool lock) {
     NeighborInfo *res = nullptr;
-    n_mtx.lock();
+    if (lock) {
+        n_mtx.lock();
+    }
     std::for_each (neighbors.begin(), neighbors.end(),
                    [&](std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, addr)) {
             res = entry.second;
         }
     });
-    n_mtx.unlock();
+    if (lock) {
+        n_mtx.unlock();
+    }
     return res;
 }
 
 void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
                                       bool free) {
-    NeighborInfo *ngh = getNeighborInfo(addr);
+    n_mtx.lock();
+    NeighborInfo *ngh = getNeighborInfo(addr, false);
     if (ngh == nullptr) {
+        n_mtx.unlock();
         return;
     }
     if (ngh->free == free) {
+        n_mtx.unlock();
        return;
     }
     if (!free) {
-        n_mtx.lock();
+        reportError("Set not free.");
         free_neighbors.erase(
             std::remove_if (free_neighbors.begin(), free_neighbors.end(),
                [&](NeighborInfo *ngh) {
             return (networkHelper::cmpStorages(ngh->address, addr));
         }), free_neighbors.end());
-        n_mtx.unlock();
     } else {
-        reportDebug("Neighbor is now free: " + MyAddr(addr).get(), 3);
+        reportDebug("Neighbor is now free: " + MyAddr(addr).get(), 2);
         free_neighbors.push_back(ngh);
     }
     ngh->free = free;
+    n_mtx.unlock();
 }
 
 int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
