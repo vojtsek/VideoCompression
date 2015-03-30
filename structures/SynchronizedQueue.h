@@ -117,6 +117,16 @@ struct SynchronizedQueue {
         cond.notify_one();
     }
 
+    std::vector<T *> getValues() {
+        std::vector<T *> values;
+        mtx.lock();
+        for (auto &v : queue) {
+            values.push_back(v);
+        }
+        mtx.unlock();
+        return values;
+    }
+
     int32_t getSize() {
         int32_t size;
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);

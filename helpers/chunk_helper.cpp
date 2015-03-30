@@ -119,6 +119,7 @@ void processReturnedChunk(TransferInfo *ti,
         type = SUCCESS;
     }
     ++state->processed_chunks;
+    utilities::printOverallState(state);
    /*
     * DATA->io_data.info_handler.updateAt(state->msgIndex,
                         utilities::formatString(

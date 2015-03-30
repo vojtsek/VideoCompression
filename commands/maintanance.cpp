@@ -225,6 +225,8 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
 
     if (neighbor_state == ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, true);
+    } else {
+        DATA->neighbors.setNeighborFree(address, false);
     }
     return true;
 }

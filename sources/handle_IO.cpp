@@ -68,7 +68,7 @@ std::string loadInput(const std::string &histf, const std::string &msg,
 
 void reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
-    int32_t tries = 10;
+    int32_t tries = 20;
     double percent;
     while (fs < desired) {
         fs = OSHelper::getFileSize(file);
@@ -79,9 +79,10 @@ void reportFileProgress(const std::string &file, long desired) {
                 --tries;
             usleep(150000);
         } else
-            tries = 10;
-        if (!tries)
+            tries = 20;
+        if (!tries) {
             break;
+        }
         old = fs;
         percent = (double) fs / (double) desired;
         printProgress(percent);

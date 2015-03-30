@@ -110,7 +110,7 @@ void initConfiguration() {
     DATA->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
-    DATA->io_data.info_handler.setLength(3);
+    DATA->io_data.info_handler.setLength(6);
     DATA->io_data.status_handler.setLength(STATUS_LENGTH);
 }
 

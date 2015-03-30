@@ -26,14 +26,6 @@ int32_t VideoState::split() {
     snprintf(chunk_duration, BUF_LENGTH, "00:%02d:%02d", mins, secs);
     reportStatus("Splitting file: " + finfo.fpath);
     DATA->state.to_recv = c_chunks;
-    std::string infoMsg = utilities::formatString(
-                "processed chunks: ", "0/" + utilities::m_itoa(c_chunks));
-    if (msgIndex < 0) {
-        msgIndex = DATA->io_data.info_handler.add(infoMsg, DEBUG);
-    } else {
-        DATA->io_data.info_handler.updateAt(msgIndex, infoMsg, DEBUG);
-    }
-    DATA->io_data.info_handler.print();
     struct sockaddr_storage my_addr, neighbor_addr;
     if (networkHelper::getMyAddress(my_addr, net_handler) == -1) {
         reportDebug("Failed to get my adress while contacting peers.", 2);
@@ -43,6 +35,7 @@ int32_t VideoState::split() {
                     DATA->config.getIntValue("TTL"), my_addr, neighbor_addr);
         }
     }
+    utilities::printOverallState(this);
     for (uint32_t i = 0; i < c_chunks; ++i) {
         double percent = (double) i / c_chunks;
 
@@ -154,7 +147,6 @@ void VideoState::reportTime(std::string msg, int32_t time) {
 
 void VideoState::endProcess(int32_t duration) {
     std::ofstream csv_stream(DATA->config.working_dir + "/data.csv");
-    DATA->io_data.info_handler.updateAt(msgIndex, "DONE", SUCCESS);
     printProgress(1);
     reportSuccess("Succesfully joined.");
     reportTime("Joining: ", duration / 1000);

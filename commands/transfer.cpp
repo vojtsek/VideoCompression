@@ -68,6 +68,7 @@ bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     ti->addressed = true;
     //todo remove when done
     DATA->chunks_received.push(ti);
+    utilities::printOverallState(state);
     pushChunkProcess(ti);
     } catch (int) {
         std::atomic_fetch_add(&DATA->state.can_accept, 1);
@@ -144,6 +145,7 @@ bool CmdReturnHost::execute(
 
     DATA->chunks_to_send.signal();
     OSHelper::rmFile(ti->path);
+    utilities::printOverallState(state);
     delete ti;
     return true;
 }

@@ -90,14 +90,27 @@ void clearNlines(int32_t n) {
 }
 
 void utilities::printOverallState(VideoState *state) {
+    MSG_T type = PLAIN;
+    if ((state->processed_chunks == state->c_chunks) &&
+    (state->c_chunks != 0)) {
+        type = SUCCESS;
+    }
     DATA->io_data.info_handler.clear();
     DATA->io_data.info_handler.add(utilities::formatString(
                                        "processed chunks:",
                                        utilities::m_itoa(state->processed_chunks) +
-                                       "/" + utilities::m_itoa(state->c_chunks)), SUCCESS);
+                                       "/" + utilities::m_itoa(state->c_chunks)), type);
+    DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
     for (const auto &c : DATA->chunks_received.getValues()) {
-        DATA->io_data.info_handler.add(c->name +
-                                       utilities::m_itoa(c->chunk_size), PLAIN);
+        DATA->io_data.info_handler.add(c->name + " (" +
+                                       utilities::m_itoa(c->chunk_size) + "B); " +
+                                       MyAddr(c->src_address).get(), PLAIN);
+    }
+
+    DATA->io_data.info_handler.add("Chunks to send: ", DEBUG);
+    //TODO: sync
+    for (const auto &ti : DATA->chunks_to_send.getValues()) {
+        DATA->io_data.info_handler.add(ti->name, PLAIN);
     }
     DATA->io_data.info_handler.print();
 }

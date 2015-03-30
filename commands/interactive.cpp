@@ -28,17 +28,14 @@ void CmdScrollUp::execute() {
 void CmdShow::execute() {
     std::string what = loadInput("show.hist", "", false, false);
     if (what == "state") {
-        cursToInfo();
         utilities::printOverallState(state);
     } else if (what.find( "neighbors") != std::string::npos) {
-        cursToInfo();
         DATA->neighbors.printNeighborsInfo();
     } else if (what.find( "file") != std::string::npos){
         if (state->finfo.fpath.empty()) {
             reportError("Please load the file first.");
             return;
         }
-        cursToInfo();
         state->printVideoState();
     }
 }

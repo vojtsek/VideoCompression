@@ -195,6 +195,7 @@ void NeighborStorage::printNeighborsInfo() {
         }
         DATA->io_data.info_handler.add(
                     n.second->getInfo(), type);
+        type = PLAIN;
     }
     n_mtx.unlock();
     DATA->io_data.info_handler.print();
