@@ -34,7 +34,7 @@ bool argsContains(char **argv, const char *str) {
 
 int32_t parseOptions(int32_t argc, char **argv) {
     int opt;
-    while ((opt = getopt(argc, argv, "sp:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "sc:p:d:")) != -1) {
         switch (opt) {
         case 'p':
             DATA->config.intValues.at("LISTENING_PORT") = atoi(optarg);
@@ -43,9 +43,10 @@ int32_t parseOptions(int32_t argc, char **argv) {
             DATA->config.is_superpeer = true;
             break;
         case 'd':
-            reportError(optarg);
             DATA->config.debug_level = atoi(optarg);
             break;
+        case 'c':
+            DATA->config.intValues.at("SUPERPEER_PORT") = atoi(optarg);
         case '?':
             usage();
             break;

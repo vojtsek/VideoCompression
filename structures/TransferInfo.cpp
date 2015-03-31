@@ -25,6 +25,7 @@ void TransferInfo::invoke(NetworkHandler &handler) {
                 return;
             }
             reportDebug(name + ": Still in queue, resending.", 2);
+            // push for resend
             pushChunkSend(this);
             time_left = DATA->config.getIntValue(
                         "COMPUTATION_TIMEOUT");

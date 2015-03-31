@@ -14,8 +14,6 @@ struct NeighborInfo : public Listener {
     int32_t quality;
     int32_t overall_time;
     int32_t processed_chunks;
-    bool confirmed;
-    bool active;
     bool free;
     bool dirty;
 
@@ -27,7 +25,8 @@ struct NeighborInfo : public Listener {
     virtual ~NeighborInfo() {}
 
     NeighborInfo(const struct sockaddr_storage &addr):
-        quality(0), free(true), dirty(false) {
+        quality(0), overall_time(0), processed_chunks(0),
+        free(true), dirty(false) {
         address = addr;
     }
 };

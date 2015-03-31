@@ -274,7 +274,7 @@ void NetworkHandler::collectNeighbors() {
         for (auto &addr : DATA->neighbors.getNeighborAdresses(
                 DATA->neighbors.getNeighborCount())) {
             MyAddr mad(addr);
-            reportDebug("Trying neighbor. " + mad.get(), 4);
+            reportDebug("Trying neighbor. " + mad.get(), 2);
             askForAddresses(addr);
             if (getPotentialNeighborsCount())
                 break;

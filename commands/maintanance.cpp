@@ -4,8 +4,10 @@
 bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKPEER", 5);
     CMDS action = ASK_HOST;
-    int32_t size = DATA->neighbors.getNeighborCount();
-    int32_t count = (size < DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) ? size : DATA->config.getIntValue("MAX_NEIGHBOR_COUNT");
+    int32_t neighborCount = DATA->neighbors.getNeighborCount();
+    int32_t count = (neighborCount < DATA->config.getIntValue(
+                         "MAX_NEIGHBOR_COUNT")) ?
+                neighborCount : DATA->config.getIntValue("MAX_NEIGHBOR_COUNT");
     struct sockaddr_storage addr;
     if (sendCmd(fd, action) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -13,7 +15,7 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     }
     if (DATA->config.is_superpeer) {
         count = 1;
-        if (!size) {
+        if (!neighborCount) {
             reportError("No neighbors yet");
             return false;
         }
@@ -32,9 +34,6 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
             return false;
         }
     } else {
-    if (!count) {
-        return false;
-    }
         if (sendInt32(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -192,7 +191,6 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     if ((can_accept <= 0) || (DATA->state.working)) {
         resp = ACK_BUSY;
     }
-
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -221,6 +219,7 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
         handler->addNewNeighbor(false, address);
     } else {
         handler->addNewNeighbor(true, address);
+
     }
 
     if (neighbor_state == ACK_FREE) {
@@ -280,7 +279,7 @@ void CmdSayGoodbye::execute() {
         sock = handler->checkNeighbor(address);
         reportError("Saying goodbye to: "+MyAddr(address).get());
         handler->spawnOutgoingConnection(address,
-                                         sock, { GOODBYE_PEER }, false, nullptr);
+                                         sock, { GOODBYE_PEER }, true, nullptr);
     }
     struct sockaddr_storage address;
     if (DATA->config.IPv4_ONLY)
@@ -289,5 +288,5 @@ void CmdSayGoodbye::execute() {
         address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
    sock = handler->checkNeighbor(address);
     handler->spawnOutgoingConnection(address,
-                                     sock, { GOODBYE_PEER }, false, nullptr);
+                                     sock, { GOODBYE_PEER }, true, nullptr);
 }

@@ -81,6 +81,7 @@ struct MyAddr : public Sendable {
     //bool equalsTo(const struct sockaddr_storage &that);
     MyAddr(const struct sockaddr_storage &addr);
     MyAddr() {}
+    virtual ~MyAddr() {}
 };
 
 #endif // STRUCTURES_H

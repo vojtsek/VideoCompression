@@ -47,12 +47,12 @@ int32_t VideoState::split() {
         secs = elapsed % 60;
         snprintf(current, BUF_LENGTH, "%02d:%02d:%02d", hours, mins, secs);
         snprintf(output, BUF_LENGTH, "%s/%s/%03d_splitted%s",
-                 //TODO check if exists, HARDCODE
-                 dir_location.c_str(), job_id.c_str(), i, ".avi");
+                 dir_location.c_str(), job_id.c_str(), i, finfo.extension.c_str());
         snprintf(chunk_id, BUF_LENGTH, "%03d_splitted", i);
         snprintf(cmd, BUF_LENGTH,
                  DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
-        cursToStatus();
+       // cursToStatus();
+        OSHelper::rmFile(output);
         sum += Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 12, cmd,
                     "-ss", current,
                     "-i", finfo.fpath.c_str(),
@@ -77,6 +77,7 @@ int32_t VideoState::split() {
         ti->path = DATA->config.working_dir + "/" + ti->job_id +
                 "/" + ti->name + ti->original_extension;
         pushChunkSend(ti);
+        utilities::printOverallState(this);
     }
     printProgress(1);
     ofs.open(DATA->config.working_dir + "/" + job_id + ".out");

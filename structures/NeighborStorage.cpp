@@ -27,7 +27,6 @@ int32_t NeighborStorage::removeNeighbor(
                         return networkHelper::cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
-    //todo: removing neighbor with algorithms?
     //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (networkHelper::cmpStorages(it->second->address, addr)) {
@@ -44,7 +43,7 @@ int32_t NeighborStorage::removeNeighbor(
                         [&](Listener *listener) -> bool {
                 return (listener->toString() == it->second->toString());
             });
-            //delete it->second;
+            delete it->second;
             neighbors.erase(it);
             reportError("Removed neighbor: " + MyAddr(addr).get());
             n_mtx.unlock();

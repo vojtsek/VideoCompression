@@ -66,7 +66,6 @@ bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
                            "/" + ti->name + ti->desired_extension);
     ti->addressed = true;
-    //todo remove when done
     DATA->chunks_received.push(ti);
     utilities::printOverallState(state);
     pushChunkProcess(ti);
@@ -126,7 +125,6 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
                     DATA->chunks_to_send.getSize()) + " remaining.", 2);
     return true;
 }
-//TODO:generic function to send chunk
 
 bool CmdReturnHost::execute(
         int32_t fd, sockaddr_storage &, void *data) {
@@ -156,43 +154,43 @@ bool CmdReturnPeer::execute(
     //TODO: delete in case of failure
     // should get already created Info!!
     TransferInfo *ti(new TransferInfo);
-    if (sendCmd(fd, action) == -1) {
+    try {
+        if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
-
-    if (ti->receive(fd)) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
-
-    std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
-
-    if (OSHelper::prepareDir(dir, false) == -1) {
-        reportError(ti->name + ": Error creating received job dir.");
-        return false;
-    }
-    ti->timestamp = utilities::getTimestamp();
-    //clock_t start = clock();
-    if (receiveFile(fd, dir + "/" + ti->name + ti->desired_extension) == -1) {
-        reportError(ti->name + ": Failed to transfer file.");
-        return false;
-    }
-    ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
-    //ti->receiving_time = ((clock() - start) / CLOCKS_PER_SEC);
-    handler->confirmNeighbor(ti->address);
-    // do I need two containers?
-    // chunks returned ... chunks received?
-    if (!DATA->chunks_returned.contains(ti->toString())) {
-        processReturnedChunk(ti, handler, state);
-        if (!DATA->state.to_recv) {
-            state->join();
+            throw 1;
         }
-    } else {
-        reportError(ti->name + ": Too late.");
-        delete ti;
-    }
 
+        if (ti->receive(fd)) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            throw 1;
+        }
+
+        std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
+
+        if (OSHelper::prepareDir(dir, false) == -1) {
+            reportError(ti->name + ": Error creating received job dir.");
+            throw 1;
+        }
+        ti->timestamp = utilities::getTimestamp();
+        if (receiveFile(fd,
+                dir + "/" + ti->name + ti->desired_extension) == -1) {
+            reportError(ti->name + ": Failed to transfer file.");
+            throw 1;
+        }
+        ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
+        handler->confirmNeighbor(ti->address);
+        if (!DATA->chunks_returned.contains(ti->toString())) {
+            processReturnedChunk(ti, handler, state);
+            if (!DATA->state.to_recv) {
+                state->join();
+            }
+        } else {
+            reportError(ti->name + ": Too late.");
+        }
+    } catch (int) {
+        delete ti;
+        return false;
+    }
     return true;
 }
 

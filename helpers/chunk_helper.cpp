@@ -96,15 +96,15 @@ void chunkProcessRoutine() {
 
 void processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *, VideoState *state) {
-    while (DATA->periodic_listeners.remove(ti)) {};
+    TransferInfo *old_ti =
+        (TransferInfo *) DATA->periodic_listeners.get(ti->toString());
+    DATA->periodic_listeners.remove(ti);
+
+    delete old_ti;
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
     OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
-    // old structure which was created originally with the chunk
-    TransferInfo *old_ti =
-            (TransferInfo *) DATA->periodic_listeners.get(ti->toString());
-    delete old_ti;
     DATA->chunks_to_send.remove(ti);
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
@@ -114,19 +114,9 @@ void processReturnedChunk(TransferInfo *ti,
             entry.second->quality = entry.second->overall_time /
                     entry.second->processed_chunks;
         }});
-    MSG_T type = DEBUG;
-    if (!--DATA->state.to_recv) {
-        type = SUCCESS;
-    }
+    --DATA->state.to_recv;
     ++state->processed_chunks;
     utilities::printOverallState(state);
-   /*
-    * DATA->io_data.info_handler.updateAt(state->msgIndex,
-                        utilities::formatString(
-                        "processed chunks:",
-                        utilities::m_itoa(++state->processed_chunks) +
-                        "/" + utilities::m_itoa(state->c_chunks)), type);
-                        */
 }
 
 void pushChunkProcess(TransferInfo *ti) {
