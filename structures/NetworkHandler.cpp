@@ -1,4 +1,4 @@
-#include "headers/networkhandler.h"
+#include "structures/NetworkHandler.h"
 #include "headers/include_list.h"
 #include "headers/commands.h"
 #include "headers/handle_IO.h"
@@ -187,9 +187,9 @@ int32_t NetworkHandler::start_listening(int32_t port) {
 void NetworkHandler::contactSuperPeer() {
     struct sockaddr_storage addr;
     if (DATA->config.IPv4_ONLY)
-        addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+        addr = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
     else
-        addr = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+        addr = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
     int32_t sock =  checkNeighbor(addr);
     if (sock == -1) return;
     spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
@@ -274,7 +274,7 @@ void NetworkHandler::collectNeighbors() {
         for (auto &addr : DATA->neighbors.getNeighborAdresses(
                 DATA->neighbors.getNeighborCount())) {
             MyAddr mad(addr);
-            reportDebug("Trying neighbor. " + mad.get(), 2);
+            reportDebug("Trying neighbor. " + mad.get(), 4);
             askForAddresses(addr);
             if (getPotentialNeighborsCount())
                 break;
@@ -284,9 +284,9 @@ void NetworkHandler::collectNeighbors() {
             (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
         if (DATA->config.IPv4_ONLY)
-            address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+            address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
         else
-            address = networkHelper::addr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+            address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
         askForAddresses(address);
     }
 }

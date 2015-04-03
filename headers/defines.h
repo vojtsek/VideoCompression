@@ -22,8 +22,6 @@
 
 #ifndef DEFINES_H
 #define DEFINES_H
-#define STATUS_LENGTH 10
-#define INFO_LINES 15
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

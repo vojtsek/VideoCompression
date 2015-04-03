@@ -1,7 +1,7 @@
 #include "headers/include_list.h"
 #include "headers/defines.h"
 #include "headers/commands.h"
-#include "headers/networkhandler.h"
+#include "structures/NetworkHandler.h"
 
 #include <iostream>
 #include <fstream>
@@ -112,7 +112,7 @@ void initConfiguration() {
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
     DATA->io_data.info_handler.setLength(6);
-    DATA->io_data.status_handler.setLength(STATUS_LENGTH);
+    DATA->io_data.status_handler.setLength(y_space / 2);
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
@@ -205,10 +205,10 @@ int32_t main(int32_t argc, char **argv) {
             }
         });
         thr2.detach();
-        std::thread thr3(chunkProcessRoutine);
+        std::thread thr3(chunkhelper::chunkProcessRoutine);
         thr3.detach();
         std::thread split_thr ([&]() {
-            chunkSendRoutine(&net_handler);
+            chunkhelper::chunkSendRoutine(&net_handler);
         });
         split_thr.detach();
     }

@@ -76,7 +76,7 @@ int32_t VideoState::split() {
                                             std::string(output), o_codec);
         ti->path = DATA->config.working_dir + "/" + ti->job_id +
                 "/" + ti->name + ti->original_extension;
-        pushChunkSend(ti);
+        chunkhelper::pushChunkSend(ti);
         utilities::printOverallState(this);
     }
     printProgress(1);
@@ -122,6 +122,7 @@ int32_t VideoState::join() {
     }
     ofs_loc.flush();
     ofs_loc.close();
+    // TODO: check for hang
     std::thread thr(reportFileProgress, output, sum_size);
     duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 8, cmd,
                     "-f", "concat",

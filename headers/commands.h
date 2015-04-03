@@ -1,4 +1,4 @@
-﻿#include "headers/networkhandler.h"
+﻿#include "structures/NetworkHandler.h"
 
 #include <string>
 #include <iostream>

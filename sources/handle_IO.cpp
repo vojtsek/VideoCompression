@@ -39,55 +39,77 @@ std::string loadInput(const std::string &histf, const std::string &msg,
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
     std::unique_lock<std::mutex> lck2(DATA->m_data.O_mtx, std::defer_lock);
 
+    // acquire locks for both input and output
     lck.lock();
     lck2.lock();
+    // shows the msg and prompts for input
     DATA->m_data.using_O = true;
     cursToQuestion();
     printw("%s", msg.c_str());
     char line[LINE_LENGTH];
     curs_set(0);
     cursToCmd();
+    // to print prompt
+    cursorToX(0);
     printw(">");
     refresh();
-    DATA->m_data.using_O = false;
-    lck2.unlock();
+
 
     DATA->m_data.using_I = true;
+    // load line
     getLine(line, LINE_LENGTH, histf, save, changeable);
     curs_set(0);
+    // clears the lines
     cursorToX(0);
     clrtoeol();
     cursToQuestion();
     clrtoeol();
     refresh();
+    // free the locks
+    DATA->m_data.using_O = false;
+    lck2.unlock();
     DATA->m_data.using_I = false;
     lck.unlock();
     DATA->m_data.IO_cond.notify_one();
+
     return std::string(line);
 }
 
-void reportFileProgress(const std::string &file, long desired) {
+int32_t reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
+    // how many times try it
     int32_t tries = 20;
     double percent;
     while (fs < desired) {
+        // get the file size
         fs = OSHelper::getFileSize(file);
-        if (fs < 0)
+        if (fs < 0) {
             fs = 0;
+        }
+        // no change since last time
         if (fs == old) {
-            if (fs > 0)
+            // decrease tries - no change
+            if (fs > 0) {
                 --tries;
+            }
+            // give it chance to make some progress
             usleep(150000);
-        } else
+        } else { // refresh number of tries
             tries = 20;
+        }
+        // it propably hanged
         if (!tries) {
-            break;
+            return -1;
         }
         old = fs;
+        // shows the progress bar
         percent = (double) fs / (double) desired;
         printProgress(percent);
+        // wait for 10 ms
         usleep(10000);
     }
+
+    return 0;
 }
 
 void reportError(const std::string &err) {
@@ -114,11 +136,17 @@ void reportDebug(const std::string &msg, int32_t lvl) {
 
 void initCurses() {
     initscr();
+    // allows reading function keys
     keypad(stdscr, TRUE);
+    // resizing
     signal (SIGWINCH, NULL);
+    // implicitly not show pressed keys
     noecho();
+    // input immediately available
     halfdelay(3);
+    // start using colors
     start_color();
+    // define colors
     init_color(COLOR_GREY, 350, 350, 350);
     init_color(COLOR_CYAN, 500, 500, 1000);
     init_pair(RED, COLOR_RED, BG_COL);
@@ -129,6 +157,7 @@ void initCurses() {
     init_pair(GREYALL, COLOR_GREY, COLOR_GREY);
     init_pair(BG, COLOR_WHITE, BG_COL);
     init_pair(INVERTED, BG_COL, COLOR_WHITE);
+    // set background
     wbkgd(stdscr, COLOR_PAIR(BG));
 }
 
@@ -136,10 +165,13 @@ void printProgress(double percent) {
     unique_lock<mutex> lck(DATA->m_data.O_mtx, defer_lock);
     lck.lock();
     DATA->m_data.using_O = true;
+    // move cursor to the given place
     cursToPerc();
     clrtoeol();
+    // prints number of percent done
     printw("(%d%%)", (int) (percent * 100));
     attron(COLOR_PAIR(CYANALL));
+    // shows the filebar
     for(int32_t i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
         printw("#");
     attroff(COLOR_PAIR(CYANALL));
@@ -150,8 +182,9 @@ void printProgress(double percent) {
 
 void cursToCmd() {
     int32_t max_x, max_y;
+    // loads the max coordinates and oves the cursor
     getmaxyx(stdscr, max_y, max_x);
-    move(max_y - 1, 0);
+    move(max_y - 1, 1);
     clrtoeol();
 }
 
@@ -159,7 +192,6 @@ void cursToInfo() {
     move(3, 0);
 }
 
-//TODO: still causes occasional problems
 void cursToStatus() {
     if (!DATA->io_data.status_y) {
         DATA->io_data.status_y = getmaxy(stdscr) - 4;
@@ -181,6 +213,7 @@ void cursToPerc() {
 }
 
 void clearProgress() {
+    // move cursor to progress bar y coordinate and clear
     cursToPerc();
     clrtoeol();
 }
@@ -191,85 +224,108 @@ void cursorToX(int32_t nx) {
     move(y, nx);
 }
 
-/*!
- * \brief getLine gets one line of input from the user, handles history
- * \param line pointer to bufer
- * \param len buffer length
- * \param histf path to the file with history
- * \param save whether update history file
- * \param changeable if input is actually accepted or just selection of choices
- * \return zero on success
- * reads characters until new line
- * uses the file with history
- */
+void clearNlines(int32_t n) {
+    int32_t orig_x, orig_y, x, y;
+    getyx(stdscr, y, x);
+    // remembers the original position
+    orig_x = x;
+    orig_y = y;
+    // clears lines and moves to the original position
+    while(n--) {
+        move(y++, 0);
+        clrtoeol();
+    }
+    move(orig_y, orig_x);
+}
+
 int32_t getLine(char *line, int32_t len,
                 const std::string &histf, bool save, bool changeable) {
     HistoryStorage hist(histf);
+    // buffer to store the input
     char *start = line;
     *line = '\0';
     nocbreak();
+    // immediate input
     cbreak();
     wchar_t c;
     bool first = true;
     int32_t read = 0;
     while(++read <= len) {
+        // if not changeable and first -> load the first option by
+        // simulating key up
         if (!first || changeable) {
             c = getch();
         } else {
             c = KEY_UP;
         }
         first = false;
+        // previous option
         if (c == KEY_UP) {
-            cursorToX(1);
+            cursorToX(2);
             clrtoeol();
             hist.prev();
             try {
+                // loads the previous option, prints and copies into the buffer
                 cursToCmd();
                 printw(hist.getCurrent().c_str());
                 read = hist.getCurrent().size();
                 strncpy(start, hist.getCurrent().c_str(), read);
                 line = start + read;
             } catch (...) {}
+        // next option
         } else if(c == KEY_DOWN) {
-            cursorToX(1);
+            cursorToX(2);
             clrtoeol();
             hist.next();
             try {
+                // loads the next option, prints and copies into the buffer
+                cursToCmd();
                 printw(hist.getCurrent().c_str());
                 read = hist.getCurrent().size();
                 strncpy(start, hist.getCurrent().c_str(), read);
                 line = start + read;
             } catch (...) {}
-        } else if (c == 8) {
+        // backspace
+        } else if ((c == 8) && changeable) {
             int32_t y, x;
             getyx(stdscr, y, x);
-            --x;
-            if (x < 1)
-                ++x;
-            else {
+            // moves the x coordinate back
+            // strips the buffer
+            if (x > 1) {
+                --x;
                 --read;
                 --line;
             }
+            // moves the cursor back and deletes char
             move(y, x);
             delch();
+        // other characters just adds to the buffer
         } else if (utilities::isAcceptable(c)) {
             printw("%c", c);
             *(line++) = c;
         }
         refresh();
-        if ((c == '\n'))
+        // return ends
+        if ((c == '\n')) {
             break;
+        }
     }
+    // proper termination
     *line = '\0';
-    if (*start != '\0')
+    // optionally saves the option
+    if (*start != '\0') {
         hist.save(string(start));
-    if (save)
+    }
+    if (save) {
         hist.write();
+    }
     nocbreak();
     halfdelay(3);
-    if (read <= len)
+    // success
+    if (read <= len) {
         return (0);
-    else
-//        buffer too short
+    //    buffer too short
+    } else {
         return (-1);
+    }
 }

@@ -28,12 +28,12 @@ MyAddr::MyAddr(const struct sockaddr_storage &address): TTL(0) {
         port = ntohs(addr->sin6_port);
         family = AF_INET6;
     }
-    addr = networkHelper::storage2addr(
+    addr = networkHelper::storage2addrstr(
                 address);
 }
 
 struct sockaddr_storage MyAddr::getAddress() {
-    return networkHelper::addr2storage(
+    return networkHelper::addrstr2storage(
                 addr.c_str(), port, family);
 }
 

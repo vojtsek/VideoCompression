@@ -26,7 +26,7 @@ void TransferInfo::invoke(NetworkHandler &handler) {
             }
             reportDebug(name + ": Still in queue, resending.", 2);
             // push for resend
-            pushChunkSend(this);
+            chunkhelper::pushChunkSend(this);
             time_left = DATA->config.getIntValue(
                         "COMPUTATION_TIMEOUT");
             tries_left = DATA->config.getIntValue(
@@ -61,12 +61,12 @@ int32_t TransferInfo::send(int32_t fd) {
         return -1;
     }
 
-    if (sendStruct(fd, address) == -1) {
+    if (sendAdrressStruct(fd, address) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
     }
 
-    if (sendStruct(fd, src_address) == -1) {
+    if (sendAdrressStruct(fd, src_address) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
     }

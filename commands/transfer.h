@@ -35,7 +35,7 @@ public:
 /*!
  * \brief The CmdReturnPeer class
  * receives the computed chunk,
- * calls utilities::processReturnedChunk
+ * calls utilities::chunkhelper::processReturnedChunk
  */
 class CmdReturnPeer: public NetworkCommand {
 public:

@@ -39,7 +39,7 @@ int32_t receiveResponse(int32_t fd, RESPONSE_T &resp) {
     return 0;
 }
 
-int32_t sendStruct(int32_t fd, const sockaddr_storage &st) {
+int32_t sendAdrressStruct(int32_t fd, const sockaddr_storage &st) {
     MyAddr mad(st);
     if (sendString(fd, mad.addr) == -1) {
         reportDebug("Problem occured while sending the address string.", 1);
@@ -66,7 +66,7 @@ int32_t receiveStruct(int32_t fd, struct sockaddr_storage &st) {
         reportDebug("Problem occured while accepting the address port.", 1);
         return -1;
     }
-    st = networkHelper::addr2storage(
+    st = networkHelper::addrstr2storage(
                 DATA->config.superpeer_addr.c_str(),
                 port, AF_INET6);
     return 0;

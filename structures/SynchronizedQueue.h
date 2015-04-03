@@ -21,6 +21,7 @@ struct SynchronizedMap {
     SynchronizedMap(): being_used(false) {}
 
     void push(T *item) {
+        remove(item);
         mtx.lock();
         map.insert(
                     std::make_pair(item->toString(), item));

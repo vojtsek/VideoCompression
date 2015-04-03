@@ -6,71 +6,76 @@ using namespace utilities;
 bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     CMDS action = DISTRIBUTE_HOST;
     TransferInfo *ti(new TransferInfo);
-    RESPONSE_T resp = ACK_FREE;
-    int32_t can_accept = std::atomic_fetch_sub(&DATA->state.can_accept, 1);
-    if ((can_accept <= 0) || (DATA->state.working)) {
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
-        resp = ACK_BUSY;
-    }
+    // is able to do some work?
+    RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
+
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
     try {
-    if (sendResponse(fd, resp) == -1) {
+        if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
-    }
+        }
 
-    if (resp == ACK_BUSY)
-        return true;
-    reportDebug("Beginning transfer. " + MyAddr(address).get(), 1);
+        // node is busy
+        if (resp == ACK_BUSY) {
+            return true;
+        }
 
-    if (ti->receive(fd) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
+        reportDebug("Beginning transfer. " + MyAddr(address).get(), 1);
+
+        if (ti->receive(fd) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
         throw 1;
-    }
+        }
 
-    if (DATA->chunks_received.contains(ti->toString())) {
-        resp = ABORT;
-        if (sendResponse(fd, resp) == -1) {
+        // this chunk has been received already
+        if (DATA->chunks_received.contains(ti->toString())) {
+            resp = ABORT;
+            if (sendResponse(fd, resp) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 throw 1;
+            }
+            reportDebug("I have this chunk already.", 2);
+            throw 1;
         }
-        reportDebug("I have this chunk already.", 2);
-        throw 1;
-    }
 
-    resp = AWAITING;
-    if (sendResponse(fd, resp) == -1) {
+        resp = AWAITING;
+        if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
-    }
+        }
 
-    std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
-    if (OSHelper::prepareDir(dir, false) == -1) {
-        reportError(ti->name + ": Error creating job dir.");
-        throw 1;
-    }
+        std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
+        if (OSHelper::prepareDir(dir, false) == -1) {
+            reportError(ti->name + ": Error creating job dir.");
+            throw 1;
+        }
 
-    ti->timestamp = utilities::getTimestamp();
-    if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
+        // TODO: time measuring
+        // receives the file, measures duration
+        ti->timestamp = utilities::getTimestamp();
+        if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
         reportError(ti->name + ": Failed to transfer file.");
         throw 1;
-    }
-    ti->sending_time = utilities::computeDuration(
-                utilities::getTimestamp(), ti->timestamp);
+        }
+        ti->sending_time = utilities::computeDuration(
+            utilities::getTimestamp(), ti->timestamp);
 
-    reportDebug("Pushing chunk " + ti->name + "(" +
-                utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
-    ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
-                           "/" + ti->name + ti->desired_extension);
-    ti->addressed = true;
-    DATA->chunks_received.push(ti);
-    utilities::printOverallState(state);
-    pushChunkProcess(ti);
+        reportDebug("Pushing chunk " + ti->name + "(" +
+            utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
+        ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
+                   "/" + ti->name + ti->desired_extension);
+        // this helps to determine, that the chunk should be send to src_adress
+        // when popped from the queue later
+        ti->addressed = true;
+        // remember chunk
+        DATA->chunks_received.push(ti);
+        utilities::printOverallState(state);
+        chunkhelper::pushChunkProcess(ti);
     } catch (int) {
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
         return false;
     }
 
@@ -87,10 +92,11 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
+        // the peer became busy
         if (resp == ACK_BUSY) {
             reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
             DATA->neighbors.setNeighborFree(address, false);
-            pushChunkSend(ti);
+            chunkhelper::pushChunkSend(ti);
             return true;
         }
 
@@ -103,10 +109,14 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
         }
+
+        // problems occured
         if (resp == ABORT) {
             reportDebug(
                 "This chunk is already being processed by this neighbor.", 2);
             ti->addressed = false;
+            // lower the chance to pick same neighbor again
+            // he is propably slow
             DATA->neighbors.updateQuality(
                         ti->address, 5);
             throw 1;
@@ -117,7 +127,8 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
     } catch (int) {
-        pushChunkSend(ti);
+        // resend chunk in case of failure
+        chunkhelper::pushChunkSend(ti);
         return false;
     }
 
@@ -131,42 +142,48 @@ bool CmdReturnHost::execute(
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
-        pushChunkSend(ti);
+        chunkhelper::pushChunkSend(ti);
         return false;
     }
 
     if (sendFile(fd, ti->path) == -1) {
         reportError(ti->name + ": Failed to send.");
-        pushChunkSend(ti);
+        chunkhelper::pushChunkSend(ti);
         return false;
     }
 
+    ///TODO: why?
     DATA->chunks_to_send.signal();
+    // remove the file, no longer needed
     OSHelper::rmFile(ti->path);
+    chunkhelper::trashChunk(ti, true);
     utilities::printOverallState(state);
-    delete ti;
     return true;
 }
 
 bool CmdReturnPeer::execute(
         int32_t fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
-    //TODO: delete in case of failure
-    // should get already created Info!!
-    TransferInfo *ti(new TransferInfo);
+    TransferInfo helper_ti, *ti = nullptr;
     try {
         if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
         }
 
-        if (ti->receive(fd)) {
+        if (helper_ti.receive(fd)) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
         }
 
-        std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
+        // get pointer to corresponding TransferInfo structure
+        ti = DATA->periodic_listeners.get(helper_ti.toString());
+        // propably was received before
+        if (ti == nullptr) {
+            throw 1;
+        }
 
+        std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
         if (OSHelper::prepareDir(dir, false) == -1) {
             reportError(ti->name + ": Error creating received job dir.");
             throw 1;
@@ -179,16 +196,22 @@ bool CmdReturnPeer::execute(
         }
         ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
         handler->confirmNeighbor(ti->address);
+        // this is first time the chun returned
         if (!DATA->chunks_returned.contains(ti->toString())) {
-            processReturnedChunk(ti, handler, state);
+            chunkhelper::processReturnedChunk(ti, handler, state);
+            // all chunks has returned
             if (!DATA->state.to_recv) {
                 state->join();
             }
+            // the chunk returned before,
+            // propably was resent to other neighbor - no longer needed
         } else {
             reportError(ti->name + ": Too late.");
         }
     } catch (int) {
-        delete ti;
+        if (ti != nullptr) {
+            delete ti;
+        }
         return false;
     }
     return true;
@@ -205,14 +228,16 @@ bool CmdGatherNeighborsPeer::execute(
             return false;
     }
 
+    // receive requester's address
     if (requester_maddr.receive(fd) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
 
+    // "unwrap" sockaddr_storage structure
     requester_addr = requester_maddr.getAddress();
-    int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
-    if ((can_accept > 0) && (!DATA->state.working)) {
+    // free to work, so ping the requester
+    if (networkHelper::isFree()) {
         int32_t sock;
         if ((sock = handler->checkNeighbor(requester_addr)) == -1) {
             reportDebug("Failed to contact: " + requester_maddr.get(), 3);
@@ -222,14 +247,16 @@ bool CmdGatherNeighborsPeer::execute(
         }
     }
 
+    // lower the TTL
     if (--requester_maddr.TTL <= 0) {
         return true;
     }
 
+    // spread the message
     for (const auto &addr :
          DATA->neighbors.getNeighborAdresses(
              DATA->neighbors.getNeighborCount())) {
-        handler->gatherNeighbors(requester_maddr.TTL, // already lowered
+        handler->gatherNeighbors(requester_maddr.TTL,
                     requester_addr, addr);
     }
 
@@ -240,6 +267,8 @@ bool CmdGatherNeighborsHost::execute(
         int32_t fd, sockaddr_storage &address, void *data) {
     MyAddr *requester_addr = (MyAddr *) data;
 
+    // invoked by networkHelper::gatherNeighbors()
+    // the passed data contains address of the requester
     if (requester_addr->send(fd) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;

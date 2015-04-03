@@ -27,10 +27,13 @@ void CmdScrollUp::execute() {
 
 void CmdShow::execute() {
     std::string what = loadInput("show.hist", "", false, false);
+    // showing state
     if (what == "state") {
         utilities::printOverallState(state);
+        // showing neighbors
     } else if (what.find( "neighbors") != std::string::npos) {
         DATA->neighbors.printNeighborsInfo();
+        // showing file info
     } else if (what.find( "file") != std::string::npos){
         if (state->finfo.fpath.empty()) {
             reportError("Please load the file first.");
@@ -46,34 +49,28 @@ void CmdStart::execute() {
         return;
     }
 
+    // is it not empty existing file?
     if (OSHelper::checkFile(state->finfo.fpath) == -1) {
         reportError("Invalid file.");
         return;
     }
 
+    // Some job is currently being done
     if (DATA->state.working) {
         reportError("Already in working process.");
         return;
     }
-    cursToInfo();
+    // print state and begin to split
     state->printVideoState();
-    refresh();
     if (state->split() == -1) {
         reportError("Error while splitting the video file.");
         OSHelper::rmrDir(state->dir_location.c_str(), false);
         return;
     }
-    /*
-    if (state->join() == -1) {
-        reportError("Error while joining the video file.");
-        rmrDir(state->dir_location.c_str(), false);
-        return;
-    }
-    rmrDir(state->dir_location.c_str(), false);
-    */
 }
 
 void CmdSetCodec::execute() {
+    // reads the input and sets the codec
     std::string in = loadInput("codecs", "Enter desired output codec:", false, false);
     if (utilities::knownCodec(in)) {
         state->o_codec = in;
@@ -89,16 +86,19 @@ void CmdSetCodec::execute() {
 }
 
 void CmdSetChSize::execute() {
+    //reads new chunk size
     std::string in = loadInput("", "Enter new chunk size (kB):", false, false);
     size_t nsize = DATA->config.getIntValue("CHUNK_SIZE");
     std::stringstream ss(in), msg;
     ss >> nsize;
+    // is supposed to be stored in bytes
     state->changeChunkSize(nsize * 1024);
-    msg << "Chunk size set to: " << nsize;
+    msg << "Chunk size set to: " << nsize << " kB";
     reportSuccess(msg.str());
 }
 
 void CmdSetFormat::execute() {
+    // loads the desired container format
     std::string in = loadInput("", "Enter desired output format:", false, false);
     if (utilities::knownFormat(in)) {
         state->o_format = "." + in;
@@ -114,6 +114,7 @@ void CmdSetFormat::execute() {
 }
 
 void CmdSet::execute() {
+    // determines, which option to set
     std::string line = loadInput("set.history", "What option set?", false, false);
     if (line.find("codec") != std::string::npos)
         DATA->cmds[SET_CODEC]->execute();
@@ -132,18 +133,23 @@ void CmdLoad::execute(){
     std::stringstream ssd;
     struct FileInfo finfo;
 
+    // reads the file path
     path = loadInput("paths.history", "Enter a file path:", true, true);
     if (path.empty()) {
         reportError("File path not provided.");
         return;
     }
+
+    // is file ok?
     if (OSHelper::checkFile(path) == -1){
         reportError("Loading the file " + path + " failed");
         return;
     }
+    // svaes information in the FileInfo structure
     finfo.fpath = path;
     finfo.extension = "." + OSHelper::getExtension(path);
     finfo.basename = OSHelper::getBasename(path);
+    // gain some info about the video
     if (OSHelper::runExternal(out, err,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
@@ -156,6 +162,8 @@ void CmdLoad::execute(){
         state->resetFileInfo();
         return;
     }
+
+    // parse the JSON output and save
     if(document.Parse(out.c_str()).HasParseError()) {
         reportError(err_msg + "Parse error");
         return;
@@ -205,6 +213,7 @@ void CmdLoad::execute(){
         reportError("Invalid video file");
         return;
     }
+    // codec information
     for(SizeType i = 0; i < streams.Size(); ++i) {
         if (streams[i].HasMember("codec_type") && (streams[i]["codec_type"].GetString() == std::string("video"))) {
             finfo.codec = streams[i]["codec_name"].GetString();
@@ -216,6 +225,7 @@ void CmdLoad::execute(){
         reportError("Invalid video file");
         return;
     }
+    // loads the file to the VideoState
     state->loadFileInfo(finfo);
     reportSuccess(finfo.fpath + " loaded.");
     state->printVideoState();

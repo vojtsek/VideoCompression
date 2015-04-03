@@ -19,10 +19,10 @@ SOURCES +=  \
     sources/commands.cpp \
     sources/handle_IO.cpp \
     sources/main.cpp \
-    sources/networkhandler.cpp \
     sources/utilities.cpp \
     structures/NeighborStorage.cpp \
     helpers/senders_receivers.cpp \
+    structures/NetworkHandler.cpp
 
 HEADERS += \
     commands/interactive.h \
@@ -43,12 +43,12 @@ HEADERS += \
     headers/enums_types.h \
     headers/handle_IO.h \
     headers/include_list.h \
-    headers/networkhandler.h \
     headers/templates.h \
     headers/utilities.h \
     structures/SynchronizedQueue.h \
     structures/NeighborStorage.h \
     helpers/senders_receivers.h \
+    structures/NetworkHandler.h
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \

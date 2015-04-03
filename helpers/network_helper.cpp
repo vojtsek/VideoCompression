@@ -40,11 +40,13 @@
 bool networkHelper::cmpStorages(
         const struct sockaddr_storage &s1,
                  const struct sockaddr_storage &s2) {
+    // quite straightforward
+    // get the address type first
     if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
         return false;
     if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
         if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port) &&
-                (networkHelper::storage2addr(s1) == networkHelper::storage2addr(s2)))
+                (networkHelper::storage2addrstr(s1) == networkHelper::storage2addrstr(s2)))
             return true;
         else {
             return false;
@@ -52,7 +54,7 @@ bool networkHelper::cmpStorages(
     }
     if (((struct sockaddr *) &s1)->sa_family == AF_INET6) {
         if ((((struct sockaddr_in6 *) &s1)->sin6_port == ((struct sockaddr_in6 *) &s2)->sin6_port) &&
-                (networkHelper::storage2addr(s1) == networkHelper::storage2addr(s2))) {
+                (networkHelper::storage2addrstr(s1) == networkHelper::storage2addrstr(s2))) {
             return true;
         } else {
             return false;
@@ -64,6 +66,7 @@ bool networkHelper::cmpStorages(
 bool networkHelper::addrIn(
         const struct sockaddr_storage &addr,
             neighbor_storageT &list) {
+    // traverse the list and look for a match
     for (auto &n : list) {
         if (cmpStorages(n.second->address, addr))
             return true;
@@ -71,13 +74,25 @@ bool networkHelper::addrIn(
     return false;
 }
 
+bool networkHelper::isFree() {
+    int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
+
+    // able to do some work?
+    if ((can_accept <= 0) || (DATA->state.working)) {
+        return false;
+    }
+    return true;
+}
+
 int32_t networkHelper::getHostAddr(
         struct sockaddr_storage &addr, int32_t fd) {
+            // prepare the structures
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
     bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
     socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
+            // IPv4 mode, return sockaddr_in
     if (DATA->config.IPv4_ONLY) {
         if (getsockname(fd, (struct sockaddr *) in4p, &size4) == -1) {
             reportDebug("Not an IPv4 addr.", 4);
@@ -85,6 +100,7 @@ int32_t networkHelper::getHostAddr(
             in4p->sin_family = AF_INET;
             return 0;
         }
+            // IPv6 mode, returns sockaddr_in6
     } else {
         in6p->sin6_family = AF_INET6;
         if (getsockname(fd, (struct sockaddr *) in6p, &size6) == -1) {
@@ -103,6 +119,8 @@ int32_t networkHelper::getPeerAddr(
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
     bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
     socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
+    // gets the IP address using the provided file descriptor
+    // tries both IPv4 and IPv6
     if (getpeername(fd, (struct sockaddr *) in4p, &size4) == -1) {
         reportDebug("Not an IPv4 addr.", 4);
     } else {
@@ -124,33 +142,40 @@ int32_t networkHelper::getMyAddress(
     int32_t sock;
 
     struct sockaddr_storage neighbor_addr;
+    // get address of some living node
     if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == -1) {
         reportDebug("No neighbors!", 3);
         return -1;
     }
+    // connect to it
     if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
         reportDebug("Error getting host address.", 2);
         return -1;
     }
+
+    // dig the addres from the file descriptor
     if ((networkHelper::getHostAddr(addr, sock)) == -1) {
         reportDebug("Error getting host address.", 2);
         close(sock);
         return -1;
     }
     close(sock);
+    // finally set the port
     networkHelper::changeAddressPort(addr,
                                      DATA->config.getIntValue("LISTENING_PORT"));
     return 0;
 }
 
-struct sockaddr_storage networkHelper::addr2storage(
+struct sockaddr_storage networkHelper::addrstr2storage(
         const char *addrstr, int32_t port, int32_t family) {
     struct sockaddr_storage addr;
+    // IPv4
     if (family == AF_INET) {
         struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
         addr4->sin_family = family;
         addr4->sin_port = htons(port);
         inet_pton(family, addrstr, &(addr4->sin_addr));
+     // IPv6
     } else {
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *) &addr;
         addr6->sin6_family = family;
@@ -160,7 +185,7 @@ struct sockaddr_storage networkHelper::addr2storage(
     return addr;
 }
 
-std::string networkHelper::storage2addr(
+std::string networkHelper::storage2addrstr(
         const sockaddr_storage &addr) {
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
@@ -173,7 +198,9 @@ std::string networkHelper::storage2addr(
     }
 }
 
-void networkHelper::changeAddressPort(struct sockaddr_storage &addr, int32_t port) {
+void networkHelper::changeAddressPort(
+        struct sockaddr_storage &addr, int32_t port) {
+    // port number in the structure has to be in netw. byte order
     port = (in_port_t) port;
     if (addr.ss_family == AF_INET) {
         ((struct sockaddr_in *) &addr)->sin_port =

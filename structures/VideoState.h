@@ -26,8 +26,8 @@ struct VideoState {
     * \var ofs filestream pointing to the log file
     * \var net_handler reference to the NetworkHandler instance
     */
-    size_t secs_per_chunk, c_chunks, chunk_size;
-    int32_t msgIndex, processed_chunks;
+    int32_t secs_per_chunk, c_chunks, chunk_size,
+    msgIndex, processed_chunks;
     std::string dir_location, job_id, o_format, o_codec;
     std::ofstream ofs;
     NetworkHandler *net_handler;

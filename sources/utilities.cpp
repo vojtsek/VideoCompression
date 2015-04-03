@@ -41,20 +41,25 @@ std::shared_ptr<Data> Data::inst = nullptr;
 int32_t utilities::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
+
     do {
         lck.lock();
         while (DATA->m_data.using_I)
             DATA->m_data.IO_cond.wait(lck);
         DATA->m_data.using_I = true;
+        // non blocking mode is set, waits for key
         c = getch();
         DATA->m_data.using_I = false;
         lck.unlock();
         DATA->m_data.IO_cond.notify_one();
         usleep(10000);
+        // repeats while no input is available
     } while(c == ERR);
+    // F12 terminates
     if (c == KEY_F(12)) {
         return (1);
     }
+    // spawns the command
     thread thr ([&]() {
         try {
             cmds.at(Data::getCmdMapping().at(c))->execute();
@@ -77,30 +82,21 @@ void utilities::listCmds() {
     show("quit", "");
 }
 
-void clearNlines(int32_t n) {
-    int32_t orig_x, orig_y, x, y;
-    getyx(stdscr, y, x);
-    orig_x = x;
-    orig_y = y;
-    while(n--) {
-        move(y++, 0);
-        clrtoeol();
-    }
-    move(orig_y, orig_x);
-}
-
 void utilities::printOverallState(VideoState *state) {
     MSG_T type = PLAIN;
+    // all chunks were delivered
     if ((state->processed_chunks == state->c_chunks) &&
     (state->c_chunks != 0)) {
         type = SUCCESS;
     }
     DATA->io_data.info_handler.clear();
+    // adds the messages
     DATA->io_data.info_handler.add(utilities::formatString(
                                        "processed chunks:",
                                        utilities::m_itoa(state->processed_chunks) +
                                        "/" + utilities::m_itoa(state->c_chunks)), type);
     DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
+    // chunks being processed
     for (const auto &c : DATA->chunks_received.getValues()) {
         DATA->io_data.info_handler.add(c->name + " (" +
                                        utilities::m_itoa(c->chunk_size) + "B); " +
@@ -108,7 +104,7 @@ void utilities::printOverallState(VideoState *state) {
     }
 
     DATA->io_data.info_handler.add("Chunks to send: ", DEBUG);
-    //TODO: sync
+    //TODO: chunks I should send
     for (const auto &ti : DATA->chunks_to_send.getValues()) {
         DATA->io_data.info_handler.add(ti->name, PLAIN);
     }
@@ -119,19 +115,24 @@ std::string utilities::m_itoa(int32_t n) {
     std::string res;
     int32_t nn;
     bool negative = false;
+    // handle negative values
     if (n < 0) {
         negative = true;
         n *= -1;
     }
+    // zero case
     if (n == 0) {
         return std::string("0");
     }
+    // do the conversion
     while(n > 0) {
         nn = n % 10;
         n /= 10;
         res.push_back('0' + nn);
     }
     reverse(res.begin(), res.end());
+
+    // negatives
     if (negative) {
         return "-" + res;
     }
@@ -149,8 +150,11 @@ vector<string> utilities::extract(const std::string text, const std::string from
     bool start = false;
     while (ss.good()) {
         ss >> word;
-        if ((!start) && ((from == "") || (word == from)))
+        // read the words until the passed value
+        if ((!start) && ((from == "") || (word == from))) {
             start = true;
+        }
+        // extract given nuber of words
         if (start) {
             result.push_back(word);
             --count;
@@ -168,39 +172,44 @@ std::string utilities::formatString(std::string str1, std::string str2) {
     return std::string(value);
 }
 
-/**
- * @brief utilities::getTimestamp gets string representation of the current time
- * @return current time since epoch start, in MILIseconds
- */
 std::string utilities::getTimestamp() {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
+    // actually in microseconds
     uint64_t us = tv.tv_sec * 1000000 + tv.tv_usec;
+    // lowers precision
     us /= 1000;
     return utilities::m_itoa((int32_t) us);
 }
 
 bool utilities::isAcceptable(char c) {
     vector<char> acc = {'/', '.', '_', ' ', '=', '-'};
-    if ((!isgraph(c)) || (iscntrl(c)))
+    // exclude special characters
+    if ((!isgraph(c)) || (iscntrl(c))) {
         return false;
+    }
+    // accept alphanumeric or listed characters
     return ((isalnum(c)) || (find(acc.begin(), acc.end(), c) != acc.end()));
 }
 
 bool utilities::knownCodec(const std::string &cod) {
     vector<string> know = Data::getKnownCodecs();
+    // try to find current codec
     for (string &c : know) {
-        if (c == cod)
+        if (c == cod) {
             return true;
+        }
     }
     return false;
 }
 
 bool utilities::knownFormat(const std::string &format) {
     vector<string> know = Data::getKnownFormats();
+    // try to find given format
     for (string &f : know) {
-        if (f == format)
+        if (f == format) {
             return true;
+        }
     }
     return false;
 }
@@ -209,16 +218,20 @@ vector<std::string> utilities::split(const std::string &content, char sep) {
     size_t pos;
     vector<string> result;
     std::string remaining(content);
+    // while still some occurences of the separator
     while((pos = remaining.find(sep)) != std::string::npos) {
+        // process next part
         result.push_back(remaining.substr(0, pos));
         remaining = remaining.substr(pos + 1, remaining.length());
     }
+    // remaining part
     result.push_back(remaining);
     return result;
 }
 
 int32_t Configuration::getIntValue(std::string key) {
     int32_t res = 0;
+    // safely returns the integer value
     try {
         res = intValues.at(key);
     } catch (std::out_of_range) {
@@ -229,6 +242,7 @@ int32_t Configuration::getIntValue(std::string key) {
 
 std::string Configuration::getStringValue(std::string key) {
     std::string res("");
+    // safely returns the string value
     try {
         res = strValues.at(key);
     } catch (std::out_of_range) {

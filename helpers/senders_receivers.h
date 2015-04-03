@@ -4,7 +4,7 @@
 #include "headers/enums_types.h"
 
 int32_t sendResponse(int32_t fd, RESPONSE_T &resp);
-int32_t sendStruct(int32_t fd, const struct sockaddr_storage &st);
+int32_t sendAdrressStruct(int32_t fd, const struct sockaddr_storage &st);
 int32_t sendInt32(int32_t fd, int32_t i);
 int32_t sendString(int32_t fd, std::string str);
 int32_t sendFile(int32_t fd, std::string str);
