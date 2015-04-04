@@ -42,19 +42,25 @@ bool networkHelper::cmpStorages(
                  const struct sockaddr_storage &s2) {
     // quite straightforward
     // get the address type first
+    //IPv4
     if (((struct sockaddr *) &s1)->sa_family != ((struct sockaddr *) &s2)->sa_family)
         return false;
     if (((struct sockaddr *) &s1)->sa_family == AF_INET) {
-        if ((((struct sockaddr_in *) &s1)->sin_port == ((struct sockaddr_in *) &s2)->sin_port) &&
-                (networkHelper::storage2addrstr(s1) == networkHelper::storage2addrstr(s2)))
+        if ((((struct sockaddr_in *) &s1)->sin_port ==
+             ((struct sockaddr_in *) &s2)->sin_port) &&
+                (networkHelper::storage2addrstr(s1) ==
+                 networkHelper::storage2addrstr(s2)))
             return true;
         else {
             return false;
         }
     }
+    // IPv6
     if (((struct sockaddr *) &s1)->sa_family == AF_INET6) {
-        if ((((struct sockaddr_in6 *) &s1)->sin6_port == ((struct sockaddr_in6 *) &s2)->sin6_port) &&
-                (networkHelper::storage2addrstr(s1) == networkHelper::storage2addrstr(s2))) {
+        if ((((struct sockaddr_in6 *) &s1)->sin6_port ==
+             ((struct sockaddr_in6 *) &s2)->sin6_port) &&
+                (networkHelper::storage2addrstr(s1) ==
+                 networkHelper::storage2addrstr(s2))) {
             return true;
         } else {
             return false;
@@ -166,6 +172,23 @@ int32_t networkHelper::getMyAddress(
     return 0;
 }
 
+int32_t networkHelper::getSuperPeerAddr(
+        sockaddr_storage &address) {
+    if (DATA->config.IPv4_ONLY) {
+        address = networkHelper::addrstr2storage(
+                    DATA->config.superpeer_addr.c_str(),
+                    DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+    } else {
+        address = networkHelper::addrstr2storage(
+                    DATA->config.superpeer_addr.c_str(),
+                    DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+    }
+    if (address.ss_family == AF_UNSPEC) {
+        return -1;
+    }
+    return 0;
+}
+
 struct sockaddr_storage networkHelper::addrstr2storage(
         const char *addrstr, int32_t port, int32_t family) {
     struct sockaddr_storage addr;
@@ -174,33 +197,48 @@ struct sockaddr_storage networkHelper::addrstr2storage(
         struct sockaddr_in *addr4 = (struct sockaddr_in *) &addr;
         addr4->sin_family = family;
         addr4->sin_port = htons(port);
-        inet_pton(family, addrstr, &(addr4->sin_addr));
+        if (inet_pton(family, addrstr, &(addr4->sin_addr)) == -1) {
+            // determine error
+            addr4->sin_family = AF_UNSPEC;
+        }
      // IPv6
     } else {
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *) &addr;
         addr6->sin6_family = family;
         addr6->sin6_port = htons(port);
-        inet_pton(family, addrstr, &(addr6->sin6_addr));
+        if (inet_pton(family, addrstr, &(addr6->sin6_addr)) == -1) {
+            addr6->sin6_family = AF_UNSPEC;
+        }
     }
     return addr;
 }
 
 std::string networkHelper::storage2addrstr(
         const sockaddr_storage &addr) {
+    // IPv4
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr, buf, INET_ADDRSTRLEN);
+        if (inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr,
+                      buf, INET_ADDRSTRLEN) == -1) {
+            // determine error
+            return std::string("");
+        }
         return std::string(buf);
+     // IPv6
     } else {
         char buf[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&addr)->sin6_addr, buf, INET6_ADDRSTRLEN);
+        if (inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&addr)->sin6_addr,
+                      buf, INET6_ADDRSTRLEN) == -1) {
+            // determine error
+            return std::string("");
+        }
         return std::string(buf);
     }
 }
 
 void networkHelper::changeAddressPort(
         struct sockaddr_storage &addr, int32_t port) {
-    // port number in the structure has to be in netw. byte order
+    // port number in the structure has to be in network byte order
     port = (in_port_t) port;
     if (addr.ss_family == AF_INET) {
         ((struct sockaddr_in *) &addr)->sin_port =

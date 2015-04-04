@@ -131,13 +131,13 @@ int32_t TransferInfo::receive(int32_t fd) {
 
     struct sockaddr_storage srca;
 
-    if (receiveStruct(fd, srca) == -1) {
+    if (receiveAddressStruct(fd, srca) == -1) {
         reportDebug("Failed to receive address.", 1);
         return -1;
     }
     address = srca;
 
-    if (receiveStruct(fd, srca) == -1) {
+    if (receiveAddressStruct(fd, srca) == -1) {
         reportDebug("Failed to receive source address.", 1);
         return -1;
     }

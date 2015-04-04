@@ -65,7 +65,7 @@ bool CmdAskHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     }
     // receive those addresses
         for (int32_t i = 0; i < count; ++i) {
-            if (receiveStruct(fd, addr) == -1) {
+            if (receiveAddressStruct(fd, addr) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
             }
@@ -150,7 +150,7 @@ bool CmdConfirmHost::execute(int32_t fd, struct sockaddr_storage &address, void 
     }
 
     // receive peer's address
-    if (receiveStruct(fd, addr) == -1) {
+    if (receiveAddressStruct(fd, addr) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -313,10 +313,10 @@ void CmdSayGoodbye::execute() {
 
     // informs also the superpeer
     struct sockaddr_storage address;
-    if (DATA->config.IPv4_ONLY)
-        address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
-    else
-        address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+    if (networkHelper::getSuperPeerAddr(address) == -1) {
+        return false;
+    }
+
    sock = handler->checkNeighbor(address);
     handler->spawnOutgoingConnection(address,
                                      sock, { GOODBYE_PEER }, true, nullptr);

@@ -85,7 +85,7 @@ void cursorToX(int32_t nx);
 void reportError(const std::string &err);
 
 /*!
- * \brief reportError reports the success message
+ * \brief reportSuccess reports the success message
  * \param msg message to report
  * Reports the message using the WindowPrinter instance
  * which is handling status window;
@@ -94,7 +94,7 @@ void reportError(const std::string &err);
 void reportSuccess(const std::string &msg);
 
 /*!
- * \brief reportError reports the message
+ * \brief reportStatus reports the message
  * \param msg message to report
  * Reports the message using the WindowPrinter instance
  * which is handling status window;
@@ -103,7 +103,7 @@ void reportSuccess(const std::string &msg);
 void reportStatus(const std::string &msg);
 
 /*!
- * \brief reportError reports the debug message
+ * \brief reportDebug reports the debug message
  * \param msg message to report
  * \param lvl importance level of the message
  * Reports the message using the WindowPrinter instance

@@ -17,34 +17,35 @@ int32_t NeighborStorage::getNeighborCount() {
 
 int32_t NeighborStorage::removeNeighbor(
         const struct sockaddr_storage &addr) {
-    //TODO: check differently
-    if (getNeighborInfo(addr, true) == nullptr)
+    // exists the neighbor?
+    if (getNeighborInfo(addr, true) == nullptr) {
         return 0;
+    }
     n_mtx.lock();
+    // erase from free negihbors
     free_neighbors.erase(
         std::remove_if(free_neighbors.begin(), free_neighbors.end(),
                    [&](NeighborInfo *ngh) {
                         return networkHelper::cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
-    //todo: waiting_chunks
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (networkHelper::cmpStorages(it->second->address, addr)) {
-            //TODO: structures handling synchronization of listeners
-          //  DATA->periodic_listeners.erase(
-               //         it->second->toString());
+            // removes if there are some chunks addressed to this neighbor
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
                 return networkHelper::cmpStorages(
                             ti->address, it->second->address);
             });
 
+            // remove from periodic listeners, checks no longer needed
             DATA->periodic_listeners.removeIf(
                         [&](Listener *listener) -> bool {
                 return (listener->toString() == it->second->toString());
             });
-            delete it->second;
+            // remove from neighbors list
             neighbors.erase(it);
+            delete it->second;
             reportError("Removed neighbor: " + MyAddr(addr).get());
             n_mtx.unlock();
             return 1;
@@ -57,12 +58,14 @@ int32_t NeighborStorage::removeNeighbor(
 void NeighborStorage::removeDirty() {
     std::vector<struct sockaddr_storage> to_remove;
     n_mtx.lock();
+    // first earns neighbors to be remove
     for (const auto &n : neighbors) {
         if (n.second->dirty) {
             to_remove.push_back(n.second->address);
         }
     }
     n_mtx.unlock();
+    // remove each one by one, so no deadlock occurs
     for (const auto &a : to_remove) {
         removeNeighbor(a);
     }
@@ -77,6 +80,7 @@ void NeighborStorage::applyToNeighbors(
 
 void NeighborStorage::setInterval(
         const struct sockaddr_storage &addr, int32_t i) {
+    // synchronization assured
     applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, addr)) {
@@ -87,6 +91,7 @@ void NeighborStorage::setInterval(
 
 void NeighborStorage::updateQuality(
         const struct sockaddr_storage &addr, int32_t q) {
+    // synchronization assured
         applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
             if (networkHelper::cmpStorages(entry.second->address, addr)) {
@@ -98,11 +103,13 @@ void NeighborStorage::updateQuality(
 NeighborInfo *NeighborStorage::getNeighborInfo(
         const sockaddr_storage &addr, bool lock) {
     NeighborInfo *res = nullptr;
+    // should lock every time, except when setting neighbor free
     if (lock) {
         n_mtx.lock();
     }
     std::for_each (neighbors.begin(), neighbors.end(),
                    [&](std::pair<std::string, NeighborInfo *> entry) {
+        // earns the NeighborInfo structure pointer
         if (networkHelper::cmpStorages(entry.second->address, addr)) {
             res = entry.second;
         }
@@ -116,23 +123,30 @@ NeighborInfo *NeighborStorage::getNeighborInfo(
 void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
                                       bool free) {
     n_mtx.lock();
+    // no locking
     NeighborInfo *ngh = getNeighborInfo(addr, false);
+
+    //the neighbor was removed propably
     if (ngh == nullptr) {
         n_mtx.unlock();
         return;
     }
+
+    // no change needed
     if (ngh->free == free) {
         n_mtx.unlock();
        return;
     }
+
     if (!free) {
-        reportError("Set not free.");
+        // setting not free
         free_neighbors.erase(
             std::remove_if (free_neighbors.begin(), free_neighbors.end(),
                [&](NeighborInfo *ngh) {
             return (networkHelper::cmpStorages(ngh->address, addr));
         }), free_neighbors.end());
     } else {
+        // set free
         reportDebug("Neighbor is now free: " + MyAddr(addr).get(), 2);
         free_neighbors.push_back(ngh);
     }
@@ -142,14 +156,18 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
 
 int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     n_mtx.lock();
+    // no neighbors at all
     if (free_neighbors.empty()) {
         n_mtx.unlock();
         return 0;
     }
+    // sort free neighbors with respect to quality
+    // TODO: one iteration of bubblesort?
     std::sort(free_neighbors.begin(), free_neighbors.end(),
               [&](NeighborInfo *n1, NeighborInfo *n2) {
         return (n1->quality < n2->quality);
     });
+    // pick the best one
     addr = (*free_neighbors.begin())->address;
     n_mtx.unlock();
     return 1;
@@ -157,24 +175,27 @@ int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
 
 int32_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
     int count;
+    // no neighbors at all
     if (!(count = getNeighborCount())) {
-        return -1;
+        return 0;
     }
+    // get random neighbor
     int32_t rand_n = rand() % getNeighborCount();
     SYNCHRONIZED_SECTION(
         auto it = neighbors.begin();
-        while (rand_n--) {
+        while (rand_n-- > 0) {
             it++;
         }
+        addr = it->second->address;
     )
-    addr = it->second->address;
-    return 0;
+    return 1;
 }
 
 std::vector<struct sockaddr_storage>
         NeighborStorage::getNeighborAdresses(int32_t count) {
     SYNCHRONIZED_SECTION(
         std::vector<struct sockaddr_storage> result;
+            // simply picks first $count neighbors
         for (auto neighbor : neighbors) {
             result.push_back(neighbor.second->address);
             if (!--count) {
@@ -190,6 +211,7 @@ void NeighborStorage::printNeighborsInfo() {
     n_mtx.lock();
     for (const auto &n : neighbors) {
         if (!n.second->free) {
+            // busy neighbors are red
             type = ERROR;
         }
         DATA->io_data.info_handler.add(
@@ -202,12 +224,18 @@ void NeighborStorage::printNeighborsInfo() {
 
 void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     n_mtx.lock();
+    // dont know this neighbor already
     if (!networkHelper::addrIn(addr, neighbors)) {
+        // initialize the neighbor
         NeighborInfo *ngh = new NeighborInfo(addr);
         ngh->intervals = DATA->config.getIntValue(
             "NEIGHBOR_CHECK_TIMEOUT");
+
+        // add to the list
         neighbors.insert(
             std::make_pair(ngh->toString(), ngh));
+
+        // start checking
         DATA->periodic_listeners.push(ngh);
         free_neighbors.push_back(ngh);
         MyAddr mad(addr);

@@ -25,41 +25,52 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
         int32_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
+				// traverse the commands to be spawned on the peer side
         for (auto cmd : cmds) {
+						// sendCmd handles communication
             if ((sendCmd(fd, cmd)) == -1) {
                 reportDebug("Failed to send command.", 2);
                 break;
             }
 
+						// command to be invoked
             if (recvSth(action, fd) == -1) {
                 reportDebug("Failed to get response.", 2);
                 break;
             }
             response = true;
+						// end communication
             if (action == TERM){
                 sendSth(response, fd);
                 break;
             }
+						// try to invoke command
            try {
-               if (DATA->net_cmds.find(action) == DATA->net_cmds.end()) {
-                   response = false;
-                   if (sendSth(response, fd) == -1) {
-                   reportDebug("Error while processing cmd.", 1);
-                   }
-                   break;
+							// invalid action
+              if (DATA->net_cmds.find(action) == DATA->net_cmds.end()) {
+                  response = false;
+                  if (sendSth(response, fd) == -1) {
+									 reportDebug("Error while processing cmd.", 1);
+                  }
+                  break;
+              }
+							// get the command's structure
+              NetworkCommand *command = DATA->net_cmds.at(action);
+							// invalid request
+              if (command == nullptr) {
+                  response = false;
+                  if (sendSth(response, fd) == -1) {
+                      reportDebug("Error while processing cmd.", 1);
+                  }
+                  throw new std::out_of_range("Unrecognized command.");
                }
-               NetworkCommand *command = DATA->net_cmds.at(action);
-               if (command == nullptr) {
-                   response = false;
-                   if (sendSth(response, fd) == -1) {
-                       reportDebug("Error while processing cmd.", 1);
-                   }
-                   throw new std::out_of_range("Unrecognized command.");
-               }
+
+							 // send response to determince success
                if (sendSth(response, fd) == -1) {
                    reportDebug("Error while processing cmd.", 1);
                    break;
                }
+							 // execute the command
                if (!command->execute(fd, addr, data)) {
                    reportError(command->getName());
                    throw new std::runtime_error(
@@ -72,10 +83,14 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
         }
         close(fd);
     });
+
+		// don't wait for completion, asynchronous process
     if (async) {
         handling_thread.detach();
         return;
     }
+
+		// wait for completion
     handling_thread.join();
 }
 
@@ -122,10 +137,14 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
         }
         close(fd);
     });
+
+		// don't wait for completion, asynchronous process
     if (async) {
         handling_thread.detach();
         return;
     }
+
+		// wait for completion
     handling_thread.join();
 }
 
@@ -186,10 +205,9 @@ int32_t NetworkHandler::start_listening(int32_t port) {
 
 void NetworkHandler::contactSuperPeer() {
     struct sockaddr_storage addr;
-    if (DATA->config.IPv4_ONLY)
-        addr = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
-    else
-        addr = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+    if (networkHelper::getSuperPeerAddr(addr) == -1) {
+        return -1;
+    }
     int32_t sock =  checkNeighbor(addr);
     if (sock == -1) return;
     spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
@@ -228,7 +246,7 @@ void NetworkHandler::gatherNeighbors(int32_t TTL,
                 (void *) requester_maddr);
 }
 
-void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
+void NetworkHandler::confirmNeighbor(struct sockaddr_storage &addr) {
     int32_t sock =  checkNeighbor(addr);
     if (sock == -1) {
         return;
@@ -264,9 +282,6 @@ void NetworkHandler::obtainNeighbors() {
         confirmNeighbor(addr);
 }
 
-/* tries to collect more potential neighbors
-
-*/
 void NetworkHandler::collectNeighbors() {
     //TODO: handle potential neighbors
     struct sockaddr_storage address;
@@ -283,18 +298,16 @@ void NetworkHandler::collectNeighbors() {
     if ((!getPotentialNeighborsCount()) &&
             (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
-        if (DATA->config.IPv4_ONLY)
-            address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
-        else
-            address = networkHelper::addrstr2storage(DATA->config.superpeer_addr.c_str(), DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+        if (networkHelper::getSuperPeerAddr(address) == -1) {
+            return;
+        }
         askForAddresses(address);
     }
 }
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
     int32_t sock;
-    CmdAskPeer cmd(nullptr, nullptr);
-    if ((sock = cmd.connectPeer(&addr)) == -1) {
+    if ((sock = checkNeighbor(addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);
         return;
     }
