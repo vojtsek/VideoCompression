@@ -12,7 +12,7 @@ class HistoryStorage {
     //! name of the text file
     std::string filename;
     //! current index
-    uint32_t c_index;
+    uint64_t c_index;
 public:
     /*!
      * \brief HistoryStorage constructor loads the history from the file

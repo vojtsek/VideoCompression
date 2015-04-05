@@ -20,7 +20,7 @@ namespace networkHelper {
  * \return created address structure, family set to AF_UNSPEC on failure
  */
 struct sockaddr_storage addrstr2storage(const char* addr,
-                                        int32_t port, int32_t family);
+                                        int64_t port, int64_t family);
 
 /*!
  * \brief storage2addrstr converts the address contained in the address structure to string representation
@@ -35,7 +35,7 @@ std::string storage2addrstr(const struct sockaddr_storage &addr);
  * \param fd file descriptor of the connection
  * \return zero on success
  */
-int32_t getHostAddr(struct sockaddr_storage &addr, int32_t fd);
+int64_t getHostAddr(struct sockaddr_storage &addr, int64_t fd);
 
 /*!
  * \brief getPeerAddr loads the address on which the peer is communicating into the given structure
@@ -43,7 +43,7 @@ int32_t getHostAddr(struct sockaddr_storage &addr, int32_t fd);
  * \param fd file descriptor of the connection
  * \return zero on success
  */
-int32_t getPeerAddr(struct sockaddr_storage &addr, int32_t fd);
+int64_t getPeerAddr(struct sockaddr_storage &addr, int64_t fd);
 
 /*!
  * \brief getMyAddress loads the address on which the node is communicating
@@ -54,7 +54,7 @@ int32_t getPeerAddr(struct sockaddr_storage &addr, int32_t fd);
  * spawns connection to some neighbor and
  * reads the address using getHostAddr()
  */
-int32_t getMyAddress(
+int64_t getMyAddress(
         struct sockaddr_storage &addr, NetworkHandler *handler);
 
 /*!
@@ -62,7 +62,7 @@ int32_t getMyAddress(
  * \param addr structure to load into
  * \return zero on success
  */
-int32_t getSuperPeerAddr(struct sockaddr_storage &addr);
+int64_t getSuperPeerAddr(struct sockaddr_storage &addr);
 
 /*!
  * \brief addrIn determines, whether the given address is contained in the list
@@ -94,6 +94,6 @@ bool isFree();
  * \param port desired port number
  */
 void changeAddressPort(
-        struct sockaddr_storage &storage, int32_t port);
+        struct sockaddr_storage &storage, int64_t port);
 }
 #endif // NETWORK_HELPER_H

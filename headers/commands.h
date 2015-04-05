@@ -52,7 +52,7 @@ public:
      * \param addr network address structure to connect to.
      * \return file descriptor of the connection
      */
-    int32_t connectPeer(struct sockaddr_storage *addr);
+    int64_t connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
     /*!
@@ -76,7 +76,7 @@ public:
      * \param data optionally passed pointer to data
      * \return true on success
      */
-    virtual bool execute(int32_t fd, struct sockaddr_storage &addr, void *data) = 0;
+    virtual bool execute(int64_t fd, struct sockaddr_storage &addr, void *data) = 0;
 };
 
 #endif

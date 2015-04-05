@@ -84,6 +84,6 @@ namespace chunkhelper {
      * Updates the corresponding TransferInfo,
      * removes the input file and queues the chunk to send.
      */
-    int32_t encodeChunk(TransferInfo *ti);
+    int64_t encodeChunk(TransferInfo *ti);
 }
 #endif // CHUNK_HELPER_H

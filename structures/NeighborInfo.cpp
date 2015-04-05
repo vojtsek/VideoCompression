@@ -17,7 +17,7 @@ std::string NeighborInfo::getInfo() {
 }
 
 void NeighborInfo::invoke(NetworkHandler &net_handler) {
-    int32_t sock;
+    int64_t sock;
     // decrease intervals
     if (--intervals <= 0) {
         // if time is up, tries to connect
@@ -35,11 +35,8 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
 }
 
 std::string NeighborInfo::toString() {
+    // should be unique
     std::string hash(networkHelper::storage2addrstr(address) +
                      utilities::m_itoa(((struct sockaddr_in *)&address)->sin_port));
     return hash;
-}
-
-bool NeighborInfo::equalsTo(Listener *that) {
-    return (toString() == that->toString());
 }

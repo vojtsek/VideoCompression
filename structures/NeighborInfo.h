@@ -13,13 +13,13 @@ struct NeighborInfo : public Listener {
     struct sockaddr_storage address;
     //! how many intervals before check
     // decreased periodically, reset each time the neighbor is checked
-    int32_t intervals;
+    int64_t intervals;
     //! represents quality - average computation time
-    int32_t quality;
+    int64_t quality;
     //! overall computation time
-    int32_t overall_time;
+    int64_t overall_time;
     //! number of chunks processed by this neighbor
-    int32_t processed_chunks;
+    int64_t processed_chunks;
     //! whether the neighbor is free
     bool free;
     //! it's going to be remove
@@ -35,13 +35,6 @@ struct NeighborInfo : public Listener {
      * \brief NeighborInfo::printInfo prints information about neighbor
      */
     void printInfo();
-
-    /*!
-     * \brief NeighborInfo::equalsTo checks the equality of string representations
-     * \param that another Listener
-     * \return true iff same representations
-     */
-    virtual bool equalsTo(Listener *that);
 
     /*!
      * \brief NeighborInfo::invoke checks the neighbor state

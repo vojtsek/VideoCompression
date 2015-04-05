@@ -13,27 +13,29 @@
 struct VideoState {
     //! holds the information about the loaded file
     struct FileInfo finfo;
-    /*!
-    * \var size_t secs_per_chunk how many seconds per one chunk
-    * \var c_chunks number of chunks
-    * \var chunk_size size of each chunk in bytes - actual chunks differ in size
-    * \var msgIndex index of state message in the info handler
-    * \var processed_chunks number of chuns that were already encoded and returned
-    * \var dir_location location of the working directory
-    * \var job_id string id of the current job
-    * \var o_format file extension of the output - determines the container
-    * \var o_codec codec used for encoding
-    * \var ofs filestream pointing to the log file
-    * \var net_handler reference to the NetworkHandler instance
-    */
-    int32_t secs_per_chunk, c_chunks, chunk_size,
-    msgIndex, processed_chunks;
-    std::string dir_location, job_id, o_format, o_codec;
+    //! how many seconds per one chunk
+    int64_t secs_per_chunk;
+    //! number of chunks
+    int64_t chunk_count;
+    //! size of each chunk in bytes - actual chunks differ in size
+    int64_t chunk_size;
+    //! number of chunks that were already encoded and returned
+    int64_t  processed_chunks;
+    //! location of the working directory
+    std::string dir_location;
+    //! string id of the current job
+    std::string job_id;
+    //! file extension of the output - determines the container
+    std::string o_format;
+    //! codec used for encoding
+    std::string o_codec;
+    //! filestream pointing to the log file
     std::ofstream ofs;
+    //! reference to the NetworkHandler instance
     NetworkHandler *net_handler;
-    VideoState(NetworkHandler *nh): secs_per_chunk(0), c_chunks(0),
-        chunk_size(DATA->config.getIntValue("CHUNK_SIZE")), msgIndex(-1),
-        processed_chunks(0), dir_location(DATA->config.working_dir),
+
+    VideoState(NetworkHandler *nh): secs_per_chunk(0), chunk_count(0),
+        chunk_size(DATA->config.getIntValue("CHUNK_SIZE")),        processed_chunks(0), dir_location(DATA->config.working_dir),
       o_format(".mkv"), o_codec("libx264") {
         net_handler = nh;
     }
@@ -46,7 +48,7 @@ struct VideoState {
      * chunks are stored in $WD/$job_id
      * also queues the chunks for distribution
      */
-    int32_t split();
+    int64_t split();
 
     /*!
      * \brief join handles joining of the received chunks
@@ -57,14 +59,53 @@ struct VideoState {
      * the chunks are supposed to be located in
      * $WD/received/$job_id
      */
-    int32_t join();
+    int64_t join();
+
+    /*!
+     * \brief printVideoState
+     * Prints information about loaded video file,
+     * using WindowPrinter instance associated with
+     * info window.
+     */
     void printVideoState();
+
+    /*!
+     * \brief changeChunkSize sets the chunk size
+     * \param nsize new size to set, in bytes
+     * Computes the count of chunks and seconds per one chunk
+     */
     void changeChunkSize(size_t nsize);
+
+    /*!
+     * \brief loadFileInfo sets current file info structure
+     * \param finfo new file info structure to load
+     */
     void loadFileInfo(struct FileInfo &finfo);
+
+    /*!
+     * \brief resetFileInfo resets all fields regarding video state
+     */
     void resetFileInfo();
+
+    /*!
+     * \brief abort aborts the execution
+     */
     void abort();
-    void reportTime(std::string msg, int32_t time);
-    void endProcess(int32_t duration);
+
+    /*!
+     * \brief reportTime reports how long did the given operation took
+     * \param msg message to show
+     * \param time duration of the operation
+     */
+    void reportTime(std::string msg, int64_t time);
+    /*!
+     * \brief endProcess finishes the encoding process
+     * \param duration how long did the process take
+     * Call after the file is splitted,
+     * reports information and
+     * clears the structures.
+     */
+    void endProcess(int64_t duration);
 };
 
 #endif // VIDEOSTATE_H

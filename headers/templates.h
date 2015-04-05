@@ -22,8 +22,8 @@ struct Measured {
  * does not handle byte order
  */
 template<typename T>
-int32_t sendSth(T what, int32_t fd) {
-    int32_t w;
+int64_t sendSth(T what, int64_t fd) {
+    int64_t w;
     // should write corresponding size
     if ((w = write(fd, &what, sizeof (T))) != sizeof(T)) {
         reportDebug("Problem occured while sending the data.", 1);
@@ -37,8 +37,8 @@ int32_t sendSth(T what, int32_t fd) {
  * does not handle byte order
  */
 template<typename T>
-int32_t recvSth(T &where, int32_t fd) {
-    int32_t r;
+int64_t recvSth(T &where, int64_t fd) {
+    int64_t r;
     // should read corresponding size
      if ((r = read(fd, &where, sizeof (T))) != sizeof(T)) {
         reportDebug("Problem occured while accepting the data.", 1);

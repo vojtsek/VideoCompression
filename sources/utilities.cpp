@@ -38,7 +38,7 @@ using namespace std;
 
 std::shared_ptr<Data> Data::inst = nullptr;
 
-int32_t utilities::acceptCmd(cmd_storage_t &cmds) {
+int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
 
@@ -85,8 +85,8 @@ void utilities::listCmds() {
 void utilities::printOverallState(VideoState *state) {
     MSG_T type = PLAIN;
     // all chunks were delivered
-    if ((state->processed_chunks == state->c_chunks) &&
-    (state->c_chunks != 0)) {
+    if ((state->processed_chunks == state->chunk_count) &&
+    (state->chunk_count != 0)) {
         type = SUCCESS;
     }
     DATA->io_data.info_handler.clear();
@@ -94,7 +94,7 @@ void utilities::printOverallState(VideoState *state) {
     DATA->io_data.info_handler.add(utilities::formatString(
                                        "processed chunks:",
                                        utilities::m_itoa(state->processed_chunks) +
-                                       "/" + utilities::m_itoa(state->c_chunks)), type);
+                                       "/" + utilities::m_itoa(state->chunk_count)), type);
     DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
     // chunks being processed
     for (const auto &c : DATA->chunks_received.getValues()) {
@@ -111,9 +111,9 @@ void utilities::printOverallState(VideoState *state) {
     DATA->io_data.info_handler.print();
 }
 
-std::string utilities::m_itoa(int32_t n) {
+std::string utilities::m_itoa(int64_t n) {
     std::string res;
-    int32_t nn;
+    int64_t nn;
     bool negative = false;
     // handle negative values
     if (n < 0) {
@@ -139,11 +139,11 @@ std::string utilities::m_itoa(int32_t n) {
     return res;
 }
 
-int32_t utilities::computeDuration(std::string t1, std::string t2) {
-    return (atoi(t1.c_str()) - atoi(t2.c_str()));
+int64_t utilities::computeDuration(std::string t1, std::string t2) {
+    return (atoll(t1.c_str()) - atoll(t2.c_str()));
 }
 
-vector<string> utilities::extract(const std::string text, const std::string from, int32_t count) {
+vector<string> utilities::extract(const std::string text, const std::string from, int64_t count) {
     vector<string> result;
     std::string word;
     std::stringstream ss(text);
@@ -176,10 +176,10 @@ std::string utilities::getTimestamp() {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
     // actually in microseconds
-    uint64_t us = tv.tv_sec * 1000000 + tv.tv_usec;
+    int64_t us = tv.tv_sec * 1000000 + tv.tv_usec;
     // lowers precision
     us /= 1000;
-    return utilities::m_itoa((int32_t) us);
+    return utilities::m_itoa((int64_t) us);
 }
 
 bool utilities::isAcceptable(char c) {
@@ -229,8 +229,8 @@ vector<std::string> utilities::split(const std::string &content, char sep) {
     return result;
 }
 
-int32_t Configuration::getIntValue(std::string key) {
-    int32_t res = 0;
+int64_t Configuration::getIntValue(std::string key) {
+    int64_t res = 0;
     // safely returns the integer value
     try {
         res = intValues.at(key);

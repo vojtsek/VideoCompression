@@ -5,6 +5,7 @@
 
 std::string MyAddr::get() {
     std::stringstream ss;
+    // format the string
     ss << "Address: " << addr << " : " << port;
     return (ss.str());
 }
@@ -13,14 +14,10 @@ void MyAddr::print() {
     reportStatus(get());
 }
 
-/*bool MyAddr::equalsTo(const sockaddr_storage &that) {
-    return cmpStorages(this->addr, that);
-}*/
-
-//TODO: bool isIPv4()
 MyAddr::MyAddr(const struct sockaddr_storage &address): TTL(0) {
     if (((struct sockaddr_in *)(&address))->sin_family == AF_INET) {
         struct sockaddr_in *addr = (struct sockaddr_in *) &address;
+        // need to use ntohs
         port = ntohs(addr->sin_port);
         family = AF_INET;
     } else {
@@ -37,18 +34,18 @@ struct sockaddr_storage MyAddr::getAddress() {
                 addr.c_str(), port, family);
 }
 
-int32_t MyAddr::send(int32_t fd) {
-    if (sendInt32(fd, family) == -1) {
+int64_t MyAddr::send(int64_t fd) {
+    if (sendInt64(fd, family) == -1) {
         reportDebug("Failed to send family.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, port) == -1) {
+    if (sendInt64(fd, port) == -1) {
         reportDebug("Failed to send port number.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, TTL) == -1) {
+    if (sendInt64(fd, TTL) == -1) {
         reportDebug("Failed to send TTL.", 1);
         return -1;
     }
@@ -61,18 +58,18 @@ int32_t MyAddr::send(int32_t fd) {
     return 0;
 }
 
-int32_t MyAddr::receive(int32_t fd) {
-    if (receiveInt32(fd, family) == -1){
+int64_t MyAddr::receive(int64_t fd) {
+    if (receiveInt64(fd, family) == -1){
         reportDebug("Failed to receive family.", 1);
         return -1;
     }
 
-    if (receiveInt32(fd, port) == -1){
+    if (receiveInt64(fd, port) == -1){
         reportDebug("Failed to receive port number.", 1);
         return -1;
     }
 
-    if (receiveInt32(fd, TTL) == -1){
+    if (receiveInt64(fd, TTL) == -1){
         reportDebug("Failed to receive TTL.", 1);
         return -1;
     }

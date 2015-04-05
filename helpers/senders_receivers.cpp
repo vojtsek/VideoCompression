@@ -2,23 +2,23 @@
 #include "headers/enums_types.h"
 #include <fcntl.h>
 
-int32_t sendInt32(int32_t fd, int32_t i) {
+int64_t sendInt64(int64_t fd, int64_t i) {
     // to network byte order
     i = htonl(i);
-    int32_t w;
+    int64_t w;
     // check the size written
-    if ((w = write(fd, &i, sizeof (int32_t ))) != sizeof(int32_t )) {
+    if ((w = write(fd, &i, sizeof (int64_t ))) != sizeof(int64_t )) {
         reportDebug("Problem occured while sending the data.", 1);
         return -1;
     }
     return 0;
 }
 
-int32_t receiveInt32(int32_t fd, int32_t &i) {
-    int32_t ir;
-    int32_t r;
+int64_t receiveInt64(int64_t fd, int64_t &i) {
+    int64_t ir;
+    int64_t r;
     // should read exactly size of int
-     if ((r = read(fd, &ir, sizeof (int32_t ))) != sizeof(int32_t )) {
+     if ((r = read(fd, &ir, sizeof (int64_t ))) != sizeof(int64_t )) {
         reportDebug("Problem occured while accepting the data.", 1);
         return (-1);
     }
@@ -27,25 +27,25 @@ int32_t receiveInt32(int32_t fd, int32_t &i) {
     return 0;
 }
 
-int32_t sendResponse(int32_t fd, RESPONSE_T &resp) {
+int64_t sendResponse(int64_t fd, RESPONSE_T &resp) {
     // implicit conversion
-    if (sendInt32(fd, resp) == -1) {
+    if (sendInt64(fd, resp) == -1) {
         return -1;
     }
     return 0;
 }
 
-int32_t receiveResponse(int32_t fd, RESPONSE_T &resp) {
-    int32_t i;
-    if (receiveInt32(fd, i) == -1) {
+int64_t receiveResponse(int64_t fd, RESPONSE_T &resp) {
+    int64_t i;
+    if (receiveInt64(fd, i) == -1) {
         return -1;
     }
-    // construct the response from int32_t
+    // construct the response from int64_t
     resp = RESPONSE_T(i);
     return 0;
 }
 
-int32_t sendAdrressStruct(int32_t fd, const sockaddr_storage &st) {
+int64_t sendAdrressStruct(int64_t fd, const sockaddr_storage &st) {
     MyAddr mad(st);
     // send string representation and port separately,
     // will be putted together
@@ -54,7 +54,7 @@ int32_t sendAdrressStruct(int32_t fd, const sockaddr_storage &st) {
         return -1;
     }
 
-    if (sendInt32(fd, mad.port) == -1) {
+    if (sendInt64(fd, mad.port) == -1) {
         reportDebug("Problem occured while sending the port.", 1);
         return -1;
     }
@@ -62,22 +62,22 @@ int32_t sendAdrressStruct(int32_t fd, const sockaddr_storage &st) {
     return 0;
 }
 
-int32_t receiveAddressStruct(int32_t fd, struct sockaddr_storage &st) {
+int64_t receiveAddressStruct(int64_t fd, struct sockaddr_storage &st) {
     std::string addr_string;
-    int32_t port;
+    int64_t port;
     // receives string representation of the address
     if ((addr_string = receiveString(fd)).empty()) {
         reportDebug("Problem occured while accepting the address string.", 1);
         return -1;
     }
 
-    if (receiveInt32(fd, port) == -1) {
+    if (receiveInt64(fd, port) == -1) {
         reportDebug("Problem occured while accepting the address port.", 1);
         return -1;
     }
 
     // creates the address structure
-    int32_t family = AF_INET;
+    int64_t family = AF_INET;
     if (!DATA->config.IPv4_ONLY) {
         family = AF_INET6;
     }
@@ -86,9 +86,10 @@ int32_t receiveAddressStruct(int32_t fd, struct sockaddr_storage &st) {
     return 0;
 }
 
-int32_t sendString(int32_t fd, std::string str) {
+int64_t sendString(int64_t fd, std::string str) {
     // sends the string length
-    if (sendSth(str.length(), fd) == -1) {
+    int64_t len = str.length();
+    if (sendInt64(fd, len) == -1) {
         return -1;
     }
     // sends the string char by char
@@ -100,16 +101,16 @@ int32_t sendString(int32_t fd, std::string str) {
     return (0);
 }
 
-std::string receiveString(int32_t fd) {
-    int32_t len;
+std::string receiveString(int64_t fd) {
+    int64_t len;
     std::string res;
     char c;
     // receive length
-    if (recvSth(len, fd) == -1) {
+    if (receiveInt64(fd, len) == -1) {
         return res;
     }
     // receive the string char by char
-    for (int32_t i = 0; i < len; ++i) {
+    for (int64_t i = 0; i < len; ++i) {
         if (recvSth(c, fd) == -1) {
             res.clear();
             return res;
@@ -119,9 +120,9 @@ std::string receiveString(int32_t fd) {
     return res;
 }
 
-int32_t receiveFile(int32_t fd, std::string fn) {
-    int32_t fsize, read_bytes = 0, r, w;
-    int32_t o_file;
+int64_t receiveFile(int64_t fd, std::string fn) {
+    int64_t fsize, read_bytes = 0, r, w;
+    int64_t o_file;
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         // opens resulting file destructively
@@ -131,7 +132,7 @@ int32_t receiveFile(int32_t fd, std::string fn) {
         }
 
         // receives file size
-        if (receiveInt32(fd, fsize) == -1) {
+        if (receiveInt64(fd, fsize) == -1) {
             reportDebug(fn + ": Failed to get file size. ", 2);
             throw 1;
         }
@@ -165,9 +166,9 @@ int32_t receiveFile(int32_t fd, std::string fn) {
     return 0;
 }
 
-int32_t sendFile(int32_t fd, std::string fn) {
-    int32_t file;
-    int32_t fsize, to_sent = 0, r, w;
+int64_t sendFile(int64_t fd, std::string fn) {
+    int64_t file;
+    int64_t fsize, to_sent = 0, r, w;
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         // opens file
@@ -182,7 +183,7 @@ int32_t sendFile(int32_t fd, std::string fn) {
             throw 1;
         }
 
-        if (sendInt32(fd, fsize) == -1) {
+        if (sendInt64(fd, fsize) == -1) {
             reportDebug(fn + ": Failed to send file size", 2);
             throw 1;
         }
@@ -214,7 +215,7 @@ int32_t sendFile(int32_t fd, std::string fn) {
     return 0;
 }
 
-int32_t sendCmd(int32_t fd, CMDS cmd) {
+int64_t sendCmd(int64_t fd, CMDS cmd) {
     bool response;
     // send command
     if (sendSth(cmd, fd) == -1) {

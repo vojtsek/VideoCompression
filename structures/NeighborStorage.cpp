@@ -7,15 +7,15 @@ NeighborStorage::NeighborStorage()
 {
 }
 
-int32_t NeighborStorage::getNeighborCount() {
-    int32_t size;
+int64_t NeighborStorage::getNeighborCount() {
+    int64_t size;
     n_mtx.lock();
     size = neighbors.size();
     n_mtx.unlock();
     return size;
 }
 
-int32_t NeighborStorage::removeNeighbor(
+int64_t NeighborStorage::removeNeighbor(
         const struct sockaddr_storage &addr) {
     // exists the neighbor?
     if (getNeighborInfo(addr, true) == nullptr) {
@@ -46,8 +46,12 @@ int32_t NeighborStorage::removeNeighbor(
             // remove from neighbors list
             neighbors.erase(it);
             delete it->second;
-            reportError("Removed neighbor: " + MyAddr(addr).get());
             n_mtx.unlock();
+            if (neighbors.size() < (unsigned)
+                DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
+                DATA->state.enough_neighbors = false;
+            }
+            reportError("Removed neighbor: " + MyAddr(addr).get());
             return 1;
         }
     }
@@ -79,7 +83,7 @@ void NeighborStorage::applyToNeighbors(
 }
 
 void NeighborStorage::setInterval(
-        const struct sockaddr_storage &addr, int32_t i) {
+        const struct sockaddr_storage &addr, int64_t i) {
     // synchronization assured
     applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
@@ -90,7 +94,7 @@ void NeighborStorage::setInterval(
 }
 
 void NeighborStorage::updateQuality(
-        const struct sockaddr_storage &addr, int32_t q) {
+        const struct sockaddr_storage &addr, int64_t q) {
     // synchronization assured
         applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
@@ -154,7 +158,7 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
     n_mtx.unlock();
 }
 
-int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
+int64_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     n_mtx.lock();
     // no neighbors at all
     if (free_neighbors.empty()) {
@@ -173,14 +177,14 @@ int32_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
     return 1;
 }
 
-int32_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
+int64_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
     int count;
     // no neighbors at all
     if (!(count = getNeighborCount())) {
         return 0;
     }
     // get random neighbor
-    int32_t rand_n = rand() % getNeighborCount();
+    int64_t rand_n = rand() % getNeighborCount();
     SYNCHRONIZED_SECTION(
         auto it = neighbors.begin();
         while (rand_n-- > 0) {
@@ -192,7 +196,7 @@ int32_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
 }
 
 std::vector<struct sockaddr_storage>
-        NeighborStorage::getNeighborAdresses(int32_t count) {
+        NeighborStorage::getNeighborAdresses(int64_t count) {
     SYNCHRONIZED_SECTION(
         std::vector<struct sockaddr_storage> result;
             // simply picks first $count neighbors
@@ -224,7 +228,7 @@ void NeighborStorage::printNeighborsInfo() {
 
 void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     n_mtx.lock();
-    // dont know this neighbor already
+    // don't know this neighbor yet
     if (!networkHelper::addrIn(addr, neighbors)) {
         // initialize the neighbor
         NeighborInfo *ngh = new NeighborInfo(addr);
@@ -243,6 +247,7 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
         if (neighbors.size() == (unsigned)
             DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
             reportSuccess("Enough neighbors gained.");
+            DATA->state.enough_neighbors = true;
         }
     } else {
         reportDebug("Already known neighbor.", 3);

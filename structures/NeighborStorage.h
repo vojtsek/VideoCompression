@@ -30,7 +30,7 @@ public:
      * \brief getNeighborCount gets current count of members
      * \return count of members
      */
-    int32_t getNeighborCount();
+    int64_t getNeighborCount();
 
     /*!
      * \brief getNeighborInfo returns NeighborInfo of neighbor
@@ -48,14 +48,14 @@ public:
      * \param addr address structure to load neighbor address
      * \return one on success
      */
-    int32_t getFreeNeighbor(struct sockaddr_storage &addr);
+    int64_t getFreeNeighbor(struct sockaddr_storage &addr);
 
     /*!
      * \brief getRandomNeighbor gets random neighbor
      * \param addr address structure to load neighbor address into
      * \return one on success
      */
-    int32_t getRandomNeighbor(struct sockaddr_storage &addr);
+    int64_t getRandomNeighbor(struct sockaddr_storage &addr);
 
     /*!
      * \brief getNeighborAdresses gets vector of addresses
@@ -63,7 +63,7 @@ public:
      * \param count how many addresses get
      * \return vector of addresses
      */
-    std::vector<struct sockaddr_storage> getNeighborAdresses(int32_t count);
+    std::vector<struct sockaddr_storage> getNeighborAdresses(int64_t count);
 
     /*!
      * \brief removeNeighbor removes given neighbor and
@@ -71,7 +71,7 @@ public:
      * \param addr sockaddr_storage containing neighbor to remove
      * \return one, if neighbor was removed, zero otherwise
      */
-    int32_t removeNeighbor(const struct sockaddr_storage &addr);
+    int64_t removeNeighbor(const struct sockaddr_storage &addr);
 
     /*!
      * \brief removeDirty traverses the list and remove dirty neighbors
@@ -97,7 +97,7 @@ public:
      * \param addr address of the updated neighbor
      * \param i what number to set
      */
-    void setInterval(const struct sockaddr_storage &addr, int32_t i);
+    void setInterval(const struct sockaddr_storage &addr, int64_t i);
 
     /*!
      * \brief updateQuality increases the given neighbor
@@ -105,7 +105,7 @@ public:
      * \param addr address of neighbor to update
      * \param q difference of quality
      */
-    void updateQuality(const struct sockaddr_storage &addr, int32_t q);
+    void updateQuality(const struct sockaddr_storage &addr, int64_t q);
 
     /*!
      * \brief setNeighborFree changes the neighbor's free state according to parameter

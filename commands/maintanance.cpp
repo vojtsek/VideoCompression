@@ -1,12 +1,12 @@
 #include "headers/include_list.h"
 #include <netinet/in.h>
 
-bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKPEER", 5);
     CMDS action = ASK_HOST;
-    int32_t neighborCount = DATA->neighbors.getNeighborCount();
+    int64_t neighborCount = DATA->neighbors.getNeighborCount();
     // count to be sent, should be sufficient if possible
-    int32_t count = (neighborCount < DATA->config.getIntValue(
+    int64_t count = (neighborCount < DATA->config.getIntValue(
                          "MAX_NEIGHBOR_COUNT")) ?
                 neighborCount : DATA->config.getIntValue("MAX_NEIGHBOR_COUNT");
     struct sockaddr_storage addr;
@@ -23,12 +23,12 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
             return false;
         }
 
-        if (DATA->neighbors.getRandomNeighbor(addr) == -1) {
+        if (DATA->neighbors.getRandomNeighbor(addr) == 0) {
             reportDebug("No neighbors!", 3);
             return false;
         }
 
-        if (sendInt32(fd, count) == -1) {
+        if (sendInt64(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
@@ -36,9 +36,10 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
         if (sendAdrressStruct(fd, addr) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
+            reportSuccess(MyAddr(addr).get());
         }
     } else {
-        if (sendInt32(fd, count) == -1) {
+        if (sendInt64(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
@@ -54,17 +55,17 @@ bool CmdAskPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
     return true;
 }
 
-bool CmdAskHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKHOST", 5);
     struct sockaddr_storage addr;
-    int32_t count;
+    int64_t count;
     // get count of addresses to be received
-    if (receiveInt32(fd, count) == -1) {
+    if (receiveInt64(fd, count) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
     // receive those addresses
-        for (int32_t i = 0; i < count; ++i) {
+        for (int64_t i = 0; i < count; ++i) {
             if (receiveAddressStruct(fd, addr) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
@@ -80,10 +81,10 @@ bool CmdAskHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
         return true;
 }
 
-bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdConfirmPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFPEER " + MyAddr(address).get() , 5);
     CMDS action = CONFIRM_HOST;
-    int32_t port, sock;
+    int64_t port, sock;
     // is it able to work?
     RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
 
@@ -94,7 +95,7 @@ bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void 
     }
 
     // asking peer's port
-    if (receiveInt32(fd, port) == -1) {
+    if (receiveInt64(fd, port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -126,13 +127,13 @@ bool CmdConfirmPeer::execute(int32_t fd, struct sockaddr_storage &address, void 
     return true;
 }
 
-bool CmdConfirmHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdConfirmHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFHOST", 5);
     RESPONSE_T resp;
     struct sockaddr_storage addr;
 
     // send my port so peer can get appropriate address
-    if (sendInt32(fd,
+    if (sendInt64(fd,
                   DATA->config.intValues.at("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -166,7 +167,7 @@ bool CmdConfirmHost::execute(int32_t fd, struct sockaddr_storage &address, void 
     return true;
 }
 
-bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PONG", 5);
     // is able to do some work?
     RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
@@ -197,7 +198,7 @@ bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     }
 
     // send my port so peer can add me
-    if (sendInt32(fd,
+    if (sendInt64(fd,
                   DATA->config.intValues.at("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -205,10 +206,10 @@ bool CmdPingHost::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     return true;
 }
 
-bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PING " + MyAddr(address).get() , 5);
     CMDS action = PING_HOST;
-    int32_t peer_port;
+    int64_t peer_port;
     // is able to do some work?
     RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
     RESPONSE_T neighbor_state;
@@ -230,7 +231,7 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     }
 
     // receives port so can add the neighbor
-    if (receiveInt32(fd, peer_port) == -1) {
+    if (receiveInt64(fd, peer_port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -253,18 +254,18 @@ bool CmdPingPeer::execute(int32_t fd, struct sockaddr_storage &address, void *) 
     return true;
 }
 
-bool CmdGoodbyePeer::execute(int32_t fd, struct sockaddr_storage &address, void *) {
+bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("GOODBYE PEER", 5);
     CMDS action = GOODBYE_HOST;
     RESPONSE_T resp = ACK_FREE;
-    int32_t port;
+    int64_t port;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
 
     // receives port of the node being disconnected
-    if (receiveInt32(fd, port) == -1) {
+    if (receiveInt64(fd, port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
@@ -279,11 +280,11 @@ bool CmdGoodbyePeer::execute(int32_t fd, struct sockaddr_storage &address, void 
     return true;
 }
 
-bool CmdGoodbyeHost::execute(int32_t fd, sockaddr_storage &address, void *) {
+bool CmdGoodbyeHost::execute(int64_t fd, sockaddr_storage &address, void *) {
     RESPONSE_T resp;
 
     // sends port
-    if (sendInt32(fd,
+    if (sendInt64(fd,
                   DATA->config.intValues.at("LISTENING_PORT")) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
@@ -300,7 +301,7 @@ bool CmdGoodbyeHost::execute(int32_t fd, sockaddr_storage &address, void *) {
 }
 
 void CmdSayGoodbye::execute() {
-    int32_t sock;
+    int64_t sock;
     // traverse through all neighbors
     // sends info about disconnecting to everyone
     for (auto &address : DATA->neighbors.getNeighborAdresses(

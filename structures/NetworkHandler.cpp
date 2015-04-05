@@ -19,10 +19,10 @@ using namespace std;
 using namespace utilities;
 
 void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
-                                    int32_t fdi, vector<CMDS> cmds, bool async, void *data) {
+                                    int64_t fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
-        int32_t fd = fdi;
+        int64_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
 				// traverse the commands to be spawned on the peer side
@@ -50,7 +50,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
               if (DATA->net_cmds.find(action) == DATA->net_cmds.end()) {
                   response = false;
                   if (sendSth(response, fd) == -1) {
-									 reportDebug("Error while processing cmd.", 1);
+                      reportDebug("Error while processing cmd.", 1);
                   }
                   break;
               }
@@ -95,15 +95,18 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
 }
 
 void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
-                                    int32_t fdi, bool async) {
+                                    int64_t fdi, bool async) {
     std::thread handling_thread([=]() {
         CMDS action;
         ssize_t r;
-        int32_t fd = fdi;
+        int64_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
-        while ((r = read(fd, &action, sizeof (action))) == sizeof(action)) {
+        // read action to process
+        while ((r = read(fd, &action, sizeof (action)))
+               == sizeof(action)) {
         response = true;
+        // try to process the command
        try {
            if (DATA->net_cmds.find(action) == DATA->net_cmds.end()) {
                response = false;
@@ -114,6 +117,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
            }
            NetworkCommand *cmd = DATA->net_cmds.at(action);
            reportDebug(cmd->getName(), 3);
+           // invalid command
            if (cmd == nullptr) {
                response = false;
                if (sendSth(response, fd) == -1) {
@@ -121,10 +125,14 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                }
                throw exception();
            }
+
+           // inform about response
            if (sendSth(response, fd) == -1) {
                reportDebug("Error while processing cmd.", 1);
                break;
            }
+
+           // execute it
            if (!cmd->execute(fd, addr, nullptr)) {
                reportDebug("Failed to process: " + cmd->getName(), 3);
                throw exception();
@@ -148,9 +156,10 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
     handling_thread.join();
 }
 
-int32_t NetworkHandler::start_listening(int32_t port) {
-    int32_t sock, accepted, ip6_only = 0, reuse = 1;
+int64_t NetworkHandler::start_listening(int64_t port) {
+    int64_t sock, accepted, ip6_only = 0, reuse = 1;
     struct sockaddr_in6 in6;
+    // initialize the storage structure
     socklen_t in6_size = sizeof (in6), psize = sizeof (struct sockaddr_storage);
     struct sockaddr_storage peer_addr;
     bzero(&in6, sizeof (in6));
@@ -160,11 +169,13 @@ int32_t NetworkHandler::start_listening(int32_t port) {
     in6.sin6_port = htons(port);
     in6.sin6_addr.s6_addr[0] = 0;
 
+    // open the socket
     if ((sock = socket(AF_INET6, SOCK_STREAM, 6)) == -1) {
         reportDebug("Failed to create listening socket." + std::string(strerror(errno)), 1);
         return (-1);
     }
 
+    // set options
     if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
                     &ip6_only, sizeof(ip6_only)) == -1) {
         reportDebug("Failed to set option to listening socket." + std::string(strerror(errno)), 1);
@@ -176,6 +187,7 @@ int32_t NetworkHandler::start_listening(int32_t port) {
         reportDebug("Failed to set option to listening socket." + std::string(strerror(errno)), 1);
         return (-1);
    }
+    // set timeout
     struct linger so_linger;
     so_linger.l_onoff = 1;
     so_linger.l_linger = 10;
@@ -185,15 +197,20 @@ int32_t NetworkHandler::start_listening(int32_t port) {
         return (-1);
    }
 
+    // bind to desired address:port
+    // TODO: should fail?
     if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
         reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
         return (-1);
     }
 
+    // start listening
     if (listen(sock, SOMAXCONN) == -1) {
         reportDebug("Failed to start listen on the socket." + std::string(strerror(errno)), 1);
         return (-1);
     }
+
+    // waits for connection, handles it in separate thread
     for (;;) {
         if ((accepted = accept(sock, (struct sockaddr *) &peer_addr, &psize)) == -1) {
             reportDebug("Failed to accept connection." + std::string(strerror(errno)), 1);
@@ -206,48 +223,63 @@ int32_t NetworkHandler::start_listening(int32_t port) {
 void NetworkHandler::contactSuperPeer() {
     struct sockaddr_storage addr;
     if (networkHelper::getSuperPeerAddr(addr) == -1) {
-        return -1;
+        return;
     }
-    int32_t sock =  checkNeighbor(addr);
-    if (sock == -1) return;
+    // spawn the connection
+    int64_t sock =  checkNeighbor(addr);
+    if (sock == -1){
+        return;
+    }
+    // ping the superpeer
     spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
 }
 
-int32_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
-    int32_t sock;
+int64_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
+    int64_t sock;
+    // to use the function connectPeer
     CmdAskPeer cmd(nullptr, nullptr);
+    // establish the connection
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
-        //DATA->neighbors.removeNeighbor(addr);
+        // failed to communicate -> remove
+        DATA->neighbors.removeNeighbor(addr);
         return -1;
     }
+    // update the interval
     DATA->neighbors.setInterval(addr,
                                 DATA->config.getIntValue("CHECK_INTERVALS"));
     return sock;
 }
 
-int32_t NetworkHandler::getPotentialNeighborsCount() {
+int64_t NetworkHandler::getPotentialNeighborsCount() {
     potential_mtx.lock();
-    int32_t count = potential_neighbors.size();
+    int64_t count = potential_neighbors.size();
     potential_mtx.unlock();
     return count;
 }
 
-void NetworkHandler::gatherNeighbors(int32_t TTL,
+void NetworkHandler::gatherNeighbors(int64_t TTL,
         const struct sockaddr_storage &requester_addr,
         const struct sockaddr_storage &ngh_addr) {
-    int32_t sock;
+    int64_t sock;
+    // failed to contact
     if ((sock = checkNeighbor(ngh_addr)) == -1) {
         return;
     }
+
+    // will be deleted when the command is processed
+    // is essential to spawn the execution asynchronous,
+    // so it will not block while spreading
     MyAddr *requester_maddr = new MyAddr(requester_addr);
     requester_maddr->TTL = TTL;
+
+    // spread the address among neighbors
     spawnOutgoingConnection(ngh_addr, sock, { GATHER_PEER }, true,
                 (void *) requester_maddr);
 }
 
-void NetworkHandler::confirmNeighbor(struct sockaddr_storage &addr) {
-    int32_t sock =  checkNeighbor(addr);
+void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
+    int64_t sock =  checkNeighbor(addr);
     if (sock == -1) {
         return;
     }
@@ -256,6 +288,7 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage &addr) {
 
 void NetworkHandler::addNewNeighbor(
         bool potential, struct sockaddr_storage &addr) {
+    // handles potential
     if (potential) {
         potential_mtx.lock();
         potential_neighbors.push_back(addr);
@@ -271,10 +304,14 @@ void NetworkHandler::obtainNeighbors() {
         reportDebug("Need to collect more potential neighbors", 4);
         collectNeighbors();
     }
+
     struct sockaddr_storage addr;
+    // still no one to ask to
         if (!getPotentialNeighborsCount()) {
             return;
         }
+        // pop one potential neighbor
+        // try to confirm him
         potential_mtx.lock();
             addr = potential_neighbors.back();
             potential_neighbors.pop_back();
@@ -285,16 +322,23 @@ void NetworkHandler::obtainNeighbors() {
 void NetworkHandler::collectNeighbors() {
     //TODO: handle potential neighbors
     struct sockaddr_storage address;
+    // has some neighbors
     if (DATA->neighbors.getNeighborCount()) {
+        // traverse neighbors until gains some addresses
         for (auto &addr : DATA->neighbors.getNeighborAdresses(
                 DATA->neighbors.getNeighborCount())) {
             MyAddr mad(addr);
             reportDebug("Trying neighbor. " + mad.get(), 4);
+            // tries to gain addresses
+            // has side effects -> adds neighbors
             askForAddresses(addr);
-            if (getPotentialNeighborsCount())
+            if (getPotentialNeighborsCount()) {
                 break;
+            }
         }
     }
+
+    // still no potential neighbors -> contacts super peer
     if ((!getPotentialNeighborsCount()) &&
             (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
@@ -306,7 +350,8 @@ void NetworkHandler::collectNeighbors() {
 }
 
 void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
-    int32_t sock;
+    int64_t sock;
+    // tries connect
     if ((sock = checkNeighbor(addr)) == -1) {
         reportDebug("Failed to establish connection.", 1);
         return;

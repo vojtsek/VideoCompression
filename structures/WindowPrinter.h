@@ -20,7 +20,9 @@ class WindowPrinter {
     std::deque<printable_pair_T> q;
     bool bolded;
     //! specify which part of the queue is shown
-    int32_t idx, length;
+    int64_t idx;
+    //! length of the queue
+    uint64_t length;
     //! ofstream pointing to the log file
     std::ofstream ofs;
 public:
@@ -44,9 +46,9 @@ public:
      * \brief add adds new message to the queue
      * \param msg the message to add
      * \param type specifies the color of the message
-     * \return zero on success
+     * \return index of the added message
      */
-    int32_t add(const std::string &msg, MSG_T type);
+    int64_t add(const std::string &msg, MSG_T type);
 
     /*!
      * \brief updateAt updates the message on the specified index
@@ -54,7 +56,7 @@ public:
      * \param value new value
      * \param type new message type (i.e. color)
      */
-    void updateAt(int32_t idx, std::string value, MSG_T type);
+    void updateAt(int64_t idx, std::string value, MSG_T type);
 
     /*!
      * \brief changeLogLocation specifies where to store the log
@@ -71,7 +73,7 @@ public:
      * \brief setLength sets the length of the part shown
      * \param l new length
      */
-    void setLength(int32_t l);
+    void setLength(int64_t l);
 
     /*!
      * \brief scrollQueue moves the part of the queue that is shown

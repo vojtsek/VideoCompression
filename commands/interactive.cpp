@@ -25,6 +25,10 @@ void CmdScrollUp::execute() {
     DATA->io_data.info_handler.print();
 }
 
+bool CmdShow::execute(int64_t, sockaddr_storage &, void *) {
+    return true;
+}
+
 void CmdShow::execute() {
     std::string what = loadInput("show.hist", "", false, false);
     // showing state

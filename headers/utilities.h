@@ -17,7 +17,7 @@ class TransferInfo;
 namespace utilities
 {
 
-    int32_t readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
+    int64_t readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
 
     /*!
      * \brief acceptCmd reacts to user command input
@@ -28,7 +28,7 @@ namespace utilities
      * spawns the command execution in separate thread and returns.
      *
      */
-    int32_t acceptCmd(cmd_storage_t &cmds);
+    int64_t acceptCmd(cmd_storage_t &cmds);
 
     /*!
      * \brief computeDuration computes the difference between two string timestamps
@@ -36,7 +36,7 @@ namespace utilities
      * \param t2 timestamp2
      * \return numeric difference of the timestamps
      */
-    int32_t computeDuration(std::string t1, std::string t2);
+    int64_t computeDuration(std::string t1, std::string t2);
 
     /*!
      * \brief extract extracts text from string from the given word
@@ -45,7 +45,7 @@ namespace utilities
      * \param count how many words should extract
      * \return vector of extracted values
      */
-    std::vector<std::string> extract(const std::string text, const std::string from, int32_t count);
+    std::vector<std::string> extract(const std::string text, const std::string from, int64_t count);
 
     /*!
      * \brief split splits the given into parts
@@ -66,7 +66,7 @@ namespace utilities
      * \param n integer to convert
      * \return string representation of the integer
      */
-    std::string m_itoa(int32_t n);
+    std::string m_itoa(int64_t n);
 
     /*!
      * \brief formatString justifies the line, supposed to be field name and value

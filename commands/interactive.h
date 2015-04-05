@@ -49,8 +49,11 @@ public:
 class CmdShow: public NetworkCommand {
 public:
     CmdShow(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
-    virtual bool execute(int, struct sockaddr_storage &, void *) { return true;}
+    virtual bool execute(int64_t, struct sockaddr_storage &, void *);
     virtual void execute();
+    virtual std::string getName() {
+        return("Show");
+    }
 };
 
 /*!

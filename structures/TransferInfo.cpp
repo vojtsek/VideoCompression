@@ -35,28 +35,28 @@ void TransferInfo::invoke(NetworkHandler &handler) {
     }
 }
 
-int32_t TransferInfo::send(int32_t fd) {
-    if (sendInt32(fd, chunk_size) == -1) {
+int64_t TransferInfo::send(int64_t fd) {
+    if (sendInt64(fd, chunk_size) == -1) {
         reportDebug("Failed to send size.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, sent_times) == -1) {
+    if (sendInt64(fd, sent_times) == -1) {
         reportDebug("Failed to send times sent.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, receiving_time) == -1) {
+    if (sendInt64(fd, receiving_time) == -1) {
         reportDebug("Failed to send receiving_time.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, sending_time) == -1) {
+    if (sendInt64(fd, sending_time) == -1) {
         reportDebug("Failed to send sending_time.", 1);
         return -1;
     }
 
-    if (sendInt32(fd, encoding_time) == -1) {
+    if (sendInt64(fd, encoding_time) == -1) {
         reportDebug("Failed to send encoding_time.", 1);
         return -1;
     }
@@ -103,28 +103,28 @@ int32_t TransferInfo::send(int32_t fd) {
     return 0;
 }
 
-int32_t TransferInfo::receive(int32_t fd) {
-    if (receiveInt32(fd, chunk_size) == -1) {
+int64_t TransferInfo::receive(int64_t fd) {
+    if (receiveInt64(fd, chunk_size) == -1) {
         reportDebug("Failed to receive size.", 1);
         return -1;
     }
 
-     if (receiveInt32(fd, sent_times) == -1) {
+     if (receiveInt64(fd, sent_times) == -1) {
         reportDebug("Failed to receive times sent.", 1);
         return -1;
     }
 
-     if (receiveInt32(fd, receiving_time) == -1){
+     if (receiveInt64(fd, receiving_time) == -1){
          reportDebug("Failed to receive receiving time.", 1);
          return -1;
      }
 
-     if (receiveInt32(fd, sending_time) == -1){
+     if (receiveInt64(fd, sending_time) == -1){
          reportDebug("Failed to receive sending time.", 1);
          return -1;
      }
 
-     if (receiveInt32(fd, encoding_time) == -1){
+     if (receiveInt64(fd, encoding_time) == -1){
          reportDebug("Failed to receive encoding time.", 1);
          return -1;
      }
@@ -170,7 +170,7 @@ int32_t TransferInfo::receive(int32_t fd) {
     }
 
     if ((timestamp = receiveString(fd)).empty()) {
-        reportDebug("Failed to receive codec.", 1);
+        reportDebug("Failed to receive timestamp.", 1);
         return -1;
     }
     return 0;
@@ -202,8 +202,4 @@ std::string TransferInfo::getCSV() {
 
 std::string TransferInfo::toString() {
     return (name + job_id);
-}
-
-bool TransferInfo::equalsTo(Listener *that) {
-    return (toString() == that->toString());
 }

@@ -40,7 +40,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                     reportDebug("Failed to get my adress while contacting peers.", 2);
                 } else {
                     struct sockaddr_storage neighbor_addr;
-                    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == -1) {
+                    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
                         reportDebug("No neighbors!", 3);
                     } else {
                         net_handler->gatherNeighbors(
@@ -53,7 +53,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                 continue;
             }
             // checks the neighbor and addresses the chunk
-            int32_t sock = net_handler->checkNeighbor(free_address);
+            int64_t sock = net_handler->checkNeighbor(free_address);
             ti->address = free_address;
             // get host address which is being used for communication
             // on this address the chunk should be returned.
@@ -73,7 +73,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             reportDebug(ti->name + " was sent.", 3);
         } else {
             // in case of returning chunk
-            int32_t sock = net_handler->checkNeighbor(ti->src_address);
+            int64_t sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
             // TODO: DATA->chunks_received.remove(ti);
@@ -125,7 +125,7 @@ void chunkhelper::pushChunkSend(TransferInfo *ti) {
     }
 }
 
-int32_t chunkhelper::encodeChunk(TransferInfo *ti) {
+int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
     res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
@@ -140,7 +140,7 @@ int32_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string file_in = DATA->config.working_dir + "/to_process/" +
             ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in, 2);
-    snprintf(cmd, BUF_LENGTH,
+    snprintf(cmd, BUF_LENGTH, "%s",
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
     // ensures, the desired file doesn't exist yet
@@ -150,7 +150,7 @@ int32_t chunkhelper::encodeChunk(TransferInfo *ti) {
     }
 
     // spawns the encoding process
-    int32_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 10, cmd,
+    int64_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 10, cmd,
              "-i", file_in.c_str(),
              "-c:v", ti->output_codec.c_str(),
              "-preset", "ultrafast",

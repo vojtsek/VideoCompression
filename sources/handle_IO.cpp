@@ -75,10 +75,10 @@ std::string loadInput(const std::string &histf, const std::string &msg,
     return std::string(line);
 }
 
-int32_t reportFileProgress(const std::string &file, long desired) {
+int64_t reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
     // how many times try it
-    int32_t tries = 20;
+    int64_t tries = 20;
     double percent;
     while (fs < desired) {
         // get the file size
@@ -127,7 +127,7 @@ void reportStatus(const std::string &msg) {
     DATA->io_data.status_handler.print();
 }
 
-void reportDebug(const std::string &msg, int32_t lvl) {
+void reportDebug(const std::string &msg, int64_t lvl) {
     if (lvl <= DATA->config.debug_level) {
         DATA->io_data.status_handler.add(msg, DEBUG);
         DATA->io_data.status_handler.print();
@@ -169,10 +169,10 @@ void printProgress(double percent) {
     cursToPerc();
     clrtoeol();
     // prints number of percent done
-    printw("(%d%%)", (int) (percent * 100));
+    printw("(%lu%%)", (int) (percent * 100));
     attron(COLOR_PAIR(CYANALL));
     // shows the filebar
-    for(int32_t i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
+    for(int64_t i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
         printw("#");
     attroff(COLOR_PAIR(CYANALL));
     refresh();
@@ -181,7 +181,7 @@ void printProgress(double percent) {
 }
 
 void cursToCmd() {
-    int32_t max_x, max_y;
+    int64_t max_x, max_y;
     // loads the max coordinates and oves the cursor
     getmaxyx(stdscr, max_y, max_x);
     move(max_y - 1, 1);
@@ -196,7 +196,7 @@ void cursToStatus() {
     if (!DATA->io_data.status_y) {
         DATA->io_data.status_y = getmaxy(stdscr) - 4;
     }
-    static int32_t status_y = DATA->io_data.status_y;
+    static int64_t status_y = DATA->io_data.status_y;
     move(status_y, 0);
 }
 
@@ -218,14 +218,14 @@ void clearProgress() {
     clrtoeol();
 }
 
-void cursorToX(int32_t nx) {
-    int32_t y, x;
+void cursorToX(int64_t nx) {
+    int64_t y, x;
     getyx(stdscr, y, x);
     move(y, nx);
 }
 
-void clearNlines(int32_t n) {
-    int32_t orig_x, orig_y, x, y;
+void clearNlines(int64_t n) {
+    int64_t orig_x, orig_y, x, y;
     getyx(stdscr, y, x);
     // remembers the original position
     orig_x = x;
@@ -238,7 +238,7 @@ void clearNlines(int32_t n) {
     move(orig_y, orig_x);
 }
 
-int32_t getLine(char *line, int32_t len,
+int64_t getLine(char *line, int64_t len,
                 const std::string &histf, bool save, bool changeable) {
     HistoryStorage hist(histf);
     // buffer to store the input
@@ -249,7 +249,7 @@ int32_t getLine(char *line, int32_t len,
     cbreak();
     wchar_t c;
     bool first = true;
-    int32_t read = 0;
+    int64_t read = 0;
     while(++read <= len) {
         // if not changeable and first -> load the first option by
         // simulating key up
@@ -287,7 +287,7 @@ int32_t getLine(char *line, int32_t len,
             } catch (...) {}
         // backspace
         } else if ((c == 8) && changeable) {
-            int32_t y, x;
+            int64_t y, x;
             getyx(stdscr, y, x);
             // moves the x coordinate back
             // strips the buffer

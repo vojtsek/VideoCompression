@@ -13,7 +13,7 @@
  * reads characters until new line
  * uses the file with history
  */
-int32_t getLine(char *line, int32_t len,
+int64_t getLine(char *line, int64_t len,
                 const std::string &histf, bool save, bool changeable);
 
 /*!
@@ -52,7 +52,7 @@ void cursToQuestion();
  * The given number of lines from current position is cleared,
  * the cursor is eventually at the same place as in the start
  */
-void clearNlines(int32_t n);
+void clearNlines(int64_t n);
 
 /*!
  * \brief clearProgress clears the progress bar
@@ -67,13 +67,13 @@ void clearProgress();
  * Periodically checks the filesize, computes the ratio
  * and shoes the progress bar
  */
-int32_t reportFileProgress(const std::string &file, long desired);
+int64_t reportFileProgress(const std::string &file, long desired);
 
 /*!
  * \brief cursorToX moves the cursor to specified x coordinate
  * \param nx desired x coordinate
  */
-void cursorToX(int32_t nx);
+void cursorToX(int64_t nx);
 
 /*!
  * \brief reportError reports the error message
@@ -111,7 +111,7 @@ void reportStatus(const std::string &msg);
  * iff the current level of debugging is lesser or equal to the given one.
  * Message is blue.
  */
-void reportDebug(const std::string &msg, int32_t lvl);
+void reportDebug(const std::string &msg, int64_t lvl);
 
 /*!
  * \brief printProgress prints the progress bar

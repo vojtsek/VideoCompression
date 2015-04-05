@@ -12,7 +12,7 @@ namespace OSHelper {
  * \return 0 in case of success
  * checks, whether the file is known video file
  */
-    int32_t checkFile(std::string &path);
+    int64_t checkFile(std::string &path);
 
 /*!
  * \brief OSHelper::rmrDir remove directory
@@ -22,7 +22,7 @@ namespace OSHelper {
  * removes content of the directory and the directory itself
  * recursive deletion need to be specified
  */
-    int32_t rmrDir(std::string dir, bool rec);
+    int64_t rmrDir(std::string dir, bool rec);
 
 /*!
  * \brief OSHelper::prepareDir ensures the given directory exists
@@ -32,7 +32,7 @@ namespace OSHelper {
  * creates the desired directory, and others in path if needed
  * existing directory is treated according to the destroy parameter
  */
-    int32_t prepareDir(std::string loc, bool destroy);
+    int64_t prepareDir(std::string loc, bool destroy);
 
 
 /*!
@@ -41,14 +41,14 @@ namespace OSHelper {
  * \param destroy whether remove existing
  * \return 0 on success
  */
-    int32_t mkDir(std::string dir, bool rec);
+    int64_t mkDir(std::string dir, bool rec);
 
 /*!
  * \brief OSHelper::rmFile removes file
  * \param fp path to the file
  * \return 0 on success
  */
-    int32_t rmFile(std::string fp);
+    int64_t rmFile(std::string fp);
 
 /*!
  * \brief OSHelper::runExternal spawns external command
@@ -61,7 +61,7 @@ namespace OSHelper {
  * uses fork & exec, waits for the result_type
  * stderr and stdout are saved in the corresponding strings
  */
-    int32_t runExternal(std::string &o, std::string &e, char *cmd, int32_t numargs, ...);
+    int64_t runExternal(std::string &o, std::string &e, const char *cmd, int64_t numargs, ...);
 
  /*!
  * \brief OSHelper::getFileSize

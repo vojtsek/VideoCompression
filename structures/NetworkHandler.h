@@ -39,7 +39,7 @@ struct NetworkHandler {
      * this thread is then detached.
 		 * Finally, the fd is closed.
      */
-    void spawnOutgoingConnection(struct sockaddr_storage addr, int32_t fd,
+    void spawnOutgoingConnection(struct sockaddr_storage addr, int64_t fd,
                                  std::vector<CMDS> cmds, bool async, void *data);
 		/*!
 		* \brief handles incoming communication
@@ -51,7 +51,7 @@ struct NetworkHandler {
 		* and execute it. Fails otherwise.
 		* Runs in separate thread, closes the fd eventually.
 		*/
-    void spawnIncomingConnection(struct sockaddr_storage addr, int32_t fd, bool async);
+    void spawnIncomingConnection(struct sockaddr_storage addr, int64_t fd, bool async);
 
 		/*!
 		* \brief start_listening starts listening on the given port
@@ -60,7 +60,7 @@ struct NetworkHandler {
 		* Creates the socket, binds it and starts listening on the given port.
 		* Incoming connection are handled using spawnIncomingConnection call.
 		*/
-    int32_t start_listening(int32_t port);
+    int64_t start_listening(int64_t port);
 
 		/*!
 		* \brief checkNeighbor checks status of the given neighbor
@@ -71,19 +71,19 @@ struct NetworkHandler {
 		* updates neighbor information and returns
 		* the file descriptor associated with the connection.
 		*/
-    int32_t checkNeighbor(struct sockaddr_storage addr);
+    int64_t checkNeighbor(struct sockaddr_storage addr);
 
 		/*!
 		* \brief gets count of potential neighbors
 		* \return count of pot. neighbors
 		*/
-    int32_t getPotentialNeighborsCount();
+    int64_t getPotentialNeighborsCount();
 
 		/*!
 		* \brief confirmNeighbor connect to a remote peer and spawns Confirm command
 		* \param addr address of the neighbor to be confirmed
 		*/
-    void confirmNeighbor(struct sockaddr_storage &addr);
+    void confirmNeighbor(struct sockaddr_storage addr);
 
 		/*!
 		* \brief obtainNeighbors tries to gain more neighbors to the list
@@ -101,7 +101,7 @@ struct NetworkHandler {
 		* handles sending the request to next neighbor,
 		* however ain logic in the CmdGather*
 		*/
-    void gatherNeighbors(int32_t TTL,
+    void gatherNeighbors(int64_t TTL,
             const struct sockaddr_storage &requester_addr,
             const struct sockaddr_storage &ngh_addr);
 

@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-int32_t OSHelper::checkFile(std::string &path) {
+int64_t OSHelper::checkFile(std::string &path) {
     struct stat info;
 
     if (stat (path.c_str(), &info) == -1){
@@ -28,7 +28,7 @@ int32_t OSHelper::checkFile(std::string &path) {
     return (0);
 }
 
-int32_t OSHelper::rmrDir(std::string dir, bool recursive) {
+int64_t OSHelper::rmrDir(std::string dir, bool recursive) {
   DIR *d, *t;
   struct dirent *entry;
   char abs_fn[256];
@@ -67,7 +67,7 @@ int32_t OSHelper::rmrDir(std::string dir, bool recursive) {
   return (0);
 }
 
-int32_t OSHelper::rmFile(std::string fp) {
+int64_t OSHelper::rmFile(std::string fp) {
     // file does not exist - nothing to remove
     if (!OSHelper::isFileOk(fp)) {
         return 0;
@@ -78,13 +78,13 @@ int32_t OSHelper::rmFile(std::string fp) {
     return 0;
 }
 
-int32_t OSHelper::prepareDir(std::string location, bool destroy) {
+int64_t OSHelper::prepareDir(std::string location, bool destroy) {
     std::string directory, current;
     // the WD should definitely exist already
     location = location.substr(
                 DATA->config.getStringValue("WD").size() + 1,
                 location.length());
-    uint32_t pos;
+    uint64_t pos;
     // holds the current position
     current = DATA->config.getStringValue("WD");
     // further directories on the path
@@ -107,31 +107,30 @@ int32_t OSHelper::prepareDir(std::string location, bool destroy) {
     return OSHelper::mkDir(current, destroy);
 }
 
-int32_t OSHelper::mkDir(std::string location, bool destroy) {
+int64_t OSHelper::mkDir(std::string location, bool destroy) {
     if (mkdir(location.c_str(), 0700) == -1) {
-        switch (errno) {
+        if (errno == EEXIST) {
         // the directory existed already
-        case EEXIST:
             // if destroy, the existing direcotry is removed recursively
             // end with error otherwise
             if (destroy) {
-                if (rmrDir(location.c_str(), false) == -1)
+                if (rmrDir(location.c_str(), false) == -1) {
                     return -1;
-                if (mkdir(location.c_str(), 0700) == -1)
+                }
+                if (mkdir(location.c_str(), 0700) == -1) {
                     return -1;
+                }
             }
-            break;
-        default:
+        } else {
             return -1;
-            break;
         }
     }
     return 0;
 }
 
-int32_t OSHelper::runExternal(std::string &stdo, std::string &stde, char *cmd, int32_t numargs, ...) {
+int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *cmd, int64_t numargs, ...) {
     pid_t pid;
-    int32_t pd_o[2], pd_e[2], j;
+    int pd_o[2], pd_e[2], j;
     size_t bufsize = 65536;
     std::string whole_command(cmd);
     char buf_o[bufsize], buf_e[bufsize];
@@ -185,7 +184,7 @@ int32_t OSHelper::runExternal(std::string &stdo, std::string &stde, char *cmd, i
         close(pd_o[1]);
         close(pd_e[1]);
         stdo = stde = "";
-        int32_t st;
+        int64_t st;
         // wait for the child to end
         wait(&st);
         // reads the output from the pipe to the buffer

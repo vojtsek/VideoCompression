@@ -3,7 +3,7 @@
 
 using namespace utilities;
 
-bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
+bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
     CMDS action = DISTRIBUTE_HOST;
     TransferInfo *ti(new TransferInfo);
     // is able to do some work?
@@ -82,7 +82,7 @@ bool CmdDistributePeer::execute(int32_t fd, sockaddr_storage &address, void *) {
     return true;
 }
 
-bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *data) {
+bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *data) {
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
@@ -138,7 +138,7 @@ bool CmdDistributeHost::execute(int32_t fd, sockaddr_storage &address, void *dat
 }
 
 bool CmdReturnHost::execute(
-        int32_t fd, sockaddr_storage &, void *data) {
+        int64_t fd, sockaddr_storage &, void *data) {
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
@@ -162,7 +162,7 @@ bool CmdReturnHost::execute(
 }
 
 bool CmdReturnPeer::execute(
-        int32_t fd, sockaddr_storage &address, void *) {
+        int64_t fd, sockaddr_storage &address, void *) {
     CMDS action = RETURN_HOST;
     TransferInfo helper_ti, *ti = nullptr;
     try {
@@ -177,7 +177,7 @@ bool CmdReturnPeer::execute(
         }
 
         // get pointer to corresponding TransferInfo structure
-        ti = DATA->periodic_listeners.get(helper_ti.toString());
+        ti = (TransferInfo *) DATA->periodic_listeners.get(helper_ti.toString());
         // propably was received before
         if (ti == nullptr) {
             throw 1;
@@ -188,6 +188,8 @@ bool CmdReturnPeer::execute(
             reportError(ti->name + ": Error creating received job dir.");
             throw 1;
         }
+        ti->encoding_time = helper_ti.encoding_time;
+        ti->sending_time = helper_ti.sending_time;
         ti->timestamp = utilities::getTimestamp();
         if (receiveFile(fd,
                 dir + "/" + ti->name + ti->desired_extension) == -1) {
@@ -195,8 +197,10 @@ bool CmdReturnPeer::execute(
             throw 1;
         }
         ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
-        handler->confirmNeighbor(ti->address);
-        // this is first time the chun returned
+        ti->path = dir + "/" + ti->name + ti->desired_extension;
+
+        //handler->confirmNeighbor(ti->address);
+        // this is first time the chunk returned
         if (!DATA->chunks_returned.contains(ti->toString())) {
             chunkhelper::processReturnedChunk(ti, handler, state);
             // all chunks has returned
@@ -218,7 +222,7 @@ bool CmdReturnPeer::execute(
 }
 
 bool CmdGatherNeighborsPeer::execute(
-        int32_t fd, sockaddr_storage &address, void *) {
+        int64_t fd, sockaddr_storage &address, void *) {
     CMDS action = GATHER_HOST;
     MyAddr requester_maddr;
     struct sockaddr_storage requester_addr;
@@ -238,7 +242,7 @@ bool CmdGatherNeighborsPeer::execute(
     requester_addr = requester_maddr.getAddress();
     // free to work, so ping the requester
     if (networkHelper::isFree()) {
-        int32_t sock;
+        int64_t sock;
         if ((sock = handler->checkNeighbor(requester_addr)) == -1) {
             reportDebug("Failed to contact: " + requester_maddr.get(), 3);
         } else {
@@ -252,19 +256,22 @@ bool CmdGatherNeighborsPeer::execute(
         return true;
     }
 
+    // how many neighbors contact
+    // TODO: hardcode
+    int64_t UPP_LIMIT = 8;
+    int64_t count = DATA->neighbors.getNeighborCount() > UPP_LIMIT ?
+                UPP_LIMIT : DATA->neighbors.getNeighborCount();
     // spread the message
     for (const auto &addr :
-         DATA->neighbors.getNeighborAdresses(
-             DATA->neighbors.getNeighborCount())) {
+         DATA->neighbors.getNeighborAdresses(count)) {
         handler->gatherNeighbors(requester_maddr.TTL,
                     requester_addr, addr);
     }
-
     return true;
 }
 
 bool CmdGatherNeighborsHost::execute(
-        int32_t fd, sockaddr_storage &address, void *data) {
+        int64_t fd, sockaddr_storage &address, void *data) {
     MyAddr *requester_addr = (MyAddr *) data;
 
     // invoked by networkHelper::gatherNeighbors()

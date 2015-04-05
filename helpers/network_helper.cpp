@@ -81,17 +81,18 @@ bool networkHelper::addrIn(
 }
 
 bool networkHelper::isFree() {
-    int32_t can_accept = std::atomic_load(&DATA->state.can_accept);
+    int64_t can_accept = std::atomic_load(&DATA->state.can_accept);
 
     // able to do some work?
-    if ((can_accept <= 0) || (DATA->state.working)) {
+    if ((can_accept <= 0) || (DATA->state.working &&
+                              !DATA->config.serve_while_working)) {
         return false;
     }
     return true;
 }
 
-int32_t networkHelper::getHostAddr(
-        struct sockaddr_storage &addr, int32_t fd) {
+int64_t networkHelper::getHostAddr(
+        struct sockaddr_storage &addr, int64_t fd) {
             // prepare the structures
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
@@ -118,8 +119,8 @@ int32_t networkHelper::getHostAddr(
     return -1;
 }
 
-int32_t networkHelper::getPeerAddr(
-        struct sockaddr_storage &addr, int32_t fd) {
+int64_t networkHelper::getPeerAddr(
+        struct sockaddr_storage &addr, int64_t fd) {
     struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
     struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
     bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
@@ -143,13 +144,13 @@ int32_t networkHelper::getPeerAddr(
     return -1;
 }
 
-int32_t networkHelper::getMyAddress(
+int64_t networkHelper::getMyAddress(
         struct sockaddr_storage &addr, NetworkHandler *handler) {
-    int32_t sock;
+    int64_t sock;
 
     struct sockaddr_storage neighbor_addr;
     // get address of some living node
-    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == -1) {
+    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
         reportDebug("No neighbors!", 3);
         return -1;
     }
@@ -172,7 +173,7 @@ int32_t networkHelper::getMyAddress(
     return 0;
 }
 
-int32_t networkHelper::getSuperPeerAddr(
+int64_t networkHelper::getSuperPeerAddr(
         sockaddr_storage &address) {
     if (DATA->config.IPv4_ONLY) {
         address = networkHelper::addrstr2storage(
@@ -190,7 +191,7 @@ int32_t networkHelper::getSuperPeerAddr(
 }
 
 struct sockaddr_storage networkHelper::addrstr2storage(
-        const char *addrstr, int32_t port, int32_t family) {
+        const char *addrstr, int64_t port, int64_t family) {
     struct sockaddr_storage addr;
     // IPv4
     if (family == AF_INET) {
@@ -219,7 +220,7 @@ std::string networkHelper::storage2addrstr(
     if (addr.ss_family == AF_INET) {
         char buf[INET_ADDRSTRLEN];
         if (inet_ntop(AF_INET, &((struct sockaddr_in *)&addr)->sin_addr,
-                      buf, INET_ADDRSTRLEN) == -1) {
+                      buf, INET_ADDRSTRLEN) == NULL) {
             // determine error
             return std::string("");
         }
@@ -228,7 +229,7 @@ std::string networkHelper::storage2addrstr(
     } else {
         char buf[INET6_ADDRSTRLEN];
         if (inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&addr)->sin6_addr,
-                      buf, INET6_ADDRSTRLEN) == -1) {
+                      buf, INET6_ADDRSTRLEN) == NULL) {
             // determine error
             return std::string("");
         }
@@ -237,7 +238,7 @@ std::string networkHelper::storage2addrstr(
 }
 
 void networkHelper::changeAddressPort(
-        struct sockaddr_storage &addr, int32_t port) {
+        struct sockaddr_storage &addr, int64_t port) {
     // port number in the structure has to be in network byte order
     port = (in_port_t) port;
     if (addr.ss_family == AF_INET) {
