@@ -210,17 +210,18 @@ int main(int argc, char **argv) {
     }
 
     NetworkHandler net_handler;
-    VideoState state(&net_handler);
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
     DATA->config.working_dir += "/" +
             utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
-    if (OSHelper::prepareDir(DATA->config.working_dir, false) == -1) {
+    reportStatus(DATA->config.working_dir);
+    if (OSHelper::prepareDir(
+                DATA->config.working_dir, false) == -1) {
         reportError("Failed to prepare working directory.");
         return 1;
     }
-
+    VideoState state(&net_handler);
 
     // creates the commands structures
     initCommands(state, net_handler);

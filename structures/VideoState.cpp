@@ -70,12 +70,13 @@ int64_t VideoState::split() {
                  DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
         OSHelper::rmFile(output);
         // spawn the command
-        sum += Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 12, cmd,
+        sum += Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 13, cmd,
                     "-ss", current,
                     "-i", finfo.fpath.c_str(),
                     "-v", "quiet",
                     "-c", "copy",
                     "-t", chunk_duration,
+                    "-nostdin",
                     output);
         // failure
         if (err.find("Conversion failed") != std::string::npos) {
@@ -156,10 +157,11 @@ int64_t VideoState::join() {
     // TODO: check for hang
     std::thread thr(reportFileProgress, output, sum_size);
     // spawn the joining command
-    duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 8, cmd,
+    duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 9, cmd,
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
+                    "-nostdin",
                     output.c_str());
     if (err.find("failed") != std::string::npos) {
         thr.detach();

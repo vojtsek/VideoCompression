@@ -23,11 +23,8 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
     while (true) {
         // pops one chunk to send
         ti = DATA->chunks_to_send.pop();
-        if (DATA->chunks_to_send.contains(ti)) {
-            // TODO: reachable?
-            DATA->chunks_to_send.remove(ti);
-           // continue;
-        }
+        // assure no duplicates
+                DATA->chunks_to_send.remove(ti);
         // first time send -> to process
         if (!ti->addressed) {
             // obtain free neighbor
@@ -35,18 +32,15 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                      free_address) == 0) {
                 // no free neighbor so try to gather some
                 reportDebug("No free neighbors!", 2);
-                struct sockaddr_storage maddr;
-                if (networkHelper::getMyAddress(maddr, net_handler) == -1) {
-                    reportDebug("Failed to get my adress while contacting peers.", 2);
-                } else {
-                    struct sockaddr_storage neighbor_addr;
-                    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
-                        reportDebug("No neighbors!", 3);
-                    } else {
-                        net_handler->gatherNeighbors(
-                                    DATA->config.getIntValue("TTL"), maddr, neighbor_addr);
-                    }
-                }
+                struct sockaddr_storage maddr =
+                        DATA->config.my_IP.getAddress();
+                                    struct sockaddr_storage neighbor_addr;
+                                    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
+                                            reportDebug("No neighbors!", 3);
+                                    } else {
+                                            net_handler->gatherNeighbors(
+                                                                    DATA->config.getIntValue("TTL"), maddr, neighbor_addr);
+                                    }
                 // resend the chunk and wait a while, then try again
                 chunkhelper::pushChunkSend(ti);
                 sleep(2);
@@ -57,7 +51,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             ti->address = free_address;
             // get host address which is being used for communication
             // on this address the chunk should be returned.
-            networkHelper::getHostAddr(ti->src_address, sock);
+            ti->src_address= DATA->config.my_IP.getAddress();
             networkHelper::changeAddressPort(ti->src_address,
                               DATA->config.getIntValue("LISTENING_PORT"));
 
@@ -150,10 +144,11 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     }
 
     // spawns the encoding process
-    int64_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 10, cmd,
+    int64_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 11, cmd,
              "-i", file_in.c_str(),
              "-c:v", ti->output_codec.c_str(),
              "-preset", "ultrafast",
+             "-nostdin",
              "-qp", "0",
              file_out.c_str());
     // case of failure
