@@ -7,6 +7,7 @@
 #include "headers/enums_types.h"
 #include "structures/SynchronizedQueue.h"
 #include "structures/NeighborStorage.h"
+#include "structures/structures.h"
 
 struct TransferInfo;
 struct Listener;
@@ -99,6 +100,8 @@ struct Configuration {
     std::string working_dir;
     //! address of the superpeer
     std::string superpeer_addr;
+    //! IP address of the interface host is communicating on
+    MyAddr my_IP;
 
     /*!
      * \brief getIntValue returns the integer value

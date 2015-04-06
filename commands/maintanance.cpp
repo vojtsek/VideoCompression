@@ -71,11 +71,11 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
                 return false;
             }
         addr.ss_family = AF_INET6;
-        //TODO: compare storages
         // check whether it is not self
-        if (((sockaddr_in6 *) &addr)->sin6_port != htons(
-                    DATA->config.intValues.at("LISTENING_PORT")))
+        if (!networkHelper::cmpStorages(
+                    DATA->config.my_IP.getAddress(), addr)) {
             handler->addNewNeighbor(true, addr);
+        }
     }
         reportDebug("ASKHOST END", 5);
         return true;
@@ -84,60 +84,32 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
 bool CmdConfirmPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFPEER " + MyAddr(address).get() , 5);
     CMDS action = CONFIRM_HOST;
-    int64_t port, sock;
     // is it able to work?
     RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
 
-    struct sockaddr_storage addr;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-
-    // asking peer's port
-    if (receiveInt64(fd, port) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
-        return false;
-    }
-
-    // get address on which I am communicating
-    networkHelper::changeAddressPort(address, port);
-    if ((sock = handler->checkNeighbor(address)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        return false;
-    }
-    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        close(sock);
-        return false;
-    }
-    close(sock);
-    networkHelper::changeAddressPort(addr,
-                                     DATA->config.getIntValue("LISTENING_PORT"));
 
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
     // send my address & port
-    if (sendAdrressStruct(fd, addr) == -1) {
+    if (sendInt64(fd,
+                  DATA->config.getIntValue("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
     return true;
 }
 
-bool CmdConfirmHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
+bool CmdConfirmHost::execute(int64_t fd,
+                             struct sockaddr_storage &address, void *) {
     reportDebug("CONFHOST", 5);
     RESPONSE_T resp;
-    struct sockaddr_storage addr;
-
-    // send my port so peer can get appropriate address
-    if (sendInt64(fd,
-                  DATA->config.intValues.at("LISTENING_PORT")) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
+    int64_t port;
 
     if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -150,19 +122,21 @@ bool CmdConfirmHost::execute(int64_t fd, struct sockaddr_storage &address, void 
         return false;
     }
 
-    // receive peer's address
-    if (receiveAddressStruct(fd, addr) == -1) {
+    // receive peer's listening port
+    if (receiveInt64(fd, port) == -1) {
         reportError("Error while communicating with peer." + MyAddr(address).get());
         return false;
     }
+    networkHelper::changeAddressPort(address, port);
+
     // add new neighbor
-    handler->addNewNeighbor(false, addr);
+    handler->addNewNeighbor(false, address);
     if (resp != ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, false);
     } else {
         DATA->neighbors.setNeighborFree(address, true);
     }
-    MyAddr mad(addr);
+    MyAddr mad(address);
     reportDebug("Neighbor confirmed." + mad.get(), 4);
     return true;
 }

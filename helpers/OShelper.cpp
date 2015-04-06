@@ -146,7 +146,6 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
         va_start (arg_ptr, numargs);
         // obtain parameters
         char *args[numargs + 3];
-        // TODO: safety!
         for(j = 0 ; j < numargs; ++j) {
             char *arg = va_arg(arg_ptr, char *);
             args[j] = arg;
@@ -217,9 +216,9 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
 }
 
 bool OSHelper::isFileOk(const std::string &fp) {
-    struct stat st;
+    struct stat64 st;
     // tries to stat the file
-    if (stat(fp.c_str(), &st) == -1) {
+    if (stat64(fp.c_str(), &st) == -1) {
         return false;
     }
     return true;

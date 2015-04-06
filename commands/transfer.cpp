@@ -152,8 +152,6 @@ bool CmdReturnHost::execute(
         return false;
     }
 
-    ///TODO: why?
-    DATA->chunks_to_send.signal();
     // remove the file, no longer needed
     OSHelper::rmFile(ti->path);
     chunkhelper::trashChunk(ti, true);

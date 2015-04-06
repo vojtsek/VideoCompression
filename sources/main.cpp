@@ -41,7 +41,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
         switch (opt) {
         // listening port set
         case 'p':
-            DATA->config.intValues.at("LISTENING_PORT") = atoi(optarg);
+            DATA->config.intValues.emplace("LISTENING_PORT", atoi(optarg));
             break;
         // superpeer mode
         case 's':
@@ -53,7 +53,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
             break;
         // port to listen superpeer
         case 'c':
-            DATA->config.intValues.at("SUPERPEER_PORT") = atoi(optarg);
+            DATA->config.intValues.emplace("SUPERPEER_PORT", atoi(optarg));
         // unknown option
         case '?':
             usage();
@@ -104,9 +104,9 @@ void superPeerRoutine(NetworkHandler &net_handler) {
     net_handler.start_listening(DATA->config.intValues.at("SUPERPEER_PORT"));
 }
 
-void initConfiguration() {
+void initConfiguration(NetworkHandler &handler) {
     // data initialized with default values
-    // after the config file was read
+    // called after the config file was read
     DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
     DATA->config.working_dir = DATA->config.getStringValue("WD");
     if (DATA->config.working_dir == "") {
@@ -136,6 +136,13 @@ void initConfiguration() {
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
     DATA->io_data.info_handler.setLength(6);
     DATA->io_data.status_handler.setLength(y_space / 2);
+
+    // obtain with which address is communicating
+    struct sockaddr_storage addr;
+    networkHelper::getMyAddress(
+                addr, &handler);
+    DATA->config.my_IP = MyAddr(addr);
+    DATA->config.my_IP.print();
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
@@ -193,16 +200,19 @@ int main(int argc, char **argv) {
 		usage();
     }
 
+    // handle the options
+    parseOptions(argc, argv);
     // inits the curses variables
     initCurses();
     if (readConfiguration("CONF") == -1) {
         reportError("Error reading configuration!");
         return 1;
     }
+
+    NetworkHandler net_handler;
+    VideoState state(&net_handler);
     // inits the configuration
-    initConfiguration();
-    // handle the optiond
-    parseOptions(argc, argv);
+    initConfiguration(net_handler);
     // prepares the working directory
     DATA->config.working_dir += "/" +
             utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
@@ -211,8 +221,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    NetworkHandler net_handler;
-    VideoState state(&net_handler);
 
     // creates the commands structures
     initCommands(state, net_handler);
