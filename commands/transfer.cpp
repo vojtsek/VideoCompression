@@ -1,5 +1,5 @@
 #include "headers/include_list.h"
-#include <ctime>
+#include <chrono>
 
 using namespace utilities;
 
@@ -54,15 +54,15 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
             throw 1;
         }
 
-        // TODO: time measuring
         // receives the file, measures duration
-        ti->timestamp = utilities::getTimestamp();
+
+        std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
-        reportError(ti->name + ": Failed to transfer file.");
-        throw 1;
+                    reportError(ti->name + ": Failed to transfer file.");
+                    throw 1;
         }
-        ti->sending_time = utilities::computeDuration(
-            utilities::getTimestamp(), ti->timestamp);
+        ti->sending_time = (std::chrono::duration_cast<std::chrono::milliseconds>
+                                    (std::chrono::system_clock::now() - start)).count();
 
         reportDebug("Pushing chunk " + ti->name + "(" +
             utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
@@ -188,13 +188,16 @@ bool CmdReturnPeer::execute(
         }
         ti->encoding_time = helper_ti.encoding_time;
         ti->sending_time = helper_ti.sending_time;
-        ti->timestamp = utilities::getTimestamp();
+
+                std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         if (receiveFile(fd,
                 dir + "/" + ti->name + ti->desired_extension) == -1) {
-            reportError(ti->name + ": Failed to transfer file.");
-            throw 1;
+                    reportError(ti->name + ": Failed to transfer file.");
+                    throw 1;
         }
-        ti->receiving_time = utilities::computeDuration(utilities::getTimestamp(), ti->timestamp);
+        ti->receiving_time = (std::chrono::duration_cast<std::chrono::milliseconds>
+                                    (std::chrono::system_clock::now() - start)).count();
+
         ti->path = dir + "/" + ti->name + ti->desired_extension;
 
         //handler->confirmNeighbor(ti->address);

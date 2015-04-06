@@ -126,12 +126,10 @@ void initConfiguration(NetworkHandler &handler) {
     // number of vertical rows that can be used
     y_space = y - 5;
     // curses window initialization
-    //TODO: redundant variables
     DATA->io_data.status_win = derwin(stdscr, y_space / 2 - 1, x, 3 + y_space / 2, 0);
     DATA->io_data.info_win = derwin(stdscr, y_space/ 2, x, 3, 0);
     DATA->io_data.status_handler.changeWin(DATA->io_data.status_win);
     DATA->io_data.info_handler.changeWin(DATA->io_data.info_win);
-    DATA->config.superpeer_addr = DATA->config.getStringValue("SUPERPEER_ADDR");
     DATA->io_data.changeLogLocation(DATA->config.getStringValue("WD") + "/log_" +
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
@@ -242,6 +240,7 @@ int main(int argc, char **argv) {
         });
         thr.detach();
     } else {
+        //TODO mechanism to fail outside of thread
         std::thread thr ([&]() {
             // creates the socket, binds and starts listening
             net_handler.start_listening(DATA->config.intValues.at("LISTENING_PORT"));

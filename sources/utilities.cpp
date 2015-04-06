@@ -105,7 +105,6 @@ void utilities::printOverallState(VideoState *state) {
     }
 
     DATA->io_data.info_handler.add("Chunks to send: ", DEBUG);
-    //TODO: chunks I should send
     for (const auto &ti : DATA->chunks_to_send.getValues()) {
         DATA->io_data.info_handler.add(ti->name, PLAIN);
     }

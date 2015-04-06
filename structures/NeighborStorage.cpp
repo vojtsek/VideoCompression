@@ -149,6 +149,7 @@ void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
                [&](NeighborInfo *ngh) {
             return (networkHelper::cmpStorages(ngh->address, addr));
         }), free_neighbors.end());
+        reportDebug("Neighbor is not free: " + MyAddr(addr).get(), 2);
     } else {
         // set free
         reportDebug("Neighbor is now free: " + MyAddr(addr).get(), 2);
@@ -166,7 +167,6 @@ int64_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
         return 0;
     }
     // sort free neighbors with respect to quality
-    // TODO: one iteration of bubblesort?
     std::sort(free_neighbors.begin(), free_neighbors.end(),
               [&](NeighborInfo *n1, NeighborInfo *n2) {
         return (n1->quality < n2->quality);

@@ -148,14 +148,6 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         struct sockaddr_storage &addr, NetworkHandler *handler) {
     int64_t sock;
 
-    //TODO
-    /*
-    if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
-        reportDebug("No neighbors!", 3);
-        return -1;
-    }
-    */
-
     // connect to it
     if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
         reportDebug("Error getting host address.", 2);
@@ -179,12 +171,12 @@ int64_t networkHelper::getSuperPeerAddr(
         sockaddr_storage &address) {
     if (DATA->config.IPv4_ONLY) {
         address = networkHelper::addrstr2storage(
-                    DATA->config.superpeer_addr.c_str(),
-                    DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET);
+                    DATA->config.getStringValue("SUPERPEER_ADDR").c_str(),
+                    DATA->config.getIntValue("SUPERPEER_PORT"), AF_INET);
     } else {
         address = networkHelper::addrstr2storage(
-                    DATA->config.superpeer_addr.c_str(),
-                    DATA->config.intValues.at("SUPERPEER_PORT"), AF_INET6);
+                    DATA->config.getStringValue("SUPERPEER_ADDR").c_str(),
+                    DATA->config.getIntValue("SUPERPEER_PORT"), AF_INET6);
     }
     if (address.ss_family == AF_UNSPEC) {
         return -1;

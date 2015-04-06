@@ -47,6 +47,7 @@ int64_t getPeerAddr(struct sockaddr_storage &addr, int64_t fd);
 
 /*!
  * \brief getMyAddress loads the address on which the node is communicating
+ * \param neighbor neighbor to connect in order to obtain address
  * \param addr structure to receive the address
  * \param handler pointer to NetworkHandler instance
  * \return zero on successs

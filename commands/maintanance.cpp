@@ -287,6 +287,9 @@ void CmdSayGoodbye::execute() {
     for (auto &address : DATA->neighbors.getNeighborAdresses(
              DATA->neighbors.getNeighborCount())) {
         sock = handler->checkNeighbor(address);
+        if (sock == -1) {
+            continue;
+        }
         reportError("Saying goodbye to: "+MyAddr(address).get());
         handler->spawnOutgoingConnection(address,
                                          sock, { GOODBYE_PEER }, true, nullptr);

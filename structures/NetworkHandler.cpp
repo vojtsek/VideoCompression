@@ -194,20 +194,19 @@ int64_t NetworkHandler::start_listening(int64_t port) {
     if (setsockopt(sock, SOL_SOCKET, SO_LINGER,
             &so_linger, sizeof (so_linger)) == -1) {
         reportDebug("Failed to set option to listening socket." + std::string(strerror(errno)), 1);
-        return (-1);
+        return -1;
    }
 
     // bind to desired address:port
-    // TODO: should fail?
     if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
         reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
-        return (-1);
+        return -1;
     }
 
     // start listening
     if (listen(sock, SOMAXCONN) == -1) {
         reportDebug("Failed to start listen on the socket." + std::string(strerror(errno)), 1);
-        return (-1);
+        return -1;
     }
 
     // waits for connection, handles it in separate thread
@@ -320,7 +319,6 @@ void NetworkHandler::obtainNeighbors() {
 }
 
 void NetworkHandler::collectNeighbors() {
-    //TODO: handle potential neighbors
     struct sockaddr_storage address;
     // has some neighbors
     if (DATA->neighbors.getNeighborCount()) {

@@ -82,7 +82,7 @@ struct Mutexes_Data {
  * provides methods to access it
  * filled in from configuration file
  */
-//TODO: filling method, clean strings
+//TODO: filling method
 struct Configuration {
     //! whether the node should act like superpeer
     bool is_superpeer = false;
@@ -96,8 +96,6 @@ struct Configuration {
     std::map<std::string, int64_t> intValues;
     //! map of string values
     std::map<std::string, std::string> strValues;
-    //! address of the superpeer
-    std::string superpeer_addr;
     //! IP address of the interface host is communicating on
     MyAddr my_IP;
 

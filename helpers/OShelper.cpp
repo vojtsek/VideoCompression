@@ -229,7 +229,6 @@ bool OSHelper::isFileOk(const std::string &fp) {
 
 int64_t OSHelper::getFileSize(const std::string &file) {
     struct stat64 finfo;
-    // TODO: really 64?
     // negative RV indicates error
     if (lstat64(file.c_str(), &finfo) == -1)
         return -1;

@@ -111,7 +111,6 @@ struct NetworkHandler {
 		* asks for new adresses
 		* different from gather neighbors
 		*/
-//TODO: only gathering?
     void collectNeighbors();
 
 		/*!

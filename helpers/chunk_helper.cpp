@@ -70,7 +70,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             int64_t sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { PING_PEER, RETURN_PEER }, true, (void *) ti);
-            // TODO: DATA->chunks_received.remove(ti);
+            // removed when sent
         }
     }
 }
@@ -123,48 +123,51 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
     res_dir = DATA->config.getStringValue("WD") + "/processed/" + ti->job_id;
+    int64_t duration;
+    std::string file_in;
+    try {
+            if (OSHelper::prepareDir(res_dir, false) == -1) {
+                    reportDebug("Failed to create job dir.", 2);
+                    throw 1;
+            }
+            // construct the paths
+            std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
+            file_in = DATA->config.getStringValue("WD") + "/to_process/" +
+                            ti->job_id + "/" + ti->name + ti->original_extension;
+            reportDebug("Encoding: " + file_in, 2);
+            snprintf(cmd, BUF_LENGTH, "%s",
+                             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
-    // TODO: try-catch
-    if (OSHelper::prepareDir(res_dir, false) == -1) {
-        reportDebug("Failed to create job dir.", 2);
+            // ensures, the desired file doesn't exist yet
+            if (OSHelper::rmFile(file_out) == -1) {
+                    reportDebug("OS error while encoding " + ti->name, 2);
+                    throw 1;
+            }
+
+            // spawns the encoding process
+            duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 11, cmd,
+                             "-i", file_in.c_str(),
+                             "-c:v", ti->output_codec.c_str(),
+                             "-preset", "ultrafast",
+                             "-nostdin",
+                             "-qp", "0",
+                             file_out.c_str());
+            // case of failure
+            if (err.find("Conversion failed") != std::string::npos) {
+                    reportDebug("Failed to encode chunk!", 2);
+                    std::ofstream os(ti->job_id + ".err");
+                    os << err << std::endl;
+                    os.flush();
+                    os.close();
+                    // remove from structures and delete
+                    chunkhelper::trashChunk(ti, true);
+                    std::atomic_fetch_add(&DATA->state.can_accept, 1);
+                    throw 1;
+            }
+    } catch (int) {
         return -1;
     }
-    // construct the paths
-    std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
-    std::string file_in = DATA->config.getStringValue("WD") + "/to_process/" +
-            ti->job_id + "/" + ti->name + ti->original_extension;
-    reportDebug("Encoding: " + file_in, 2);
-    snprintf(cmd, BUF_LENGTH, "%s",
-             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
-    // ensures, the desired file doesn't exist yet
-    if (OSHelper::rmFile(file_out) == -1) {
-        reportDebug("OS error while encoding " + ti->name, 2);
-        return -1;
-    }
-
-    // spawns the encoding process
-    int64_t duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 11, cmd,
-             "-i", file_in.c_str(),
-             "-c:v", ti->output_codec.c_str(),
-             "-preset", "ultrafast",
-             "-nostdin",
-             "-qp", "0",
-             file_out.c_str());
-    // case of failure
-    if (err.find("Conversion failed") != std::string::npos) {
-        reportDebug("Failed to encode chunk!", 2);
-        std::ofstream os(ti->job_id + ".err");
-        os << err << std::endl;
-        os.flush();
-        os.close();
-        //TODO: should retry?
-        // TODO: inform
-        // remove from structures and delete
-        chunkhelper::trashChunk(ti, true);
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
-        return -1;
-    }
     reportDebug("Chunk " + ti->name + " encoded.", 2);
     ti->encoding_time = duration;
     // removal of input file - no longer needed
