@@ -108,16 +108,17 @@ void initConfiguration(NetworkHandler &handler) {
     // data initialized with default values
     // called after the config file was read
     DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
-    DATA->config.working_dir = DATA->config.getStringValue("WD");
-    if (DATA->config.working_dir == "") {
+    if (DATA->config.getStringValue("WD") == "") {
         // if the WD is not determined, use current working dir
         char dirp[BUF_LENGTH];
         if (getcwd(dirp, BUF_LENGTH) == NULL) {
-            DATA->config.working_dir = std::string(dirp);
+            DATA->config.strValues.emplace("WD",
+                                           std::string(dirp));
         } else {
-            DATA->config.working_dir = ".";
+            DATA->config.strValues.emplace("WD", ".");
         }
     }
+    DATA->config.intValues.emplace("UPP_LIMIT", 8);
     DATA->config.IPv4_ONLY = false;
     int64_t x,y, y_space;
     // dimensions of the window
@@ -131,15 +132,16 @@ void initConfiguration(NetworkHandler &handler) {
     DATA->io_data.status_handler.changeWin(DATA->io_data.status_win);
     DATA->io_data.info_handler.changeWin(DATA->io_data.info_win);
     DATA->config.superpeer_addr = DATA->config.getStringValue("SUPERPEER_ADDR");
-    DATA->io_data.changeLogLocation(DATA->config.working_dir + "/log_" +
+    DATA->io_data.changeLogLocation(DATA->config.getStringValue("WD") + "/log_" +
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
     DATA->io_data.info_handler.setLength(6);
     DATA->io_data.status_handler.setLength(y_space / 2);
 
     // obtain with which address is communicating
-    struct sockaddr_storage addr;
-    networkHelper::getMyAddress(
+    struct sockaddr_storage addr, super_addr;
+    networkHelper::getSuperPeerAddr(super_addr);
+    networkHelper::getMyAddress(super_addr,
                 addr, &handler);
     DATA->config.my_IP = MyAddr(addr);
     DATA->config.my_IP.print();
@@ -213,11 +215,10 @@ int main(int argc, char **argv) {
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
-    DATA->config.working_dir += "/" +
-            utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
-    reportStatus(DATA->config.working_dir);
+    DATA->config.strValues.at("WD") = DATA->config.getStringValue("WD") + "/" +
+           utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
     if (OSHelper::prepareDir(
-                DATA->config.working_dir, false) == -1) {
+                DATA->config.getStringValue("WD"), false) == -1) {
         reportError("Failed to prepare working directory.");
         return 1;
     }

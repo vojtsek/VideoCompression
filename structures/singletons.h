@@ -96,8 +96,6 @@ struct Configuration {
     std::map<std::string, int64_t> intValues;
     //! map of string values
     std::map<std::string, std::string> strValues;
-    //! location of working directory
-    std::string working_dir;
     //! address of the superpeer
     std::string superpeer_addr;
     //! IP address of the interface host is communicating on

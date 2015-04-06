@@ -90,7 +90,7 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
 
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
-    OSHelper::rmFile(DATA->config.working_dir + "/" + ti->job_id +
+    OSHelper::rmFile(DATA->config.getStringValue("WD") + "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
     // update quality
     DATA->neighbors.applyToNeighbors([&](
@@ -122,7 +122,7 @@ void chunkhelper::pushChunkSend(TransferInfo *ti) {
 int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
-    res_dir = DATA->config.working_dir + "/processed/" + ti->job_id;
+    res_dir = DATA->config.getStringValue("WD") + "/processed/" + ti->job_id;
 
     // TODO: try-catch
     if (OSHelper::prepareDir(res_dir, false) == -1) {
@@ -131,7 +131,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     }
     // construct the paths
     std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
-    std::string file_in = DATA->config.working_dir + "/to_process/" +
+    std::string file_in = DATA->config.getStringValue("WD") + "/to_process/" +
             ti->job_id + "/" + ti->name + ti->original_extension;
     reportDebug("Encoding: " + file_in, 2);
     snprintf(cmd, BUF_LENGTH, "%s",

@@ -57,7 +57,7 @@ bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
 
 bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKHOST", 5);
-    struct sockaddr_storage addr;
+    struct sockaddr_storage addr, communicating_addr;
     int64_t count;
     // get count of addresses to be received
     if (receiveInt64(fd, count) == -1) {
@@ -72,8 +72,14 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
             }
         addr.ss_family = AF_INET6;
         // check whether it is not self
+        if (networkHelper::getMyAddress(
+                    addr, communicating_addr, handler) == -1) {
+            reportDebug(
+                        "Failed obtaining communicating address", 2);
+            return false;
+        }
         if (!networkHelper::cmpStorages(
-                    DATA->config.my_IP.getAddress(), addr)) {
+                communicating_addr, addr)) {
             handler->addNewNeighbor(true, addr);
         }
     }

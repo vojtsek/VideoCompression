@@ -144,16 +144,10 @@ int64_t networkHelper::getPeerAddr(
     return -1;
 }
 
-int64_t networkHelper::getMyAddress(
+int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         struct sockaddr_storage &addr, NetworkHandler *handler) {
     int64_t sock;
 
-    struct sockaddr_storage neighbor_addr;
-    // get address of some living node
-    if (getSuperPeerAddr(neighbor_addr) == -1) {
-        reportDebug("Failed to obtain address of the super peer.", 2);
-        return -1;
-       }
     //TODO
     /*
     if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {

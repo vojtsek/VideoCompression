@@ -36,11 +36,15 @@ int64_t VideoState::split() {
     reportStatus("Splitting file: " + finfo.fpath);
     // how many left to receive
     DATA->state.to_recv = chunk_count;
-    struct sockaddr_storage my_addr, neighbor_addr;
+    struct sockaddr_storage my_addr, neighbor_addr, super_addr;
 
     // gather some neighbors
     if (!DATA->state.enough_neighbors) {
-            if (networkHelper::getMyAddress(my_addr, net_handler) == -1) {
+        if (networkHelper::getSuperPeerAddr(super_addr) == -1) {
+            reportDebug("Failed to obtain my address.", 2);
+        } else {
+            if (networkHelper::getMyAddress(super_addr,
+                                            my_addr, net_handler) == -1) {
                     reportDebug("Failed to get my adress while contacting peers.", 2);
             } else {
                     if (DATA->neighbors.getRandomNeighbor(neighbor_addr) != 0) {
@@ -48,6 +52,7 @@ int64_t VideoState::split() {
                                             DATA->config.getIntValue("TTL"), my_addr, neighbor_addr);
                     }
             }
+        }
     }
     // reports
     utilities::printOverallState(this);
@@ -94,7 +99,7 @@ int64_t VideoState::split() {
         TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
                                             job_id, chunk_id, finfo.extension, o_format,
                                             std::string(output), o_codec);
-        ti->path = DATA->config.working_dir + "/" + ti->job_id +
+        ti->path = DATA->config.getStringValue("WD") + "/" + ti->job_id +
                 "/" + ti->name + ti->original_extension;
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
@@ -104,7 +109,7 @@ int64_t VideoState::split() {
     // 100%
     printProgress(1);
     // report file
-    ofs.open(DATA->config.working_dir + "/" + job_id + ".out");
+    ofs.open(DATA->config.getStringValue("WD") + "/" + job_id + ".out");
     reportTime("Splitting: ", sum / 1000);
     // removes the progress bar
     clearProgress();
@@ -124,8 +129,8 @@ void VideoState::abort() {
 }
 
 int64_t VideoState::join() {
-    std::string out, err, list_loc(DATA->config.working_dir + "/received/" + job_id + "/join_list.txt"),
-            output(DATA->config.working_dir + "/" + finfo.basename + "_output" + o_format);
+    std::string out, err, list_loc(DATA->config.getStringValue("WD") + "/received/" + job_id + "/join_list.txt"),
+            output(DATA->config.getStringValue("WD") + "/" + finfo.basename + "_output" + o_format);
     std::string file, file_item;
     std::ofstream ofs_loc(list_loc);
     char fn[BUF_LENGTH], cmd[BUF_LENGTH];
@@ -140,7 +145,7 @@ int64_t VideoState::join() {
     // create the joining text file
     for (int64_t i = 0; i < chunk_count; ++i) {
         snprintf(fn, BUF_LENGTH, "%03lu_splitted", i);
-        file = DATA->config.working_dir +
+        file = DATA->config.getStringValue("WD") +
                 "/received/" + job_id + "/" + fn + o_format;
         if (OSHelper::getFileSize(file) <= 0) {
             reportError("file: '" + file + "'' is not ok, failed.");
@@ -185,7 +190,7 @@ void VideoState::reportTime(std::string msg, int64_t time) {
 }
 
 void VideoState::endProcess(int64_t duration) {
-    std::ofstream csv_stream(DATA->config.working_dir + "/data.csv");
+    std::ofstream csv_stream(DATA->config.getStringValue("WD") + "/data.csv");
     // 100%
     printProgress(1);
     reportSuccess("Succesfully joined.");
@@ -193,7 +198,7 @@ void VideoState::endProcess(int64_t duration) {
     // removes the progress bar
     clearProgress();
     // received chunks no longer needed
-    OSHelper::rmrDir(DATA->config.working_dir + "/received/", true);
+    OSHelper::rmrDir(DATA->config.getStringValue("WD") + "/received/", true);
     // is ready
     DATA->state.working = false;
     ofs << "Information about particular chunks:" << std::endl;

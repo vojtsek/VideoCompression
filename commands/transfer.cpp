@@ -48,7 +48,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
             throw 1;
         }
 
-        std::string dir(DATA->config.working_dir + "/to_process/" + ti->job_id);
+        std::string dir(DATA->config.getStringValue("WD") + "/to_process/" + ti->job_id);
         if (OSHelper::prepareDir(dir, false) == -1) {
             reportError(ti->name + ": Error creating job dir.");
             throw 1;
@@ -66,7 +66,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
 
         reportDebug("Pushing chunk " + ti->name + "(" +
             utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
-        ti->path = std::string(DATA->config.working_dir + "/processed/" + ti->job_id +
+        ti->path = std::string(DATA->config.getStringValue("WD") + "/processed/" + ti->job_id +
                    "/" + ti->name + ti->desired_extension);
         // this helps to determine, that the chunk should be send to src_adress
         // when popped from the queue later
@@ -181,7 +181,7 @@ bool CmdReturnPeer::execute(
             throw 1;
         }
 
-        std::string dir(DATA->config.working_dir + "/received/" + ti->job_id);
+        std::string dir(DATA->config.getStringValue("WD") + "/received/" + ti->job_id);
         if (OSHelper::prepareDir(dir, false) == -1) {
             reportError(ti->name + ": Error creating received job dir.");
             throw 1;
@@ -255,10 +255,9 @@ bool CmdGatherNeighborsPeer::execute(
     }
 
     // how many neighbors contact
-    // TODO: hardcode
-    int64_t UPP_LIMIT = 8;
-    int64_t count = DATA->neighbors.getNeighborCount() > UPP_LIMIT ?
-                UPP_LIMIT : DATA->neighbors.getNeighborCount();
+    int64_t count = DATA->neighbors.getNeighborCount() >
+            DATA->config.getIntValue("UPP_LIMIT") ?
+                DATA->config.getIntValue("UPP_LIMIT") : DATA->neighbors.getNeighborCount();
     // spread the message
     for (const auto &addr :
          DATA->neighbors.getNeighborAdresses(count)) {

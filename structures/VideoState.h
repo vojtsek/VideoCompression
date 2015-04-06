@@ -36,7 +36,7 @@ struct VideoState {
 
     VideoState(NetworkHandler *nh): secs_per_chunk(0), chunk_count(0),
         chunk_size(DATA->config.getIntValue("CHUNK_SIZE")),
-        processed_chunks(0), dir_location(DATA->config.working_dir),
+        processed_chunks(0), dir_location(DATA->config.getStringValue("WD")),
       o_format(".mkv"), o_codec("libx264") {
         net_handler = nh;
     }

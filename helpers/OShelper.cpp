@@ -81,12 +81,15 @@ int64_t OSHelper::rmFile(std::string fp) {
 int64_t OSHelper::prepareDir(std::string location, bool destroy) {
     std::string directory, current;
     // the WD should definitely exist already
+    std::string cwd = DATA->config.getStringValue("WD").substr(
+                0, DATA->config.getStringValue("WD").rfind('/')
+                );
     location = location.substr(
-                DATA->config.getStringValue("WD").size() + 1,
+                cwd.size() + 1,
                 location.length());
     uint64_t pos;
     // holds the current position
-    current = DATA->config.getStringValue("WD");
+    current = cwd;
     // further directories on the path
     while ((pos = location.find('/')) != std::string::npos) {
         // extract next directory

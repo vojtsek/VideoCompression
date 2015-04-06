@@ -54,7 +54,7 @@ int64_t getPeerAddr(struct sockaddr_storage &addr, int64_t fd);
  * spawns connection to some neighbor and
  * reads the address using getHostAddr()
  */
-int64_t getMyAddress(
+int64_t getMyAddress(struct sockaddr_storage &neighbor,
         struct sockaddr_storage &addr, NetworkHandler *handler);
 
 /*!

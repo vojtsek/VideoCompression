@@ -16,6 +16,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <stdexcept>
+#include <chrono>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
@@ -173,13 +174,11 @@ std::string utilities::formatString(std::string str1, std::string str2) {
 }
 
 std::string utilities::getTimestamp() {
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    // actually in microseconds
-    int64_t us = tv.tv_sec * 1000000 + tv.tv_usec;
-    // lowers precision
-    us /= 1000;
-    return utilities::m_itoa((int64_t) us);
+    std::chrono::milliseconds ms =
+                std::chrono::duration_cast< std::chrono::milliseconds >(
+        std::chrono::high_resolution_clock::now().time_since_epoch()
+    );
+    return utilities::m_itoa(ms.count());
 }
 
 bool utilities::isAcceptable(char c) {
