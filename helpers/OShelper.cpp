@@ -145,6 +145,7 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
     switch (pid = fork()) {
     // child process
     case 0: {
+        //reportSuccess("I am child.");
         va_list arg_ptr;
         va_start (arg_ptr, numargs);
         // obtain parameters
@@ -155,7 +156,7 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
             whole_command += " ";
             whole_command += arg;
         }
-        reportDebug("Spawning '" + whole_command + "'", 1);
+        //reportDebug("Spawning '" + whole_command + "'", 1);
         args[j] = nullptr;
         va_end(arg_ptr);
         close(STDOUT_FILENO);
@@ -168,7 +169,7 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
         strcpy(command, cmd);
         // execute the desired programme
         if ((execvp(command, args)) == -1) {
-            reportError("Error while spawning external command.");
+            //reportError("Error while spawning external command.");
             return -1;
         }
         break;

@@ -40,7 +40,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
             }
             response = true;
 						// end communication
-            if (action == TERM){
+            if (action == TERM) {
                 sendSth(response, fd);
                 break;
             }
@@ -240,8 +240,6 @@ int64_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     // establish the connection
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
-        // failed to communicate -> remove
-        DATA->neighbors.removeNeighbor(addr);
         return -1;
     }
     // update the interval

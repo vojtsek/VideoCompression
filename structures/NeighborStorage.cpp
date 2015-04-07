@@ -46,12 +46,12 @@ int64_t NeighborStorage::removeNeighbor(
             // remove from neighbors list
             neighbors.erase(it);
             delete it->second;
-            n_mtx.unlock();
             if (neighbors.size() < (unsigned)
                 DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
                 DATA->state.enough_neighbors = false;
             }
             reportError("Removed neighbor: " + MyAddr(addr).get());
+            n_mtx.unlock();
             return 1;
         }
     }

@@ -41,6 +41,7 @@ std::string loadInput(const std::string &histf, const std::string &msg,
 
     // acquire locks for both input and output
     lck.lock();
+    DATA->m_data.using_I = true;
     lck2.lock();
     // shows the msg and prompts for input
     DATA->m_data.using_O = true;
@@ -55,7 +56,6 @@ std::string loadInput(const std::string &histf, const std::string &msg,
     refresh();
 
 
-    DATA->m_data.using_I = true;
     // load line
     getLine(line, LINE_LENGTH, histf, save, changeable);
     curs_set(0);

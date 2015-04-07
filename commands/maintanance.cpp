@@ -71,13 +71,14 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
                 return false;
             }
         addr.ss_family = AF_INET6;
-        // check whether it is not self
+        // fails if the node is not alive
         if (networkHelper::getMyAddress(
                     addr, communicating_addr, handler) == -1) {
             reportDebug(
                         "Failed obtaining communicating address", 2);
             return false;
         }
+        // check whether it is not self
         if (!networkHelper::cmpStorages(
                 communicating_addr, addr)) {
             handler->addNewNeighbor(true, addr);
@@ -288,9 +289,9 @@ void CmdSayGoodbye::execute() {
              DATA->neighbors.getNeighborCount())) {
         sock = handler->checkNeighbor(address);
         if (sock == -1) {
-            continue;
+           // continue;
         }
-        reportError("Saying goodbye to: "+MyAddr(address).get());
+        reportError("Saying goodbye to: " + MyAddr(address).get());
         handler->spawnOutgoingConnection(address,
                                          sock, { GOODBYE_PEER }, true, nullptr);
     }
