@@ -131,7 +131,9 @@ int64_t OSHelper::mkDir(std::string location, bool destroy) {
     return 0;
 }
 
-int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *cmd, int64_t numargs, ...) {
+int64_t OSHelper::runExternal(
+        std::string &stdo, std::string &stde, int64_t limit,
+        const char *cmd, int64_t numargs, ...) {
     pid_t pid;
     int pd_o[2], pd_e[2], j;
     size_t bufsize = 65536;
@@ -145,6 +147,7 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
     switch (pid = fork()) {
     // child process
     case 0: {
+        alarm(limit);
         //reportSuccess("I am child.");
         va_list arg_ptr;
         va_start (arg_ptr, numargs);
@@ -187,9 +190,16 @@ int64_t OSHelper::runExternal(std::string &stdo, std::string &stde, const char *
         close(pd_o[1]);
         close(pd_e[1]);
         stdo = stde = "";
-        int64_t st;
+        siginfo_t infop;
         // wait for the child to end
-        wait(&st);
+        if (waitid(P_PID,
+                   pid, &infop, WEXITED) == -1) {
+            return -1;
+        }
+        if (infop.si_code == CLD_KILLED) {
+            reportError("KILLED");
+            return -1;
+        }
         // reads the output from the pipe to the buffer
         // TODO: should not go output to the file?
         while(read(pd_o[0], bo, 1) == 1){

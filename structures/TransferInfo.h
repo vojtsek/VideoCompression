@@ -27,6 +27,8 @@ struct TransferInfo : public Listener, Sendable {
     int64_t sent_times;
     //! how long took take encoding process
     int64_t encoding_time;
+    //! duration of the video in seconds
+    int64_t duration;
     //! address assigned when distributing
     struct sockaddr_storage address;
     //! address of the source node, should be returned to

@@ -28,7 +28,9 @@ struct SynchronizedMap {
      * \param item pointer to the item to be inserted
      */
     void push(T *item) {
-        remove(item);
+        if (contains(item->toString())) {
+            return;
+        }
         mtx.lock();
         map.insert(
                     std::make_pair(item->toString(), item));

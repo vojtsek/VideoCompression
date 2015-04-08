@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
             // invokes some action periodically
             while (1) {
                 periodicActions(net_handler);
-                sleep(1);
+                sleep(TICK_DURATION);
             }
         });
         thr2.detach();

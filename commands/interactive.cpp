@@ -154,10 +154,10 @@ void CmdLoad::execute(){
     finfo.extension = "." + OSHelper::getExtension(path);
     finfo.basename = OSHelper::getBasename(path);
     // gain some info about the video
-    if (OSHelper::runExternal(out, err,
+    if (OSHelper::runExternal(out, err, 5,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") == -1) {
+                               finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") < 0) {
         reportError("Error while getting video information.");
         return;
     }

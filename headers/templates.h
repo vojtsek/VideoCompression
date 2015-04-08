@@ -10,10 +10,14 @@ struct Measured {
     template <typename FuncT, typename ... args>
     static typename Measure_inT::rep exec_measure(FuncT func, args && ... arguments) {
         std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-        func(std::forward<args>(arguments) ...);
+        int64_t ret = func(std::forward<args>(arguments) ...);
         Measure_inT duration = std::chrono::duration_cast<Measure_inT>
                                     (std::chrono::system_clock::now() - start);
-        return duration.count();
+        if (ret != -1) {
+                    return duration.count();
+        } else {
+                    return ret;
+        }
     }
 };
 

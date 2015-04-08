@@ -11,8 +11,9 @@ void TransferInfo::print() {
 }
 
 void TransferInfo::invoke(NetworkHandler &handler) {
+    time_left -= TICK_DURATION;
     // timeout is up
-    if (--time_left <= 0) {
+    if (time_left <= 0) {
         // the are still some tries left -> try to contact the neighbor
         if ((--tries_left > 0) && (handler.checkNeighbor(address) != -1)) {
             time_left = DATA->config.getIntValue(
@@ -58,6 +59,11 @@ int64_t TransferInfo::send(int64_t fd) {
 
     if (sendInt64(fd, encoding_time) == -1) {
         reportDebug("Failed to send encoding_time.", 1);
+        return -1;
+    }
+
+    if (sendInt64(fd, duration) == -1) {
+        reportDebug("Failed to send duration.", 1);
         return -1;
     }
 
@@ -126,6 +132,11 @@ int64_t TransferInfo::receive(int64_t fd) {
 
      if (receiveInt64(fd, encoding_time) == -1){
          reportDebug("Failed to receive encoding time.", 1);
+         return -1;
+     }
+
+     if (receiveInt64(fd, duration) == -1){
+         reportDebug("Failed to receive chunk duration.", 1);
          return -1;
      }
 

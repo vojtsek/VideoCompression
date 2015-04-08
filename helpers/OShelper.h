@@ -54,6 +54,7 @@ namespace OSHelper {
  * \brief OSHelper::runExternal spawns external command
  * \param stdo string to save stdout
  * \param stde string to save stderr
+ * \param limit how many seconds before the process is killed
  * \param cmd name of the command to spawn
  * \param numargs number of parameters
  * \return 0 on success
@@ -61,7 +62,9 @@ namespace OSHelper {
  * uses fork & exec, waits for the result_type
  * stderr and stdout are saved in the corresponding strings
  */
-    int64_t runExternal(std::string &o, std::string &e, const char *cmd, int64_t numargs, ...);
+    int64_t runExternal(
+            std::string &o, std::string &e, int64_t limit,
+            const char *cmd, int64_t numargs, ...);
 
  /*!
  * \brief OSHelper::getFileSize

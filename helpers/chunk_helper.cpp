@@ -38,12 +38,14 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                                     if (DATA->neighbors.getRandomNeighbor(neighbor_addr) == 0) {
                                             reportDebug("No neighbors!", 3);
                                     } else {
+                                        // try to earn some neighbors
                                             net_handler->gatherNeighbors(
-                                                                    DATA->config.getIntValue("TTL"), maddr, neighbor_addr);
+                                                                                                            DATA->config.getIntValue("TTL"),
+                                                        maddr, neighbor_addr);
                                     }
                 // resend the chunk and wait a while, then try again
                 chunkhelper::pushChunkSend(ti);
-                sleep(2);
+                sleep(5);
                 continue;
             }
             // checks the neighbor and addresses the chunk
@@ -90,7 +92,8 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
 
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
-    OSHelper::rmFile(DATA->config.getStringValue("WD") + "/" + ti->job_id +
+    OSHelper::rmFile(DATA->config.getStringValue("WD") +
+                     "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
     // update quality
     DATA->neighbors.applyToNeighbors([&](
@@ -145,7 +148,9 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             }
 
             // spawns the encoding process
-            duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 11, cmd,
+            duration = Measured<>::exec_measure(
+                        OSHelper::runExternal, out, err,
+                        ti->duration * 2, cmd, 11, cmd,
                              "-i", file_in.c_str(),
                              "-c:v", ti->output_codec.c_str(),
                              "-preset", "ultrafast",
@@ -153,7 +158,8 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                              "-qp", "0",
                              file_out.c_str());
             // case of failure
-            if (err.find("Conversion failed") != std::string::npos) {
+            if ((err.find("Conversion failed") != std::string::npos) ||
+                    (duration < 0)) {
                     reportDebug("Failed to encode chunk!", 2);
                     std::ofstream os(ti->job_id + ".err");
                     os << err << std::endl;

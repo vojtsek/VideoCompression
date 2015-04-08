@@ -75,7 +75,8 @@ int64_t VideoState::split() {
                  DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
         OSHelper::rmFile(output);
         // spawn the command
-        sum += Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 13, cmd,
+        int64_t duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                        out, err, secs_per_chunk * 2, cmd, 13, cmd,
                     "-ss", current,
                     "-i", finfo.fpath.c_str(),
                     "-v", "quiet",
@@ -84,8 +85,9 @@ int64_t VideoState::split() {
                     "-nostdin",
                     output);
         // failure
-        if (err.find("Conversion failed") != std::string::npos) {
-            snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %s\n",
+        if ((err.find("Conversion failed") != std::string::npos) ||
+             (duration < 0)) {
+            snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %sn",
                     DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
                 "-i", finfo.fpath.c_str(),
                 "-ss", current,
@@ -95,12 +97,14 @@ int64_t VideoState::split() {
             abort();
             return -1;
         }
+        sum += duration;
         // creates new TransferInfo structure
         TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
                                             job_id, chunk_id, finfo.extension, o_format,
                                             std::string(output), o_codec);
         ti->path = DATA->config.getStringValue("WD") + "/" + ti->job_id +
                 "/" + ti->name + ti->original_extension;
+        ti->duration = secs_per_chunk;
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state
@@ -162,13 +166,15 @@ int64_t VideoState::join() {
     // TODO: check for hang
     std::thread thr(reportFileProgress, output, sum_size);
     // spawn the joining command
-    duration = Measured<>::exec_measure(OSHelper::runExternal, out, err, cmd, 9, cmd,
+    duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                        out, err, 1200, cmd, 9, cmd,
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
                     "-nostdin",
                     output.c_str());
-    if (err.find("failed") != std::string::npos) {
+    if ((err.find("failed") != std::string::npos) ||
+            (duration < 0)) {
         thr.detach();
         reportError(output + ": Error while joining file.");
         reportError(err);

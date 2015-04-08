@@ -139,6 +139,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
 
 bool CmdReturnHost::execute(
         int64_t fd, sockaddr_storage &, void *data) {
+    // pointer to encoded file is passed
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
@@ -214,9 +215,6 @@ bool CmdReturnPeer::execute(
             reportError(ti->name + ": Too late.");
         }
     } catch (int) {
-        if (ti != nullptr) {
-            delete ti;
-        }
         return false;
     }
     return true;
