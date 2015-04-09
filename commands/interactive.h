@@ -57,6 +57,16 @@ public:
 };
 
 /*!
+ * \brief The CmdAbort class aborts current execution
+ * of video encoding process
+ */
+class CmdAbort: public Command {
+public:
+    CmdAbort(VideoState *st): Command(st) {}
+    virtual void execute();
+};
+
+/*!
  * \brief The CmdStart class
  * starts the computing process,
  * does some checks

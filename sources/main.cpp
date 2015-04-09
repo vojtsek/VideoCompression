@@ -151,6 +151,7 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.emplace(START, new CmdStart(&state));
     DATA->cmds.emplace(LOAD, new CmdLoad(&state));
     DATA->cmds.emplace(SET, new CmdSet(&state));
+    DATA->cmds.emplace(ABORT_C, new CmdAbort(&state));
     DATA->cmds.emplace(SET_CODEC, new CmdSetCodec(&state));
     DATA->cmds.emplace(SET_SIZE, new CmdSetChSize(&state));
     DATA->cmds.emplace(SET_FORMAT, new CmdSetFormat(&state));
@@ -229,7 +230,9 @@ int main(int argc, char **argv) {
     wmove(win, 0,0);
     wprintw(win, "Distributed video compression tool.");
     wmove(win, 1, 0);
-    wprintw(win, "Commands: %10s%10s%10s%10s", "F6 show", "F7 start", "F8 load", "F9 set", "F12 quit");
+    wprintw(win, "Commands: %10s%10s%10s%10s%10s%10s", "F6 show",
+            "F7 start", "F8 load", "F9 set",
+            "F11 Abort", "F12 quit");
     curs_set(0);
     wrefresh(win);
     refresh();

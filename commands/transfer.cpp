@@ -90,6 +90,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
             state->abort();
+            return false;
         }
     try {
         if (receiveResponse(fd, resp) == -1) {
@@ -147,7 +148,10 @@ bool CmdReturnHost::execute(
         int64_t fd, sockaddr_storage &, void *data) {
     // pointer to encoded file is passed
     TransferInfo *ti = (TransferInfo *) data;
-    if (ti->send(fd) == -1) {
+    if (ti->tries_sent > CHUNK_RESENDS) {
+        return false;
+        }
+        if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
         chunkhelper::pushChunkSend(ti);
         return false;

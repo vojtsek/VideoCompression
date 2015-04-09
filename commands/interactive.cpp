@@ -25,6 +25,11 @@ void CmdScrollUp::execute() {
     DATA->io_data.info_handler.print();
 }
 
+void CmdAbort::execute() {
+    reportError("Aborting...");
+    state->abort();
+}
+
 bool CmdShow::execute(int64_t, sockaddr_storage &, void *) {
     return true;
 }
