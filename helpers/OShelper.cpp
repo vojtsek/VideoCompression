@@ -143,25 +143,26 @@ int64_t OSHelper::runExternal(
     // creates pipes
     pipe(pd_o);
     pipe(pd_e);
+
+    va_list arg_ptr;
+    va_start (arg_ptr, numargs);
+    // obtain parameters
+    char *args[numargs + 3];
+    for(j = 0 ; j < numargs; ++j) {
+        char *arg = va_arg(arg_ptr, char *);
+        args[j] = arg;
+        whole_command += " ";
+        whole_command += arg;
+    }
+        reportDebug("Spawning '" + whole_command + "'", 3);
+        args[j] = nullptr;
+        va_end(arg_ptr);
+
     // forks
     switch (pid = fork()) {
     // child process
     case 0: {
         alarm(limit);
-        //reportSuccess("I am child.");
-        va_list arg_ptr;
-        va_start (arg_ptr, numargs);
-        // obtain parameters
-        char *args[numargs + 3];
-        for(j = 0 ; j < numargs; ++j) {
-            char *arg = va_arg(arg_ptr, char *);
-            args[j] = arg;
-            whole_command += " ";
-            whole_command += arg;
-        }
-        //reportDebug("Spawning '" + whole_command + "'", 1);
-        args[j] = nullptr;
-        va_end(arg_ptr);
         close(STDOUT_FILENO);
         close(pd_o[0]);
         dup(pd_o[1]);
@@ -172,7 +173,6 @@ int64_t OSHelper::runExternal(
         strcpy(command, cmd);
         // execute the desired programme
         if ((execvp(command, args)) == -1) {
-            //reportError("Error while spawning external command.");
             return -1;
         }
         break;
@@ -194,6 +194,7 @@ int64_t OSHelper::runExternal(
         // wait for the child to end
         if (waitid(P_PID,
                    pid, &infop, WEXITED) == -1) {
+            reportError("FAIL");
             return -1;
         }
         if (infop.si_code == CLD_KILLED) {

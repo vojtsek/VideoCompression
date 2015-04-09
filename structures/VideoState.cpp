@@ -10,8 +10,8 @@ int64_t VideoState::split() {
     DATA->state.working = true;
     processed_chunks = 0;
     std::string out, err;
-    double sum = 0.0;
-    size_t elapsed = 0, mins = 0, secs = 0, hours = 0;
+    double sum = 0.0, retval = 0.0, elapsed = 0.0;
+    int64_t tries = 3, duration;
 
     char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], chunk_id[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
     char dir_name[BUF_LENGTH];
@@ -28,10 +28,7 @@ int64_t VideoState::split() {
     }
 
     // compute how long one chunk takes, format
-    mins = secs_per_chunk / 60;
-    secs = secs_per_chunk % 60;
-    snprintf(chunk_duration, BUF_LENGTH, "00:%02lu:%02lu",
-             mins, secs);
+    snprintf(chunk_duration, BUF_LENGTH, "%d", secs_per_chunk);
 
     reportStatus("Splitting file: " + finfo.fpath);
     // how many left to receive
@@ -62,41 +59,58 @@ int64_t VideoState::split() {
 
         // format the command
         printProgress(percent);
-        elapsed = i * secs_per_chunk;
-        hours = elapsed / 3600;
-        elapsed = elapsed % 3600;
-        mins = elapsed / 60;
-        secs = elapsed % 60;
-        snprintf(current, BUF_LENGTH, "%02lu:%02lu:%02lu", hours, mins, secs);
+        // add the duration of the last chunk
+        elapsed += retval;
+        // possible situation - in the end actually
+        if (elapsed > finfo.duration) {
+            break;
+        }
+        snprintf(current, BUF_LENGTH, "%f", elapsed);
         snprintf(output, BUF_LENGTH, "%s/%s/%03lu_splitted%s",
                  dir_location.c_str(), job_id.c_str(), i, finfo.extension.c_str());
         snprintf(chunk_id, BUF_LENGTH, "%03lu_splitted", i);
         snprintf(cmd, BUF_LENGTH, "%s",
                  DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
         OSHelper::rmFile(output);
-        // spawn the command
-        int64_t duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                        out, err, secs_per_chunk * 2, cmd, 13, cmd,
-                    "-ss", current,
-                    "-i", finfo.fpath.c_str(),
-                    "-v", "quiet",
-                    "-c", "copy",
-                    "-t", chunk_duration,
-                    "-nostdin",
-                    output);
-        // failure
-        if ((err.find("Conversion failed") != std::string::npos) ||
-             (duration < 0)) {
-            snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %sn",
-                    DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
-                "-i", finfo.fpath.c_str(),
-                "-ss", current,
-                "-t", chunk_duration,
-                output);
-            reportError(msg);
-            abort();
+        // 3 tries for each chunk
+                while (tries-- > 0) {
+                        reportDebug("Creating chunk " +
+                                                std::string(output), 2);
+                        // spawn the command
+                        duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                                                                                                                                        out, err, secs_per_chunk * 2, cmd, 13, cmd,
+                                                                        "-ss", current,
+                                                                        "-i", finfo.fpath.c_str(),
+                                                                        "-v", "quiet",
+                                                                        "-c", "copy",
+                                                                        "-t", chunk_duration,
+                                                                        "-nostdin",
+                                                                        output);
+                        // failure
+                        if ((err.find("Conversion failed") != std::string::npos) ||
+                                         (duration < 0)) {
+                                        snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %sn",
+                                                                        DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
+                                                        "-i", finfo.fpath.c_str(),
+                                                        "-ss", current,
+                                                        "-t", chunk_duration,
+                                                        output);
+                                        reportError(msg);
+                                        break;
+                                }
+                        retval = chunkhelper::getChunkDuration(output);
+                        if (retval < 0) {
+                            reportError("Failed to create " +
+                                                        std::string(current));
+                        } else {
+                                break;
+                        }
+                }
+        if (tries <= 0) {
+            reportError("Failed to split the file.");
             return -1;
         }
+
         sum += duration;
         // creates new TransferInfo structure
         TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
@@ -104,7 +118,7 @@ int64_t VideoState::split() {
                                             std::string(output), o_codec);
         ti->path = DATA->config.getStringValue("WD") + "/" + ti->job_id +
                 "/" + ti->name + ti->original_extension;
-        ti->duration = secs_per_chunk;
+        ti->duration = retval;
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state

@@ -1,6 +1,9 @@
 #include "headers/defines.h"
 #include "headers/include_list.h"
 #include "network_helper.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/filestream.h"
 
 #include <string>
 #include <fstream>
@@ -183,6 +186,50 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     // will be send
     chunkhelper::pushChunkSend(ti);
     return 0;
+}
+
+double chunkhelper::getChunkDuration(const string &fp) {
+    std::string out, err, path = fp;
+    std::string err_msg = "Error while getting video information";
+    rapidjson::Document document;
+    std::stringstream ssd;
+    double duration;
+    // is file ok?
+    if (OSHelper::checkFile(path) == -1){
+        reportError("Loading the file " + path + " failed");
+        return -1;
+    }
+    // gain some info about the video
+    if (OSHelper::runExternal(out, err, 5,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 5,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
+                               path.c_str(), "-show_format",
+                              "-print_format", "json") < 0) {
+        reportError("Error while getting video information.");
+        return -1;
+    }
+    if (err.find("Invalid data") != std::string::npos) {
+        reportError("Invalid video file");
+        return -1;
+    }
+
+    // parse the JSON output and save
+    if(document.Parse(out.c_str()).HasParseError()) {
+        reportError("Parse error");
+        return -1;
+    }
+    if (!document.HasMember("format")) {
+        reportError(err_msg);
+        return -1;
+    }
+    if(!document["format"].HasMember("duration")) {
+        reportError(err_msg);
+        return -1;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["duration"].GetString());
+    ssd >> duration;
+    return duration;
 }
 
 void chunkhelper::trashChunk(TransferInfo *ti, bool del) {

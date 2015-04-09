@@ -76,6 +76,13 @@ namespace chunkhelper {
     void trashChunk(TransferInfo *ti, bool del);
 
     /*!
+     * \brief getChunkDuration gets duration of the specified video file
+     * \param path path to the chunk
+     * \return duration in seconds
+     */
+    double getChunkDuration(const std::string &path);
+
+    /*!
      * \brief chunkhelper::encodeChunk handles encoding of one chunk
      * \param ti pointer to TransferInfo structure holding info about the chunk
      * \return zero on success

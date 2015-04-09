@@ -25,6 +25,7 @@ struct State {
     std::atomic<int> can_accept;
     //! how many chunks remains to receive
     std::atomic<int> to_recv;
+    //!
 };
 
 /*!

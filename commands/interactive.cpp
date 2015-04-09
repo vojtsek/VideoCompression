@@ -157,7 +157,8 @@ void CmdLoad::execute(){
     if (OSHelper::runExternal(out, err, 5,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               finfo.fpath.c_str(), "-show_streams", "-show_format", "-print_format", "json") < 0) {
+                               finfo.fpath.c_str(), "-show_streams", "-show_format",
+                              "-print_format", "json") < 0) {
         reportError("Error while getting video information.");
         return;
     }

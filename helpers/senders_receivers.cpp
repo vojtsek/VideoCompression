@@ -161,7 +161,7 @@ int64_t receiveFile(int64_t fd, std::string fn) {
         OSHelper::rmFile(fn);
         return -1;
     }
-    reportDebug("received " + utilities::m_itoa(read_bytes), 3);
+    reportDebug("received " + utilities::m_itoa(read_bytes), 2);
     close(o_file);
     return 0;
 }
@@ -202,7 +202,7 @@ int64_t sendFile(int64_t fd, std::string fn) {
             }
         }
 
-        // suupose to be zero
+        // suppose to be zero
         if (to_sent) {
             reportDebug("Sent bytes and filesize does not equal", 2);
             throw 1;
