@@ -144,14 +144,15 @@ int64_t utilities::computeDuration(std::string t1, std::string t2) {
 }
 
 vector<string> utilities::extract(const std::string text, const std::string from, int64_t count) {
-    vector<string> result;
+    vector<std::string> result;
     std::string word;
     std::stringstream ss(text);
     bool start = false;
     while (ss.good()) {
         ss >> word;
         // read the words until the passed value
-        if ((!start) && ((from == "") || (word == from))) {
+        if ((!start) && ((from == "") ||
+                         (word.find(from) != std::string::npos))) {
             start = true;
         }
         // extract given nuber of words

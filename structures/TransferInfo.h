@@ -29,6 +29,8 @@ struct TransferInfo : public Listener, Sendable {
     int64_t encoding_time;
     //! duration of the video in seconds
     int64_t duration;
+    //! how many times failed to send, for local purposes only(not transfered)
+    int64_t tries_sent;
     //! address assigned when distributing
     struct sockaddr_storage address;
     //! address of the source node, should be returned to
@@ -110,6 +112,7 @@ struct TransferInfo : public Listener, Sendable {
         tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
         sending_time(0), receiving_time(0),
         sent_times(0), encoding_time(0),
+        duration(0), tries_sent(0),
         job_id(ji), name(n), original_extension(oe), desired_extension(de),
         path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
         src_address = addr;

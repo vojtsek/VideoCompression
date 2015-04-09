@@ -23,6 +23,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 #define TICK_DURATION 5
+#define CHUNK_RESENDS 5
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

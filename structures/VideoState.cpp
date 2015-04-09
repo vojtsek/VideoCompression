@@ -73,6 +73,7 @@ int64_t VideoState::split() {
                  DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
         OSHelper::rmFile(output);
         // 3 tries for each chunk
+        tries = 3;
                 while (tries-- > 0) {
                         reportDebug("Creating chunk " +
                                                 std::string(output), 2);
@@ -101,13 +102,14 @@ int64_t VideoState::split() {
                         retval = chunkhelper::getChunkDuration(output);
                         if (retval < 0) {
                             reportError("Failed to create " +
-                                                        std::string(current));
+                                                        std::string(output));
                         } else {
                                 break;
                         }
                 }
         if (tries <= 0) {
             reportError("Failed to split the file.");
+            abort();
             return -1;
         }
 
@@ -140,6 +142,11 @@ void VideoState::abort() {
     DATA->chunks_returned.clear();
     DATA->chunks_to_send.clear();
     for (auto ti : chunks) {
+        DATA->periodic_listeners.removeIf(
+                    [&](Listener *l) {
+            return (l->toString().find("TI") !=
+                    std::string::npos);
+        });
         delete ti;
     }
     clearProgress();

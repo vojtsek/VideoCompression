@@ -28,6 +28,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
         ti = DATA->chunks_to_send.pop();
         // assure no duplicates
                 DATA->chunks_to_send.remove(ti);
+        // sending the file was not succesful
         // first time send -> to process
         if (!ti->addressed) {
             // obtain free neighbor
@@ -192,7 +193,6 @@ double chunkhelper::getChunkDuration(const string &fp) {
     std::string out, err, path = fp;
     std::string err_msg = "Error while getting video information";
     rapidjson::Document document;
-    std::stringstream ssd;
     double duration;
     // is file ok?
     if (OSHelper::checkFile(path) == -1){
@@ -201,10 +201,10 @@ double chunkhelper::getChunkDuration(const string &fp) {
     }
     // gain some info about the video
     if (OSHelper::runExternal(out, err, 5,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 5,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 3,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               path.c_str(), "-show_format",
-                              "-print_format", "json") < 0) {
+                               path.c_str(), "-show_format"
+                              ) < 0) {
         reportError("Error while getting video information.");
         return -1;
     }
@@ -214,20 +214,11 @@ double chunkhelper::getChunkDuration(const string &fp) {
     }
 
     // parse the JSON output and save
-    if(document.Parse(out.c_str()).HasParseError()) {
-        reportError("Parse error");
-        return -1;
-    }
-    if (!document.HasMember("format")) {
-        reportError(err_msg);
-        return -1;
-    }
-    if(!document["format"].HasMember("duration")) {
-        reportError(err_msg);
-        return -1;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["duration"].GetString());
+    // TODO: should use JSON
+    std::string dur_str(utilities::extract(
+                            out, "duration", 1).at(0));
+    //TODO: handle exception
+    std::stringstream ssd(dur_str.substr(dur_str.find("=") + 1));
     ssd >> duration;
     return duration;
 }

@@ -86,6 +86,11 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
+        // TODO: should process the split again?
+        if (ti->tries_sent > CHUNK_RESENDS) {
+            // it's "local" chunk, so it's essential
+            state->abort();
+        }
     try {
         if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -122,6 +127,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
+        ti->tries_sent++;
         if (sendFile(fd, ti->path) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
@@ -147,6 +153,7 @@ bool CmdReturnHost::execute(
         return false;
     }
 
+    ti->tries_sent++;
     if (sendFile(fd, ti->path) == -1) {
         reportError(ti->name + ": Failed to send.");
         chunkhelper::pushChunkSend(ti);

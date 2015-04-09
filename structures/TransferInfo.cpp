@@ -212,5 +212,5 @@ std::string TransferInfo::getCSV() {
 }
 
 std::string TransferInfo::toString() {
-    return (name + job_id);
+    return ("TI_" + name + job_id);
 }
