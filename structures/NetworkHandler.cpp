@@ -339,6 +339,7 @@ void NetworkHandler::collectNeighbors() {
             (!DATA->config.is_superpeer)) {
         reportDebug("Trying superpeer.", 4);
         if (networkHelper::getSuperPeerAddr(address) == -1) {
+            reportDebug("Failed to obtain superpeer address.", 2);
             return;
         }
         askForAddresses(address);

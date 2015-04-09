@@ -146,7 +146,7 @@ void initConfiguration(NetworkHandler &handler) {
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
-    DATA->cmds.emplace(DEFCMD, new CmdDef);
+    DATA->cmds.emplace(DEFCMD, new CmdDef(&state));
     DATA->cmds.emplace(SHOW, new CmdShow(&state, &net_handler));
     DATA->cmds.emplace(START, new CmdStart(&state));
     DATA->cmds.emplace(LOAD, new CmdLoad(&state));
@@ -187,8 +187,6 @@ void periodicActions(NetworkHandler &net_handler) {
                 "MAX_NEIGHBOR_COUNT")) {
         net_handler.obtainNeighbors();
     }
-    // ping the super peer
-    net_handler.contactSuperPeer();
     // invoke the listeners
     DATA->periodic_listeners.applyTo(
                 [&](Listener *l) { l->invoke(net_handler);  });
@@ -232,7 +230,7 @@ int main(int argc, char **argv) {
     wmove(win, 1, 0);
     wprintw(win, "Commands: %10s%10s%10s%10s%10s%10s", "F6 show",
             "F7 start", "F8 load", "F9 set",
-            "F11 Abort", "F12 quit");
+            "F10 Abort", "F12 quit");
     curs_set(0);
     wrefresh(win);
     refresh();
@@ -245,8 +243,11 @@ int main(int argc, char **argv) {
     } else {
         //TODO mechanism to fail outside of thread
         std::thread thr ([&]() {
-            // creates the socket, binds and starts listening
-            net_handler.start_listening(DATA->config.intValues.at("LISTENING_PORT"));
+                    // ping the super peer
+                    net_handler.contactSuperPeer();
+                    // creates the socket, binds and starts listening
+                    net_handler.start_listening(
+                                                DATA->config.intValues.at("LISTENING_PORT"));
         });
         thr.detach();
         std::thread thr2 ([&]() {

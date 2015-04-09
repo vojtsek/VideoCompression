@@ -79,9 +79,13 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
             return false;
         }
         // check whether it is not self
-        if (!networkHelper::cmpStorages(
-                communicating_addr, addr)) {
+        // also wants only unknown neighbors
+        if ((!networkHelper::cmpStorages(
+                communicating_addr, addr)) &&
+                (DATA->neighbors.getNeighborInfo(addr, true) == nullptr)) {
             handler->addNewNeighbor(true, addr);
+        } else {
+            reportError(MyAddr(addr).get());
         }
     }
         reportDebug("ASKHOST END", 5);

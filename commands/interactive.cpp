@@ -12,7 +12,7 @@ void CmdHelp::execute() {
 }
 
 void CmdDef::execute() {
-    reportSuccess("iiii");
+    utilities::printOverallState(state);
 }
 
 void CmdScrollDown::execute() {
@@ -26,8 +26,12 @@ void CmdScrollUp::execute() {
 }
 
 void CmdAbort::execute() {
-    reportError("Aborting...");
-    state->abort();
+    if (DATA->state.working) {
+            reportError("Aborting...");
+            state->abort();
+    } else {
+        reportStatus("No process to abort.");
+    }
 }
 
 bool CmdShow::execute(int64_t, sockaddr_storage &, void *) {
@@ -40,7 +44,7 @@ void CmdShow::execute() {
     if (what == "state") {
         utilities::printOverallState(state);
         // showing neighbors
-    } else if (what.find( "neighbors") != std::string::npos) {
+    } else if (what.find("neighbors") != std::string::npos) {
         DATA->neighbors.printNeighborsInfo();
         // showing file info
     } else if (what.find( "file") != std::string::npos){

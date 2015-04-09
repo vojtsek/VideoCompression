@@ -181,7 +181,7 @@ struct Data {
             { KEY_F(7), START },
             { KEY_F(8), LOAD },
             { KEY_F(9), SET },
-            { KEY_F(11), ABORT_C },
+            { KEY_F(10), ABORT_C },
             { KEY_UP, SCROLL_UP },
             { KEY_DOWN, SCROLL_DOWN }
         };

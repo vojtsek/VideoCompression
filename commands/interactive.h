@@ -8,7 +8,7 @@
  */
 class CmdDef: public Command {
 public:
-    CmdDef(): Command(nullptr) {}
+    CmdDef(VideoState *st): Command(st) {}
     virtual void execute();
 };
 
