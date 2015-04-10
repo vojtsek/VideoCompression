@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <curses.h>
+#include <signal.h>
 #include <deque>
 #include <thread>
 #include <string.h>
@@ -134,12 +135,17 @@ void reportDebug(const std::string &msg, int64_t lvl) {
     }
 }
 
+void resizeHandler(int) {
+    // TODO: handle resizing
+    refresh();
+}
+
 void initCurses() {
     initscr();
     // allows reading function keys
     keypad(stdscr, TRUE);
-    // resizing
-    signal (SIGWINCH, NULL);
+    // resizing; TODO: should not handle somehow
+    signal (SIGWINCH, &resizeHandler);
     // implicitly not show pressed keys
     noecho();
     // input immediately available

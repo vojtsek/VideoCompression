@@ -289,6 +289,12 @@ void NetworkHandler::addNewNeighbor(
             reportDebug("Already confirmed neighbor", 3);
             return;
         }
+
+    if (networkHelper::cmpStorages(
+             DATA->config.my_IP.getAddress(), addr)) {
+        reportDebug("I don't want myself", 2);
+        return;
+    }
     // handles potential
     if (potential) {
         potential_mtx.lock();

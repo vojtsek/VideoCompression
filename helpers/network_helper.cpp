@@ -151,6 +151,7 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
     // connect to it
     if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
         reportDebug("Error getting host address.", 2);
+        //TODO: set dirty flag??
         return -1;
     }
 
@@ -242,4 +243,8 @@ void networkHelper::changeAddressPort(
         ((struct sockaddr_in6 *) &addr)->sin6_port =
                 htons(port);
     }
+}
+
+void networkHelper::sigPipeHandler(int) {
+    reportError("SIGPIPE received!");
 }

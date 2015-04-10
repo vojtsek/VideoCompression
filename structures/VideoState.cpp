@@ -63,6 +63,8 @@ int64_t VideoState::split() {
         elapsed += retval;
         // possible situation - in the end actually
         if (elapsed > finfo.duration) {
+            // how many left to receive actually
+            DATA->state.to_recv = i;
             break;
         }
         snprintf(current, BUF_LENGTH, "%f", elapsed);
@@ -138,6 +140,7 @@ int64_t VideoState::split() {
 
 void VideoState::abort() {
     // TODO:revisit
+    reportError("ABORTING process.");
     auto chunks = DATA->chunks_to_send.getValues();
     DATA->chunks_returned.clear();
     DATA->chunks_to_send.clear();
@@ -308,8 +311,10 @@ void VideoState::resetFileInfo() {
 void VideoState::changeChunkSize(size_t nsize) {
     // set the size
     chunk_size = nsize;
-    // how many seconds *aproximately* takes one chunk of this size
+    // how many seconds *approximately* takes one chunk of this size
     secs_per_chunk = chunk_size  / finfo.bitrate;
     // new chunk count
     chunk_count = (((size_t) finfo.fsize) / chunk_size) + 1;
+    DATA->config.intValues.at("CHUNK_SIZE") = nsize;
+    utilities::printOverallState(this);
 }

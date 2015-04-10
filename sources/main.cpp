@@ -15,6 +15,7 @@
 #include <curses.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 
 using namespace std;
 using namespace utilities;
@@ -221,6 +222,12 @@ int main(int argc, char **argv) {
     }
     VideoState state(&net_handler);
 
+    // sets handle of SIGPIPE
+    struct sigaction sa;
+        memset(&sa, 0, sizeof(struct sigaction));
+        sa.sa_handler = &networkHelper::sigPipeHandler;
+        sigaction(SIGPIPE, &sa, NULL);
+
     // creates the commands structures
     initCommands(state, net_handler);
     // initialize the main window
@@ -241,7 +248,7 @@ int main(int argc, char **argv) {
         });
         thr.detach();
     } else {
-        //TODO mechanism to fail outside of thread
+        //TODO mechanism to propagate fail outside of thread
         std::thread thr ([&]() {
                     // ping the super peer
                     net_handler.contactSuperPeer();

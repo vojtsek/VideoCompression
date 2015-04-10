@@ -96,5 +96,12 @@ bool isFree();
  */
 void changeAddressPort(
         struct sockaddr_storage &storage, int64_t port);
+
+/*!
+ * \brief sigPipeHandler handles the SIGPIPE signal
+ * It is send when communicating peer terminates the connection.
+ */
+void sigPipeHandler(int);
+
 }
 #endif // NETWORK_HELPER_H
