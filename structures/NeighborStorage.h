@@ -24,6 +24,22 @@ class NeighborStorage
     std::vector<struct sockaddr_storage> potential_neighbors;
     //! mutex to synchronize access to neighbor list
     std::mutex n_mtx;
+
+    /*!
+     * \brief _contains determines whether neighbors list contains given address
+     * \param addr address to match
+     * \return true if neighbor is present
+     * Does not lock.
+     */
+    bool _contains(const struct sockaddr_storage &addr);
+
+    /*!
+     * \brief createHash gets string representation corresponding to given neighbor
+     * \param addr address of desired neighbor
+     * \return unique string id
+     */
+    std::string _createHash(const struct sockaddr_storage &addr);
+
 public:
 
     /*!
@@ -36,11 +52,10 @@ public:
      * \brief getNeighborInfo returns NeighborInfo of neighbor
      * with corresponding address
      * \param addr address to match
-     * \param lock whether lock or not
      * \return pointer to corresponding NeighborInfo, nullptr on failure
      */
     NeighborInfo *getNeighborInfo(
-            const struct sockaddr_storage &addr, bool lock);
+            const struct sockaddr_storage &addr);
 
     /*!
      * \brief getFreeNeighbor sorts the free neighbors
@@ -121,6 +136,15 @@ public:
      */
     void applyToNeighbors(
             std::function<void (std::pair<std::string, NeighborInfo *>)> func);
+
+        /*!
+     * \brief contains determines whether neighbors list contains given address
+     * \param addr address to match
+     * \return true if neighbor is present
+     * Just wrapper to synchronize _contains call
+     */
+    bool contains(const struct sockaddr_storage &addr);
+
     NeighborStorage();
 };
 

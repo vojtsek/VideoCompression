@@ -284,7 +284,11 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
 }
 
 void NetworkHandler::addNewNeighbor(
-        bool potential, struct sockaddr_storage &addr) {
+        bool potential,const struct sockaddr_storage &addr) {
+        if (DATA->neighbors.contains(addr)) {
+            reportDebug("Already confirmed neighbor", 3);
+            return;
+        }
     // handles potential
     if (potential) {
         potential_mtx.lock();
@@ -346,7 +350,7 @@ void NetworkHandler::collectNeighbors() {
     }
 }
 
-void NetworkHandler::askForAddresses(struct sockaddr_storage &addr) {
+void NetworkHandler::askForAddresses(const struct sockaddr_storage &addr) {
     int64_t sock;
     // tries connect
     if ((sock = checkNeighbor(addr)) == -1) {

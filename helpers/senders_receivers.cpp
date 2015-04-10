@@ -19,7 +19,7 @@ int64_t receiveInt64(int64_t fd, int64_t &i) {
     int64_t r;
     // should read exactly size of int
      if ((r = read(fd, &ir, sizeof (int64_t ))) != sizeof(int64_t )) {
-        reportDebug("Problem occured while accepting the data.", 1);
+        reportDebug("Problem occured while accepting int64.", 1);
         return (-1);
     }
      // to host byte order

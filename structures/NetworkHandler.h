@@ -126,7 +126,7 @@ struct NetworkHandler {
 		* Makes a connection and invokes the CmdAsk command,
 		* which should obtain new addresses.
 		*/
-    void askForAddresses(struct sockaddr_storage &addr);
+    void askForAddresses(const struct sockaddr_storage &addr);
 
 		/*!
 		* \brief addNewNeighbor adds new neighbors to the list
@@ -135,7 +135,7 @@ struct NetworkHandler {
 		* adds the given neighbor to a list in NeighborStorage
 		* or adds it to the potential neighbors.
 		*/
-    void addNewNeighbor(bool potential, struct sockaddr_storage &addr);
+    void addNewNeighbor(bool potential,const struct sockaddr_storage &addr);
 };
 
 #endif // NETWORKHANDLER_H

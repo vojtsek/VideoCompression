@@ -57,6 +57,7 @@ bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
 
 bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKHOST", 5);
+
     struct sockaddr_storage addr, communicating_addr;
     int64_t count;
     // get count of addresses to be received
@@ -81,8 +82,8 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
         // check whether it is not self
         // also wants only unknown neighbors
         if ((!networkHelper::cmpStorages(
-                communicating_addr, addr)) &&
-                (DATA->neighbors.getNeighborInfo(addr, true) == nullptr)) {
+                 communicating_addr, addr)) &&
+                (!DATA->neighbors.contains(addr))) {
             handler->addNewNeighbor(true, addr);
         } else {
             reportError(MyAddr(addr).get());
@@ -107,7 +108,8 @@ bool CmdConfirmPeer::execute(int64_t fd, struct sockaddr_storage &address, void 
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
-    // send my address & port
+    //TODO: receiVe port
+    // send my port
     if (sendInt64(fd,
                   DATA->config.getIntValue("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());

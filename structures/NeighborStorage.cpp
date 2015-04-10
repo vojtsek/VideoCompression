@@ -18,10 +18,11 @@ int64_t NeighborStorage::getNeighborCount() {
 int64_t NeighborStorage::removeNeighbor(
         const struct sockaddr_storage &addr) {
     // exists the neighbor?
-    if (getNeighborInfo(addr, true) == nullptr) {
+    n_mtx.lock();
+    if (!_contains(addr)) {
+        n_mtx.unlock();
         return 0;
     }
-    n_mtx.lock();
     // erase from free negihbors
     free_neighbors.erase(
         std::remove_if(free_neighbors.begin(), free_neighbors.end(),
@@ -105,12 +106,10 @@ void NeighborStorage::updateQuality(
 }
 
 NeighborInfo *NeighborStorage::getNeighborInfo(
-        const sockaddr_storage &addr, bool lock) {
+        const sockaddr_storage &addr) {
     NeighborInfo *res = nullptr;
     // should lock every time, except when setting neighbor free
-    if (lock) {
         n_mtx.lock();
-    }
     std::for_each (neighbors.begin(), neighbors.end(),
                    [&](std::pair<std::string, NeighborInfo *> entry) {
         // earns the NeighborInfo structure pointer
@@ -118,20 +117,17 @@ NeighborInfo *NeighborStorage::getNeighborInfo(
             res = entry.second;
         }
     });
-    if (lock) {
         n_mtx.unlock();
-    }
     return res;
 }
 
 void NeighborStorage::setNeighborFree(const struct sockaddr_storage &addr,
                                       bool free) {
+    NeighborInfo *ngh = getNeighborInfo(addr);
     n_mtx.lock();
-    // no locking
-    NeighborInfo *ngh = getNeighborInfo(addr, false);
 
     //the neighbor was removed propably
-    if (ngh == nullptr) {
+    if (!_contains(addr)) {
         n_mtx.unlock();
         return;
     }
@@ -229,15 +225,18 @@ void NeighborStorage::printNeighborsInfo() {
 void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     n_mtx.lock();
     // don't know this neighbor yet
-    if (!networkHelper::addrIn(addr, neighbors)) {
+    // also whether not self
+    if ((!_contains(addr)) &&
+         (!networkHelper::cmpStorages(
+              DATA->config.my_IP.getAddress(), addr))) {
         // initialize the neighbor
         NeighborInfo *ngh = new NeighborInfo(addr);
         ngh->intervals = DATA->config.getIntValue(
             "NEIGHBOR_CHECK_TIMEOUT");
 
         // add to the list
-        neighbors.insert(
-            std::make_pair(ngh->toString(), ngh));
+        neighbors.emplace(
+            ngh->toString(), ngh);
 
         // start checking
         DATA->periodic_listeners.push(ngh);
@@ -253,4 +252,27 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
         reportDebug("Already known neighbor.", 3);
     }
     n_mtx.unlock();
+}
+
+
+
+bool NeighborStorage::_contains(const sockaddr_storage &addr) {
+    if (neighbors.find(_createHash(addr)) ==
+            neighbors.end()) {
+        return false;
+    }
+    return true;
+}
+
+bool NeighborStorage::contains(const sockaddr_storage &addr) {
+    bool is_contained;
+    n_mtx.lock();
+    is_contained = _contains(addr);
+    n_mtx.unlock();
+    return is_contained;
+}
+
+std::string NeighborStorage::_createHash(
+        const sockaddr_storage &addr) {
+    return NeighborInfo(addr).toString();
 }
