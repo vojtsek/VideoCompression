@@ -10,10 +10,10 @@ class NeighborInfo;
 enum MSG_T { ERROR, PLAIN, SUCCESS, DEBUG };
 
 //! describes state of the node when communicating
-enum RESPONSE_T { ACK_FREE, ACK_BUSY, AWAITING, ABORT };
+enum class RESPONSE_T : int64_t { ACK_FREE, ACK_BUSY, AWAITING, ABORT };
 
 //! used to send commands over the network, saved in the map
-enum CMDS { TERM, DEFCMD, SHOW, START, LOAD,
+enum class CMDS : char { TERM, DEFCMD, SHOW, START, LOAD,
             SET, SET_CODEC, SET_SIZE, SET_FORMAT,
             SCROLL_UP, SCROLL_DOWN, ABORT_C,
           ASK_PEER, ASK_HOST,

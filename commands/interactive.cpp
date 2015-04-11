@@ -130,11 +130,11 @@ void CmdSet::execute() {
     // determines, which option to set
     std::string line = loadInput("set.history", "What option set?", false, false);
     if (line.find("codec") != std::string::npos)
-        DATA->cmds[SET_CODEC]->execute();
+        DATA->cmds[CMDS::SET_CODEC]->execute();
     else if (line.find("chunksize") != std::string::npos)
-        DATA->cmds[SET_SIZE]->execute();
+        DATA->cmds[CMDS::SET_SIZE]->execute();
     else if (line.find("format") != std::string::npos)
-        DATA->cmds[SET_FORMAT]->execute();
+        DATA->cmds[CMDS::SET_FORMAT]->execute();
     else
         reportStatus("Available options: 'codec'', 'chunksize', 'format'");
     state->printVideoState();

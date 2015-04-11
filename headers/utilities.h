@@ -77,6 +77,14 @@ namespace utilities
     std::string formatString(std::string str1, std::string str2);
 
     /*!
+     * \brief pathFromChunk creates path to file associated with the structure
+     * \param ti structure to obtain path from
+     * \param which what type of path
+     * \return created path
+     */
+    std::string pathFromChunk(TransferInfo *ti,
+                              const std::string &which);
+    /*!
      * \brief listCmds print the list of available commands
      */
     void listCmds();

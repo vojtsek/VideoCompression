@@ -57,6 +57,7 @@ int64_t NeighborStorage::removeNeighbor(
             }
             reportError("Removed neighbor: " + MyAddr(addr).get());
             n_mtx.unlock();
+            printNeighborsInfo();
             return 1;
         }
     }
@@ -272,6 +273,7 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
         reportDebug("Already known neighbor.", 3);
     }
     n_mtx.unlock();
+    printNeighborsInfo();
 }
 
 

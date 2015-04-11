@@ -30,7 +30,7 @@ struct FileInfo {
     //! file size in
     int64_t fsize;
     //! duration of the video
-    int64_t duration;
+    double duration;
     //! bitrate of the video
     int64_t bitrate;
 };

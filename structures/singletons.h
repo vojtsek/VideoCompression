@@ -177,13 +177,13 @@ struct Data {
      */
     static std::map<wchar_t, CMDS> getCmdMapping() {
         return {
-            { KEY_F(6), SHOW },
-            { KEY_F(7), START },
-            { KEY_F(8), LOAD },
-            { KEY_F(9), SET },
-            { KEY_F(10), ABORT_C },
-            { KEY_UP, SCROLL_UP },
-            { KEY_DOWN, SCROLL_DOWN }
+            { KEY_F(6), CMDS::SHOW },
+            { KEY_F(7), CMDS::START },
+            { KEY_F(8), CMDS::LOAD },
+            { KEY_F(9), CMDS::SET },
+            { KEY_F(10), CMDS::ABORT_C },
+            { KEY_UP, CMDS::SCROLL_UP },
+            { KEY_DOWN, CMDS::SCROLL_DOWN }
         };
     }
 

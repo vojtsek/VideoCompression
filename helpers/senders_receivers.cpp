@@ -31,7 +31,8 @@ int64_t receiveInt64(int64_t fd, int64_t &i) {
 
 int64_t sendResponse(int64_t fd, RESPONSE_T &resp) {
     // implicit conversion
-    if (sendInt64(fd, resp) == -1) {
+    int64_t r = (int64_t) resp;
+    if (sendInt64(fd, r) == -1) {
         return -1;
     }
     return 0;

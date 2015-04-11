@@ -22,8 +22,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                                     int64_t fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
-        int64_t fd = fdi,
-                port = DATA->config.getIntValue("LISTENNING_PORT");
+        int64_t fd = fdi;
         struct sockaddr_storage addr = addri;
         bool response;
 				// traverse the commands to be spawned on the peer side
@@ -41,7 +40,7 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
             }
             response = true;
 						// end communication
-            if (action == TERM) {
+            if (action == CMDS::TERM) {
                 sendSth(response, fd);
                 break;
             }
@@ -237,7 +236,7 @@ void NetworkHandler::contactSuperPeer() {
         return;
     }
     // ping the superpeer
-    spawnOutgoingConnection(addr, sock, { PING_PEER }, false, nullptr);
+    spawnOutgoingConnection(addr, sock, { CMDS::PING_PEER }, false, nullptr);
 }
 
 int64_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
@@ -278,7 +277,7 @@ void NetworkHandler::gatherNeighbors(int64_t TTL,
     requester_maddr->TTL = TTL;
 
     // spread the address among neighbors
-    spawnOutgoingConnection(ngh_addr, sock, { GATHER_PEER }, true,
+    spawnOutgoingConnection(ngh_addr, sock, { CMDS::GATHER_PEER }, true,
                 (void *) requester_maddr);
 }
 
@@ -287,7 +286,7 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
     if (sock == -1) {
         return;
     }
-    spawnOutgoingConnection(addr, sock, { PING_PEER, CONFIRM_PEER }, false, nullptr);
+    spawnOutgoingConnection(addr, sock, { CMDS::PING_PEER, CMDS::CONFIRM_PEER }, false, nullptr);
 }
 
 void NetworkHandler::addNewNeighbor(
@@ -370,5 +369,5 @@ void NetworkHandler::askForAddresses(const struct sockaddr_storage &addr) {
         reportDebug("Failed to establish connection.", 1);
         return;
     }
-    spawnOutgoingConnection(addr, sock, { PING_PEER, ASK_PEER }, false, nullptr);
+    spawnOutgoingConnection(addr, sock, { CMDS::PING_PEER, CMDS::ASK_PEER }, false, nullptr);
 }

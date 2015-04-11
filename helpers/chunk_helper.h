@@ -76,6 +76,17 @@ namespace chunkhelper {
     void trashChunk(TransferInfo *ti, bool del);
 
     /*!
+     * \brief createChunk creates specified chunk, from currently loaded video
+     * \param state pointer to corresponding video file
+     * \param ti structure associated with the chunk
+     * \param start how many seconds from start should the chunk begin
+     * \param time accurate length of the chunk
+     * \return actual time of the process
+     */
+    int64_t createChunk(VideoState *state,
+                     TransferInfo *ti,
+                     double start, double *time);
+    /*!
      * \brief getChunkDuration gets duration of the specified video file
      * \param path path to the chunk
      * \return duration in seconds

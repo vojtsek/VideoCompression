@@ -4,10 +4,10 @@
 using namespace utilities;
 
 bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
-    CMDS action = DISTRIBUTE_HOST;
+    CMDS action = CMDS::DISTRIBUTE_HOST;
     TransferInfo *ti(new TransferInfo);
     // is able to do some work?
-    RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -20,7 +20,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         }
 
         // node is busy
-        if (resp == ACK_BUSY) {
+        if (resp == RESPONSE_T::ACK_BUSY) {
             return true;
         }
 
@@ -33,7 +33,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
 
         // this chunk has been received already
         if (DATA->chunks_received.contains(ti->toString())) {
-            resp = ABORT;
+            resp = RESPONSE_T::ABORT;
             if (sendResponse(fd, resp) == -1) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 throw 1;
@@ -42,7 +42,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
             throw 1;
         }
 
-        resp = AWAITING;
+        resp = RESPONSE_T::AWAITING;
         if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
@@ -87,9 +87,14 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     TransferInfo *ti = (TransferInfo *) data;
 
         // TODO: should process the split again?
+    // too many failed send attempts -> invalid file
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
-            state->abort();
+            //state->abort();
+            double retval;
+            //TODO: ti should contain start time
+           // chunkhelper::createChunk(this,
+            //                    ti, elapsed, &retval);
             return false;
         }
     try {
@@ -99,7 +104,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         }
 
         // the peer became busy
-        if (resp == ACK_BUSY) {
+        if (resp == RESPONSE_T::ACK_BUSY) {
             reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
             DATA->neighbors.setNeighborFree(address, false);
             chunkhelper::pushChunkSend(ti);
@@ -117,7 +122,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         }
 
         // problems occured
-        if (resp == ABORT) {
+        if (resp == RESPONSE_T::ABORT) {
             reportDebug(
                 "This chunk is already being processed by this neighbor.", 2);
             ti->addressed = false;
@@ -128,6 +133,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
+        // too many tries should indicate invalid file
         ti->tries_sent++;
         if (sendFile(fd, ti->path) == -1) {
             reportError(ti->name + ": Failed to send.");
@@ -173,8 +179,9 @@ bool CmdReturnHost::execute(
 
 bool CmdReturnPeer::execute(
         int64_t fd, sockaddr_storage &address, void *) {
-    CMDS action = RETURN_HOST;
+    CMDS action = CMDS::RETURN_HOST;
     TransferInfo helper_ti, *ti = nullptr;
+    //TODO:checking send
     try {
         if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -233,7 +240,7 @@ bool CmdReturnPeer::execute(
 
 bool CmdGatherNeighborsPeer::execute(
         int64_t fd, sockaddr_storage &address, void *) {
-    CMDS action = GATHER_HOST;
+    CMDS action = CMDS::GATHER_HOST;
     MyAddr requester_maddr;
     struct sockaddr_storage requester_addr;
 
@@ -257,7 +264,7 @@ bool CmdGatherNeighborsPeer::execute(
             reportDebug("Failed to contact: " + requester_maddr.get(), 3);
         } else {
             handler->spawnOutgoingConnection(requester_addr, sock,
-            { PING_PEER }, true, nullptr);
+            { CMDS::PING_PEER }, true, nullptr);
         }
     }
 

@@ -44,12 +44,12 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                                     } else {
                                         // try to earn some neighbors
                                             net_handler->gatherNeighbors(
-                                                                                                            DATA->config.getIntValue("TTL"),
+                                                                                                                    DATA->config.getIntValue("TTL"),
                                                         maddr, neighbor_addr);
                                     }
                 // resend the chunk and wait a while, then try again
                 chunkhelper::pushChunkSend(ti);
-                sleep(5);
+                sleep(2);
                 continue;
             }
             // checks the neighbor and addresses the chunk
@@ -58,12 +58,9 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             // get host address which is being used for communication
             // on this address the chunk should be returned.
             ti->src_address= DATA->config.my_IP.getAddress();
-            networkHelper::changeAddressPort(ti->src_address,
-                              DATA->config.getIntValue("LISTENING_PORT"));
-
             // send the chunk to process
             net_handler->spawnOutgoingConnection(free_address, sock,
-            { PING_PEER, DISTRIBUTE_PEER }, true, (void *) ti);
+            { CMDS::PING_PEER, CMDS::DISTRIBUTE_PEER }, true, (void *) ti);
             // start checking the processing time
             // is done here, so in case of failure it is handled
             DATA->periodic_listeners.push(ti);
@@ -75,7 +72,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             // in case of returning chunk
             int64_t sock = net_handler->checkNeighbor(ti->src_address);
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
-            { PING_PEER, RETURN_PEER }, true, (void *) ti);
+            { CMDS::PING_PEER, CMDS::RETURN_PEER }, true, (void *) ti);
             // removed when sent
         }
     }
@@ -99,6 +96,7 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
     OSHelper::rmFile(DATA->config.getStringValue("WD") +
                      "/" + ti->job_id +
               "/" + ti->name + ti->original_extension);
+    DATA->neighbors.setNeighborFree(ti->address, true);
     // update quality
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
@@ -124,6 +122,72 @@ void chunkhelper::pushChunkSend(TransferInfo *ti) {
     if (OSHelper::getFileSize(ti->path) != -1) {
         DATA->chunks_to_send.push(ti);
     }
+}
+
+int64_t chunkhelper::createChunk(VideoState *state,
+        TransferInfo *ti,
+        double start, double *time) {
+    double retval;
+    int64_t tries = 3, split_duration;
+    std::string out, err;
+
+    reportError("HEE");
+    sleep(1);
+    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH],
+         current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
+
+    snprintf(chunk_duration, BUF_LENGTH, "%lu",
+             state->secs_per_chunk);
+    snprintf(current, BUF_LENGTH, "%f", start);
+    snprintf(output, BUF_LENGTH, "%s",
+             ti->path.c_str());
+    snprintf(cmd, BUF_LENGTH, "%s",
+             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
+
+        OSHelper::rmFile(ti->path);
+    while (tries-- > 0) {
+            reportDebug("Creating chunk " +
+                                    ti->path, 2);
+            // spawn the command
+            split_duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                                      out, err, state->secs_per_chunk * 2, cmd, 13, cmd,
+                                                            "-ss", current,
+                                                            "-i", state->finfo.fpath.c_str(),
+                                                            "-v", "quiet",
+                                                            "-c", "copy",
+                                                            "-t", chunk_duration,
+                                                            "-nostdin",
+                                                            output);
+            // failure
+            if ((err.find("Conversion failed") != std::string::npos) ||
+                             (split_duration < 0)) {
+                            snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %sn",
+                                                            DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
+                                            "-i", state->finfo.fpath.c_str(),
+                                            "-ss", current,
+                                            "-t", chunk_duration,
+                                            output);
+                            reportError(msg);
+                            break;
+                    }
+            // gets actual chunk duration
+            retval = chunkhelper::getChunkDuration(output);
+            if (retval < 0) {
+                reportError("Failed to create " +
+                             ti->path);
+            } else {
+                    break;
+            }
+    }
+        if (tries <= 0) {
+            reportError("Failed to split the file.");
+            state->abort();
+            return -1;
+        }
+        ti->duration = retval;
+        *time = retval;
+        ti->chunk_size = OSHelper::getFileSize(ti->path);
+    return split_duration;
 }
 
 int64_t chunkhelper::encodeChunk(TransferInfo *ti) {

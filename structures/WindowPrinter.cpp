@@ -44,7 +44,9 @@ void WindowPrinter::scrollQueue(bool up) {
 }
 
 void WindowPrinter::clear() {
+    DATA->m_data.report_mtx.lock();
     q.clear();
+    DATA->m_data.report_mtx.unlock();
 }
 
 void WindowPrinter::updateAt(int64_t idx, std::string value, MSG_T type) {

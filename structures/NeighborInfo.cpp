@@ -31,7 +31,7 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
         }
         // ping neighbor, so info is updated
         net_handler.spawnOutgoingConnection(
-                    address, sock, { PING_PEER }, true, nullptr);
+                    address, sock, { CMDS::PING_PEER }, true, nullptr);
     }
 }
 

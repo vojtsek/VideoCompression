@@ -3,7 +3,7 @@
 
 bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("ASKPEER", 5);
-    CMDS action = ASK_HOST;
+    CMDS action = CMDS::ASK_HOST;
     int64_t neighborCount = DATA->neighbors.getNeighborCount();
     // count to be sent, should be sufficient if possible
     int64_t count = (neighborCount < DATA->config.getIntValue(
@@ -90,9 +90,9 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
 
 bool CmdConfirmPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("CONFPEER " + MyAddr(address).get() , 5);
-    CMDS action = CONFIRM_HOST;
+    CMDS action = CMDS::CONFIRM_HOST;
     // is it able to work?
-    RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -125,7 +125,7 @@ bool CmdConfirmHost::execute(int64_t fd,
     }
 
     // not valid response
-    if (resp != ACK_FREE && resp != ACK_BUSY) {
+    if (resp != RESPONSE_T::ACK_FREE && resp != RESPONSE_T::ACK_BUSY) {
         reportDebug("Failed to confirm neighbor " + MyAddr(address).get(), 1);
         return false;
     }
@@ -139,7 +139,7 @@ bool CmdConfirmHost::execute(int64_t fd,
 
     // add new neighbor
     handler->addNewNeighbor(false, address);
-    if (resp != ACK_FREE) {
+    if (resp != RESPONSE_T::ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, false);
     } else {
         DATA->neighbors.setNeighborFree(address, true);
@@ -152,7 +152,7 @@ bool CmdConfirmHost::execute(int64_t fd,
 bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PONG", 5);
     // is able to do some work?
-    RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -166,14 +166,14 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
     }
 
     // invalid response
-    if (resp != ACK_FREE && resp != ACK_BUSY) {
+    if (resp != RESPONSE_T::ACK_FREE && resp != RESPONSE_T::ACK_BUSY) {
         reportError("Failed to confirm neighbor " + MyAddr(address).get());
         DATA->neighbors.removeNeighbor(address);
         return false;
     }
 
     // adjust neighbor state
-    if (resp != ACK_FREE) {
+    if (resp != RESPONSE_T::ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, false);
     } else {
         DATA->neighbors.setNeighborFree(address, true);
@@ -190,10 +190,10 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 
 bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PING " + MyAddr(address).get() , 5);
-    CMDS action = PING_HOST;
+    CMDS action = CMDS::PING_HOST;
     int64_t peer_port;
     // is able to do some work?
-    RESPONSE_T resp = networkHelper::isFree() ? ACK_FREE : ACK_BUSY;
+    RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
     RESPONSE_T neighbor_state;
 
     if (sendCmd(fd, action) == -1) {
@@ -228,7 +228,7 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
     }
 
     // adjust state
-    if (neighbor_state == ACK_FREE) {
+    if (neighbor_state == RESPONSE_T::ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, true);
     } else {
         DATA->neighbors.setNeighborFree(address, false);
@@ -238,8 +238,8 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 
 bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("GOODBYE PEER", 5);
-    CMDS action = GOODBYE_HOST;
-    RESPONSE_T resp = ACK_FREE;
+    CMDS action = CMDS::GOODBYE_HOST;
+    RESPONSE_T resp = RESPONSE_T::ACK_FREE;
     int64_t port;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -294,7 +294,7 @@ void CmdSayGoodbye::execute() {
         }
         reportError("Saying goodbye to: " + MyAddr(address).get());
         handler->spawnOutgoingConnection(address,
-                                         sock, { GOODBYE_PEER }, true, nullptr);
+                                         sock, { CMDS::GOODBYE_PEER }, true, nullptr);
     }
 
     // informs also the superpeer
@@ -305,5 +305,5 @@ void CmdSayGoodbye::execute() {
 
    sock = handler->checkNeighbor(address);
     handler->spawnOutgoingConnection(address,
-                                     sock, { GOODBYE_PEER }, true, nullptr);
+                                     sock, { CMDS::GOODBYE_PEER }, true, nullptr);
 }

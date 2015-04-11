@@ -143,36 +143,37 @@ void initConfiguration(NetworkHandler &handler) {
     networkHelper::getMyAddress(super_addr,
                 addr, &handler);
     DATA->config.my_IP = MyAddr(addr);
-    DATA->config.my_IP.print();
+     DATA->config.my_IP.port =
+             DATA->config.getIntValue("LISTENING_PORT");
 }
 
 void initCommands(VideoState &state, NetworkHandler &net_handler) {
-    DATA->cmds.emplace(DEFCMD, new CmdDef(&state));
-    DATA->cmds.emplace(SHOW, new CmdShow(&state, &net_handler));
-    DATA->cmds.emplace(START, new CmdStart(&state));
-    DATA->cmds.emplace(LOAD, new CmdLoad(&state));
-    DATA->cmds.emplace(SET, new CmdSet(&state));
-    DATA->cmds.emplace(ABORT_C, new CmdAbort(&state));
-    DATA->cmds.emplace(SET_CODEC, new CmdSetCodec(&state));
-    DATA->cmds.emplace(SET_SIZE, new CmdSetChSize(&state));
-    DATA->cmds.emplace(SET_FORMAT, new CmdSetFormat(&state));
-    DATA->cmds.emplace(SCROLL_DOWN, new CmdScrollDown(&state));
-    DATA->cmds.emplace(SCROLL_UP, new CmdScrollUp(&state));
-    DATA->net_cmds.emplace(CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler));
-    DATA->net_cmds.emplace(CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler));
-    DATA->net_cmds.emplace(ASK_PEER, new CmdAskPeer(&state, &net_handler));
-    DATA->net_cmds.emplace(ASK_HOST, new CmdAskHost(&state, &net_handler));
-    DATA->net_cmds.emplace(PING_PEER, new CmdPingPeer(&state, &net_handler));
-    DATA->net_cmds.emplace(PING_HOST, new CmdPingHost(&state, &net_handler));
-    DATA->net_cmds.emplace(DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler));
-    DATA->net_cmds.emplace(DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler));
-    DATA->net_cmds.emplace(GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler));
-    DATA->net_cmds.emplace(GATHER_HOST, new CmdGatherNeighborsHost(&state, &net_handler));
-    DATA->net_cmds.emplace(RETURN_PEER, new CmdReturnPeer(&state, &net_handler));
-    DATA->net_cmds.emplace(RETURN_HOST, new CmdReturnHost(&state, &net_handler));
-    DATA->net_cmds.emplace(GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler));
-    DATA->net_cmds.emplace(GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler));
-    DATA->net_cmds.emplace(SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
+    DATA->cmds.emplace(CMDS::DEFCMD, new CmdDef(&state));
+    DATA->cmds.emplace(CMDS::SHOW, new CmdShow(&state, &net_handler));
+    DATA->cmds.emplace(CMDS::START, new CmdStart(&state));
+    DATA->cmds.emplace(CMDS::LOAD, new CmdLoad(&state));
+    DATA->cmds.emplace(CMDS::SET, new CmdSet(&state));
+    DATA->cmds.emplace(CMDS::ABORT_C, new CmdAbort(&state));
+    DATA->cmds.emplace(CMDS::SET_CODEC, new CmdSetCodec(&state));
+    DATA->cmds.emplace(CMDS::SET_SIZE, new CmdSetChSize(&state));
+    DATA->cmds.emplace(CMDS::SET_FORMAT, new CmdSetFormat(&state));
+    DATA->cmds.emplace(CMDS::SCROLL_DOWN, new CmdScrollDown(&state));
+    DATA->cmds.emplace(CMDS::SCROLL_UP, new CmdScrollUp(&state));
+    DATA->net_cmds.emplace(CMDS::CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::CONFIRM_PEER, new CmdConfirmPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::ASK_PEER, new CmdAskPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::ASK_HOST, new CmdAskHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::PING_PEER, new CmdPingPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::PING_HOST, new CmdPingHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::GATHER_HOST, new CmdGatherNeighborsHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::RETURN_PEER, new CmdReturnPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::RETURN_HOST, new CmdReturnHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
 }
 
 void cleanCommands(cmd_storage_t &cmds) {
@@ -283,7 +284,7 @@ int main(int argc, char **argv) {
        printw(e.what());
     }
     // notify neighbors
-    DATA->net_cmds.at(SAY_GOODBYE)->execute();
+    DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
     // clear memory
     cleanCommands(DATA->cmds);
     // handles curses end

@@ -65,7 +65,7 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
         try {
             cmds.at(Data::getCmdMapping().at(c))->execute();
         } catch (out_of_range) {
-            cmds[DEFCMD]->execute();
+            cmds[CMDS::DEFCMD]->execute();
         }
     });
     thr.detach();
@@ -175,7 +175,7 @@ std::string utilities::formatString(
 }
 
 std::string utilities::pathFromChunk(
-        TransferInfo *ti, string &which) {
+        TransferInfo *ti,const string &which) {
     return std::string(DATA->config.getStringValue("WD") + "/" +
                      ti->job_id + "/" + which + "/" + ti->name
                 );

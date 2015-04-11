@@ -40,6 +40,12 @@ class NeighborStorage
      */
     std::string _createHash(const struct sockaddr_storage &addr);
 
+    /*!
+     * \brief trashNeighborChunks gets rid of chunks associated with given neighbor
+     * \param addr address of neighbor whose chunks should be removed
+     */
+    void trashNeighborChunks(const struct sockaddr_storage &addr);
+
 public:
 
     /*!

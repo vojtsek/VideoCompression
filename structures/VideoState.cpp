@@ -9,26 +9,24 @@ int64_t VideoState::split() {
     // sets busy state
     DATA->state.working = true;
     processed_chunks = 0;
-    std::string out, err;
     double sum = 0.0, retval = 0.0, elapsed = 0.0;
-    int64_t tries = 3, duration;
-
-    char chunk_duration[BUF_LENGTH], output[BUF_LENGTH], chunk_id[BUF_LENGTH], current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
-    char dir_name[BUF_LENGTH];
+    int64_t duration;
 
     // job with timestamp
-    snprintf(dir_name, BUF_LENGTH, "job_%s",
-            utilities::getTimestamp().c_str());
-    job_id = std::string(dir_name);
+    job_id = "job_" + utilities::getTimestamp();
     // absolute path
-    std::string path(dir_location + std::string("/") + job_id);
+    std::string path(DATA->config.getStringValue("WD")
+                     + std::string("/") + job_id);
+    std::string chunk_name;
+    char chunk_id[BUF_LENGTH];
+
     if (OSHelper::prepareDir(path, false) == -1) {
         reportError("Failed to create the job directory.");
         return -1;
     }
 
     // compute how long one chunk takes, format
-    snprintf(chunk_duration, BUF_LENGTH, "%d", secs_per_chunk);
+
 
     reportStatus("Splitting file: " + finfo.fpath);
     // how many left to receive
@@ -61,68 +59,25 @@ int64_t VideoState::split() {
         printProgress(percent);
         // add the duration of the last chunk
         elapsed += retval;
+        snprintf(chunk_id, BUF_LENGTH, "%03lu_splitted", i);
+        chunk_name = std::string(chunk_id);
         // possible situation - in the end actually
         if (elapsed > finfo.duration) {
             // how many left to receive actually
             DATA->state.to_recv = i;
             break;
         }
-        snprintf(current, BUF_LENGTH, "%f", elapsed);
-        snprintf(output, BUF_LENGTH, "%s/%s/%03lu_splitted%s",
-                 dir_location.c_str(), job_id.c_str(), i, finfo.extension.c_str());
-        snprintf(chunk_id, BUF_LENGTH, "%03lu_splitted", i);
-        snprintf(cmd, BUF_LENGTH, "%s",
-                 DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
-        OSHelper::rmFile(output);
-        // 3 tries for each chunk
-        tries = 3;
-                while (tries-- > 0) {
-                        reportDebug("Creating chunk " +
-                                                std::string(output), 2);
-                        // spawn the command
-                        duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                                                                                                                                        out, err, secs_per_chunk * 2, cmd, 13, cmd,
-                                                                        "-ss", current,
-                                                                        "-i", finfo.fpath.c_str(),
-                                                                        "-v", "quiet",
-                                                                        "-c", "copy",
-                                                                        "-t", chunk_duration,
-                                                                        "-nostdin",
-                                                                        output);
-                        // failure
-                        if ((err.find("Conversion failed") != std::string::npos) ||
-                                         (duration < 0)) {
-                                        snprintf(msg, BUF_LENGTH, "%s %s %s %s %s %s %s %sn",
-                                                                        DATA->config.getStringValue("FFMPEG_LOCATION").c_str(),
-                                                        "-i", finfo.fpath.c_str(),
-                                                        "-ss", current,
-                                                        "-t", chunk_duration,
-                                                        output);
-                                        reportError(msg);
-                                        break;
-                                }
-                        retval = chunkhelper::getChunkDuration(output);
-                        if (retval < 0) {
-                            reportError("Failed to create " +
-                                                        std::string(output));
-                        } else {
-                                break;
-                        }
-                }
-        if (tries <= 0) {
-            reportError("Failed to split the file.");
-            abort();
-            return -1;
-        }
 
-        sum += duration;
         // creates new TransferInfo structure
-        TransferInfo *ti = new TransferInfo(OSHelper::getFileSize(output),
-                                            job_id, chunk_id, finfo.extension, o_format,
-                                            std::string(output), o_codec);
-        ti->path = DATA->config.getStringValue("WD") + "/" + ti->job_id +
-                "/" + ti->name + ti->original_extension;
-        ti->duration = retval;
+        TransferInfo *ti = new TransferInfo(0, job_id, chunk_name,
+                                            finfo.extension, o_format,
+                                            path + "/" + chunk_name + finfo.extension,
+                                            o_codec);
+
+        duration = chunkhelper::createChunk(this,
+                    ti, elapsed, &retval);
+        //TODO: check
+        sum += duration;
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state
