@@ -1,6 +1,8 @@
 #include "structures/NeighborStorage.h"
 #include "structures/TransferInfo.h"
 #include "helpers/network_helper.h"
+#include "helpers/chunk_helper.h"
+#include "helpers/OShelper.h"
 
 #define SYNCHRONIZED_SECTION(CODE) n_mtx.lock(); CODE n_mtx.unlock();
 NeighborStorage::NeighborStorage()
@@ -33,12 +35,14 @@ int64_t NeighborStorage::removeNeighbor(
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (networkHelper::cmpStorages(it->second->address, addr)) {
             // removes if there are some chunks addressed to this neighbor
+            // TODO: meaningful?
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
                 return networkHelper::cmpStorages(
                             ti->address, it->second->address);
             });
 
+            trashNeighborChunks(addr);
             // remove from periodic listeners, checks no longer needed
             DATA->periodic_listeners.removeIf(
                         [&](Listener *listener) -> bool {
@@ -203,6 +207,22 @@ std::vector<struct sockaddr_storage>
             }
         })
     return result;
+}
+
+void NeighborStorage::trashNeighborChunks(
+        const sockaddr_storage &addr) {
+    for (auto &ti :
+         DATA->chunks_received.getValues()) {
+        // corresponding chunk
+        if (networkHelper::cmpStorages(
+                    ti->address, addr)) {
+                    OSHelper::rmFile(utilities::pathFromChunk(
+                             ti, "to_process"));
+                    OSHelper::rmFile(utilities::pathFromChunk(
+                             ti, "processed"));
+                    chunkhelper::trashChunk(ti, true);
+        }
+    }
 }
 
 void NeighborStorage::printNeighborsInfo() {

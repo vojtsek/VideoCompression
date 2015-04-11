@@ -167,10 +167,18 @@ vector<string> utilities::extract(const std::string text, const std::string from
     return result;
 }
 
-std::string utilities::formatString(std::string str1, std::string str2) {
+std::string utilities::formatString(
+        std::string str1, std::string str2) {
     char value[BUF_LENGTH];
     snprintf(value, BUF_LENGTH, "%20s%35s", str1.c_str(), str2.c_str());
     return std::string(value);
+}
+
+std::string utilities::pathFromChunk(
+        TransferInfo *ti, string &which) {
+    return std::string(DATA->config.getStringValue("WD") + "/" +
+                     ti->job_id + "/" + which + "/" + ti->name
+                );
 }
 
 std::string utilities::getTimestamp() {

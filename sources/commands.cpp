@@ -48,6 +48,10 @@ int64_t NetworkCommand::connectPeer(struct sockaddr_storage *addr) {
         return(-1);
     }
     MyAddr mad(*addr);
+    if (sendInt64(sock, DATA->config.getIntValue(
+                      "LISTENING_PORT")) == -1) {
+        reportDebug("Failed to send port.", 2);
+    }
     reportDebug("Connected to " + mad.get(), 5);
     return (sock);
 }

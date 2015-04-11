@@ -7,7 +7,8 @@ int64_t sendInt64(int64_t fd, int64_t i) {
     i = htonl(i);
     int64_t w;
     // check the size written
-    if ((w = write(fd, &i, sizeof (int64_t ))) != sizeof(int64_t )) {
+    if ((w = write(fd, &i, sizeof (int64_t ))) !=
+            sizeof(int64_t )) {
         reportDebug("Problem occured while sending the data.", 1);
         return -1;
     }
@@ -18,7 +19,8 @@ int64_t receiveInt64(int64_t fd, int64_t &i) {
     int64_t ir;
     int64_t r;
     // should read exactly size of int
-     if ((r = read(fd, &ir, sizeof (int64_t ))) != sizeof(int64_t )) {
+     if ((r = read(fd, &ir, sizeof (int64_t ))) !=
+             sizeof(int64_t )) {
         reportDebug("Problem occured while accepting int64.", 1);
         return (-1);
     }

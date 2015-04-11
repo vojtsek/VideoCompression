@@ -22,7 +22,8 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
                                     int64_t fdi, vector<CMDS> cmds, bool async, void *data) {
     std::thread handling_thread([=]() {
         CMDS action;
-        int64_t fd = fdi;
+        int64_t fd = fdi,
+                port = DATA->config.getIntValue("LISTENNING_PORT");
         struct sockaddr_storage addr = addri;
         bool response;
 				// traverse the commands to be spawned on the peer side
@@ -99,9 +100,14 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
     std::thread handling_thread([=]() {
         CMDS action;
         ssize_t r;
-        int64_t fd = fdi;
+        int64_t fd = fdi, port;
         struct sockaddr_storage addr = addri;
         bool response;
+        if (receiveInt64(fd, port) == -1) {
+            reportDebug("Failed to receive port.", 2);
+        } else {
+            networkHelper::changeAddressPort(
+                        addr, port);
         // read action to process
         while ((r = read(fd, &action, sizeof (action)))
                == sizeof(action)) {
@@ -142,6 +148,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                        + std::string(e.what()), 1);
            break;
            }
+        }
         }
         close(fd);
     });
