@@ -107,6 +107,7 @@ void VideoState::abort() {
     DATA->chunks_returned.clear();
     DATA->chunks_to_send.clear();
     for (auto ti : chunks) {
+        // remove waiting chunks
         DATA->periodic_listeners.removeIf(
                     [&](Listener *l) {
             return (l->toString().find("TI") !=

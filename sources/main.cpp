@@ -183,7 +183,7 @@ void cleanCommands(cmd_storage_t &cmds) {
     }
 }
 
-void periodicActions(NetworkHandler &net_handler) {
+void periodicActions(NetworkHandler &net_handler, VideoState *state) {
     // check whether should gain some neighbors
     if (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
                 "MAX_NEIGHBOR_COUNT")) {
@@ -194,6 +194,7 @@ void periodicActions(NetworkHandler &net_handler) {
                 [&](Listener *l) { l->invoke(net_handler);  });
     // in case that some neighbors were not able to check
     DATA->neighbors.removeDirty();
+    utilities::printOverallState(state);
 }
 
 int main(int argc, char **argv) {
@@ -261,7 +262,7 @@ int main(int argc, char **argv) {
         std::thread thr2 ([&]() {
             // invokes some action periodically
             while (1) {
-                periodicActions(net_handler);
+                periodicActions(net_handler, &state);
                 sleep(TICK_DURATION);
             }
         });

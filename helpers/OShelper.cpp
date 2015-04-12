@@ -201,6 +201,9 @@ int64_t OSHelper::runExternal(
             reportError("KILLED");
             return -1;
         }
+        if (infop.si_status != 0) {
+            return -1;
+        }
         // reads the output from the pipe to the buffer
         // TODO: should not go output to the file?
         while(read(pd_o[0], bo, 1) == 1){

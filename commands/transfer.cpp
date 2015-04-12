@@ -161,6 +161,7 @@ bool CmdReturnHost::execute(
     // pointer to encoded file is passed
     TransferInfo *ti = (TransferInfo *) data;
     if (ti->tries_sent > CHUNK_RESENDS) {
+        chunkhelper::trashChunk(ti, true);
         return false;
         }
         if (ti->send(fd) == -1) {

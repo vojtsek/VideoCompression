@@ -23,7 +23,10 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 #define TICK_DURATION 5
+// how many times to try to send the chunk
 #define CHUNK_RESENDS 5
+// how many repetitions of encoding/splitting
+#define TRIES_FOR_CHUNK 3
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

@@ -71,6 +71,11 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
         } else {
             // in case of returning chunk
             int64_t sock = net_handler->checkNeighbor(ti->src_address);
+            if (sock == -1) {
+                OSHelper::rmFile(ti->path);
+                chunkhelper::trashChunk(ti, true);
+                continue;
+            }
             net_handler->spawnOutgoingConnection(ti->src_address, sock,
             { CMDS::PING_PEER, CMDS::RETURN_PEER }, true, (void *) ti);
             // removed when sent
@@ -83,6 +88,7 @@ void chunkhelper::chunkProcessRoutine() {
     while (1) {
         ti = DATA->chunks_to_encode.pop();
         chunkhelper::encodeChunk(ti);
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
     }
 }
 
@@ -126,7 +132,7 @@ int64_t chunkhelper::createChunk(VideoState *state,
         TransferInfo *ti,
         double *time) {
     double retval;
-    int64_t tries = 3, split_duration;
+    int64_t tries = TRIES_FOR_CHUNK, split_duration;
     std::string out, err;
 
     char chunk_duration[BUF_LENGTH], output[BUF_LENGTH],
@@ -190,15 +196,15 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
     res_dir = DATA->config.getStringValue("WD") + "/processed/" + ti->job_id;
-    int64_t duration;
-    std::string file_in;
-    try {
+    int64_t duration, tries = TRIES_FOR_CHUNK;
+    std::string file_in, file_out;
+    while (tries-- > 0) {
             if (OSHelper::prepareDir(res_dir, false) == -1) {
                     reportDebug("Failed to create job dir.", 2);
-                    throw 1;
+                    return -1;
             }
             // construct the paths
-            std::string file_out = res_dir + "/" + ti->name + ti->desired_extension;
+            file_out = ti->path;
             file_in = DATA->config.getStringValue("WD") + "/to_process/" +
                             ti->job_id + "/" + ti->name + ti->original_extension;
             reportDebug("Encoding: " + file_in, 2);
@@ -208,7 +214,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             // ensures, the desired file doesn't exist yet
             if (OSHelper::rmFile(file_out) == -1) {
                     reportDebug("OS error while encoding " + ti->name, 2);
-                    throw 1;
+                    return -1;
             }
 
             // spawns the encoding process
@@ -229,21 +235,25 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                     os << err << std::endl;
                     os.flush();
                     os.close();
-                    // remove from structures and delete
-                    chunkhelper::trashChunk(ti, true);
-                    std::atomic_fetch_add(&DATA->state.can_accept, 1);
-                    throw 1;
+                    // another try
+                    continue;
             }
-    } catch (int) {
-        return -1;
+            // succcess
+            break;
     }
 
+    // failed to encode
+    if (tries <= 0) {
+        chunkhelper::trashChunk(ti, true);
+        OSHelper::rmFile(file_in);
+        OSHelper::rmFile(file_out);
+        return -1;
+    }
     reportDebug("Chunk " + ti->name + " encoded.", 2);
     ti->encoding_time = duration;
     // removal of input file - no longer needed
     OSHelper::rmFile(file_in);
     // can accept one more chunk no
-    std::atomic_fetch_add(&DATA->state.can_accept, 1);
     // will be send
     chunkhelper::pushChunkSend(ti);
     return 0;
@@ -287,6 +297,7 @@ void chunkhelper::trashChunk(TransferInfo *ti, bool del) {
     if (ti == nullptr) {
         return;
     }
+    // not removing from returned chunks
     DATA->periodic_listeners.remove(ti);
     DATA->chunks_received.remove(ti);
     DATA->chunks_to_encode.remove(ti);
