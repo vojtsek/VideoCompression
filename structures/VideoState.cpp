@@ -64,6 +64,7 @@ int64_t VideoState::split() {
         // possible situation - in the end actually
         if (elapsed > finfo.duration) {
             // how many left to receive actually
+            this->chunk_count = i;
             DATA->state.to_recv = i;
             break;
         }
@@ -74,9 +75,15 @@ int64_t VideoState::split() {
                                             path + "/" + chunk_name + finfo.extension,
                                             o_codec);
 
+        // creates chunk and measures time
+        ti->start = elapsed;
         duration = chunkhelper::createChunk(this,
-                    ti, elapsed, &retval);
-        //TODO: check
+                    ti, &retval);
+        if (duration < 0) {
+            reportError("Failed to create " + ti->name);
+            abort();
+            return -1;
+        }
         sum += duration;
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);

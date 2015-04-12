@@ -154,7 +154,7 @@ int64_t OSHelper::runExternal(
         whole_command += " ";
         whole_command += arg;
     }
-        reportDebug("Spawning '" + whole_command + "'", 3);
+        reportDebug("Spawning '" + whole_command + "'", 2);
         args[j] = nullptr;
         va_end(arg_ptr);
 

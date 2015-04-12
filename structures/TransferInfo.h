@@ -31,6 +31,8 @@ struct TransferInfo : public Listener, Sendable {
     int64_t duration;
     //! how many times failed to send, for local purposes only(not transfered)
     int64_t tries_sent;
+    //! start offset
+    double start;
     //! address assigned when distributing
     struct sockaddr_storage address;
     //! address of the source node, should be returned to
@@ -103,31 +105,29 @@ struct TransferInfo : public Listener, Sendable {
      */
     void print();
 
-    TransferInfo(): addressed(false), tries_sent(0) {}
+    /*!
+     * \brief init set default values to fields
+     */
+    void init(int64_t size,
+              std::string ji, std::string n, std::string oe, std::string de,
+              std::string p, std::string oc);
+
+    TransferInfo(): addressed(false) {
+        init(0, "", "", "", "", "", "");
+    }
 
     TransferInfo(struct sockaddr_storage addr, int64_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
-                 std::string p, std::string oc): addressed(true), chunk_size(size),
-        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
-        tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
-        sending_time(0), receiving_time(0),
-        sent_times(0), encoding_time(0),
-        duration(0), tries_sent(0),
-        job_id(ji), name(n), original_extension(oe), desired_extension(de),
-        path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {
+                 std::string p, std::string oc): addressed(true) {
+        init(size, ji, n, oe, de, p, oc);
         src_address = addr;
     }
 
     TransferInfo(int64_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
-                 std::string p, std::string oc): addressed(false), chunk_size(size),
-        time_left(DATA->config.intValues.at("COMPUTATION_TIMEOUT")),
-        tries_left(DATA->config.intValues.at("TRIES_BEFORE_RESEND")),
-        sending_time(0), receiving_time(0),
-        sent_times(0), encoding_time(0),
-        duration(0), tries_sent(0),
-        job_id(ji), name(n), original_extension(oe), desired_extension(de),
-        path(p), output_codec(oc), timestamp(utilities::getTimestamp()) {}
+                 std::string p, std::string oc): addressed(false) {
+        init(size, ji, n, oe, de, p, oc);
+    }
 
     virtual ~TransferInfo() {}
 };

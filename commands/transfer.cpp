@@ -86,15 +86,21 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
-        // TODO: should process the split again?
     // too many failed send attempts -> invalid file
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
-            //state->abort();
+            OSHelper::rmFile(ti->path);
+            reportDebug("Reencoding " + ti->name, 2);
             double retval;
-            //TODO: ti should contain start time
-           // chunkhelper::createChunk(this,
-            //                    ti, elapsed, &retval);
+            // reencode the chunk
+            chunkhelper::createChunk(state, ti, &retval);
+            if (retval < 0) {
+                reportError("Failed to reencode " + ti->name);
+                state->abort();
+            }
+            // reset the counter
+            ti->tries_sent = 0;
+            chunkhelper::pushChunkSend(ti);
             return false;
         }
     try {

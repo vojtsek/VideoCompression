@@ -187,6 +187,28 @@ int64_t TransferInfo::receive(int64_t fd) {
     return 0;
 }
 
+void TransferInfo::init(int64_t size,
+                        std::string ji, std::string n, std::string oe, std::string de,
+                        std::string p, std::string oc) {
+    time_left = DATA->config.intValues.at("COMPUTATION_TIMEOUT");
+    tries_left = DATA->config.intValues.at("TRIES_BEFORE_RESEND");
+    sending_time = 0;
+    receiving_time = 0;
+    sent_times = 0;
+    encoding_time = 0;
+    duration = 0;
+    tries_sent = 0;
+    chunk_size = size;
+    start = 0.0;
+    job_id = ji;
+    name = n;
+    original_extension = oe;
+    desired_extension = de;
+    path = p;
+    output_codec = oc;
+    timestamp = utilities::getTimestamp();
+}
+
 std::string TransferInfo::getInfo() {
     std::stringstream ss;
     ss << "----------------------------------" << std::endl;

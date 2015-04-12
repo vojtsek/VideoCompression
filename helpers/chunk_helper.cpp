@@ -119,26 +119,22 @@ void chunkhelper::pushChunkProcess(TransferInfo *ti) {
 }
 
 void chunkhelper::pushChunkSend(TransferInfo *ti) {
-    if (OSHelper::getFileSize(ti->path) != -1) {
-        DATA->chunks_to_send.push(ti);
-    }
+            DATA->chunks_to_send.push(ti);
 }
 
 int64_t chunkhelper::createChunk(VideoState *state,
         TransferInfo *ti,
-        double start, double *time) {
+        double *time) {
     double retval;
     int64_t tries = 3, split_duration;
     std::string out, err;
 
-    reportError("HEE");
-    sleep(1);
     char chunk_duration[BUF_LENGTH], output[BUF_LENGTH],
          current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
 
     snprintf(chunk_duration, BUF_LENGTH, "%lu",
              state->secs_per_chunk);
-    snprintf(current, BUF_LENGTH, "%f", start);
+    snprintf(current, BUF_LENGTH, "%f", ti->start);
     snprintf(output, BUF_LENGTH, "%s",
              ti->path.c_str());
     snprintf(cmd, BUF_LENGTH, "%s",
