@@ -114,6 +114,7 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
         }});
     // update counters
     --DATA->state.to_recv;
+    reportError(utilities::m_itoa( DATA->state.to_recv));
     ++state->processed_chunks;
     utilities::printOverallState(state);
 }

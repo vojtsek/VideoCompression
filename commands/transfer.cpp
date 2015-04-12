@@ -231,7 +231,8 @@ bool CmdReturnPeer::execute(
         if (!DATA->chunks_returned.contains(ti->toString())) {
             chunkhelper::processReturnedChunk(ti, handler, state);
             // all chunks has returned
-            if (!DATA->state.to_recv) {
+            if ((state->processed_chunks == state->chunk_count) &&
+            (state->chunk_count != 0)) {
                 state->join();
             }
             // the chunk returned before,

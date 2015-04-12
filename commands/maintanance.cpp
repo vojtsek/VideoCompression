@@ -71,6 +71,7 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
                 reportError("Error while communicating with peer." + MyAddr(address).get());
                 return false;
             }
+            // TODO: IPv4
         addr.ss_family = AF_INET6;
         // fails if the node is not alive
         if (networkHelper::getMyAddress(
@@ -94,19 +95,14 @@ bool CmdConfirmPeer::execute(int64_t fd, struct sockaddr_storage &address, void 
     // is it able to work?
     RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
+    // add to potential neighbors
+    handler->addNewNeighbor(true, address);
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
 
     if (sendResponse(fd, resp) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
-    //TODO: receiVe port
-    // send my port
-    if (sendInt64(fd,
-                  DATA->config.getIntValue("LISTENING_PORT")) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
@@ -117,7 +113,6 @@ bool CmdConfirmHost::execute(int64_t fd,
                              struct sockaddr_storage &address, void *) {
     reportDebug("CONFHOST", 5);
     RESPONSE_T resp;
-    int64_t port;
 
     if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -129,13 +124,6 @@ bool CmdConfirmHost::execute(int64_t fd,
         reportDebug("Failed to confirm neighbor " + MyAddr(address).get(), 1);
         return false;
     }
-
-    // receive peer's listening port
-    if (receiveInt64(fd, port) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
-        return false;
-    }
-    networkHelper::changeAddressPort(address, port);
 
     // add new neighbor
     handler->addNewNeighbor(false, address);
@@ -154,6 +142,7 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
     // is able to do some work?
     RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
+    // inform the neighbor about my state
     if (sendResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -167,23 +156,16 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 
     // invalid response
     if (resp != RESPONSE_T::ACK_FREE && resp != RESPONSE_T::ACK_BUSY) {
-        reportError("Failed to confirm neighbor " + MyAddr(address).get());
+        reportError("Failed to ping neighbor " + MyAddr(address).get());
         DATA->neighbors.removeNeighbor(address);
         return false;
     }
 
-    // adjust neighbor state
+    // adjust neighbor's state
     if (resp != RESPONSE_T::ACK_FREE) {
         DATA->neighbors.setNeighborFree(address, false);
     } else {
         DATA->neighbors.setNeighborFree(address, true);
-    }
-
-    // send my port so peer can add me
-    if (sendInt64(fd,
-                  DATA->config.intValues.at("LISTENING_PORT")) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
     }
     return true;
 }
@@ -191,7 +173,6 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("PING " + MyAddr(address).get() , 5);
     CMDS action = CMDS::PING_HOST;
-    int64_t peer_port;
     // is able to do some work?
     RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
     RESPONSE_T neighbor_state;
@@ -212,16 +193,9 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
             return false;
     }
 
-    // receives port so can add the neighbor
-    if (receiveInt64(fd, peer_port) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
-        return false;
-    }
-    networkHelper::changeAddressPort(address, peer_port);
-
     // in case that I am working, I want more neighbors
-    if (DATA->config.is_superpeer ||
-            DATA->state.working) {
+    // so add the neighbor instantly
+    if (DATA->state.working) {
         handler->addNewNeighbor(false, address);
     } else { // add just as a potential neighbor otherwise
         handler->addNewNeighbor(true, address);
@@ -240,19 +214,11 @@ bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void 
     reportDebug("GOODBYE PEER", 5);
     CMDS action = CMDS::GOODBYE_HOST;
     RESPONSE_T resp = RESPONSE_T::ACK_FREE;
-    int64_t port;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
     }
 
-    // receives port of the node being disconnected
-    if (receiveInt64(fd, port) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
-        return false;
-    }
-
-    networkHelper::changeAddressPort(address, port);
     // removes the neighbor and confirms
     DATA->neighbors.removeNeighbor(address);
     if (sendResponse(fd, resp) == -1) {
@@ -264,13 +230,6 @@ bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void 
 
 bool CmdGoodbyeHost::execute(int64_t fd, sockaddr_storage &address, void *) {
     RESPONSE_T resp;
-
-    // sends port
-    if (sendInt64(fd,
-                  DATA->config.intValues.at("LISTENING_PORT")) == -1) {
-        reportError("Error while communicating with peer." + MyAddr(address).get());
-        return false;
-    }
 
     // waits for confirmation
     if (receiveResponse(fd, resp) == -1) {
