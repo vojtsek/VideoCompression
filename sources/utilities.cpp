@@ -90,23 +90,37 @@ void utilities::printOverallState(VideoState *state) {
     (state->chunk_count != 0)) {
         type = SUCCESS;
     }
+    reportError("HERE");
     DATA->io_data.info_handler.clear();
     // adds the messages
     DATA->io_data.info_handler.add(utilities::formatString(
-                                       "processed chunks:",
+                                       "My IP address:",
+                                       DATA->config.my_IP.get()), PLAIN);
+    DATA->io_data.info_handler.add(utilities::formatString(
+                                       "Neighbor count:",
+                                       utilities::m_itoa(
+                                           DATA->neighbors.getNeighborCount())), PLAIN);
+
+    if (DATA->state.working) {
+    DATA->io_data.info_handler.add(utilities::formatString(
+                                       "encoded chunks:",
                                        utilities::m_itoa(state->processed_chunks) +
                                        "/" + utilities::m_itoa(state->chunk_count)), type);
+    }
+    if (DATA->chunks_received.getValues().size() > 0) {
     DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
     // chunks being processed
     for (const auto &c : DATA->chunks_received.getValues()) {
         DATA->io_data.info_handler.add(c->name + " (" +
-                                       utilities::m_itoa(c->chunk_size) + "B); " +
+                                       utilities::m_itoa(c->chunk_size) + " B); " +
                                        MyAddr(c->src_address).get(), PLAIN);
     }
-
+    }
+    if (DATA->chunks_to_send.getSize() > 0) {
     DATA->io_data.info_handler.add("Chunks to send: ", DEBUG);
     for (const auto &ti : DATA->chunks_to_send.getValues()) {
         DATA->io_data.info_handler.add(ti->name, PLAIN);
+    }
     }
     DATA->io_data.info_handler.print();
 }

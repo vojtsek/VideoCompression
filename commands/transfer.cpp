@@ -41,6 +41,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
             reportDebug("I have this chunk already.", 2);
             throw 1;
         }
+        DATA->chunks_received.push(ti);
 
         resp = RESPONSE_T::AWAITING;
         if (sendResponse(fd, resp) == -1) {
@@ -72,10 +73,10 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         // when popped from the queue later
         ti->addressed = true;
         // remember chunk
-        DATA->chunks_received.push(ti);
         utilities::printOverallState(state);
         chunkhelper::pushChunkProcess(ti);
     } catch (int) {
+        DATA->chunks_received.remove(ti);
         return false;
     }
 
@@ -129,14 +130,20 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
 
         // problems occured
         if (resp == RESPONSE_T::ABORT) {
-            reportDebug(
-                "This chunk is already being processed by this neighbor.", 2);
+            reportDebug(ti->name +
+                ": This chunk is already being processed by this neighbor.", 2);
             ti->addressed = false;
             // lower the chance to pick same neighbor again
             // he is propably slow
             DATA->neighbors.updateQuality(
                         ti->address, 5);
-            throw 1;
+            // resets the timeout
+            ti->time_left = DATA->config.getIntValue(
+                        "COMPUTATION_TIMEOUT");
+            // TODO: think about this
+            // returns true, assuming the neighbor will do its job
+            // otherwise the periodic listener will be invoked later
+            return true;
         }
 
         // too many tries should indicate invalid file
@@ -151,24 +158,41 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         return false;
     }
 
-    reportDebug("Chunk transferred. " + m_itoa(
+    reportDebug(ti->name + ": Chunk transferred. " + m_itoa(
                     DATA->chunks_to_send.getSize()) + " remaining.", 2);
     return true;
 }
 
 bool CmdReturnHost::execute(
-        int64_t fd, sockaddr_storage &, void *data) {
+        int64_t fd, sockaddr_storage &address, void *data) {
     // pointer to encoded file is passed
     TransferInfo *ti = (TransferInfo *) data;
+    RESPONSE_T resp;
+
     if (ti->tries_sent > CHUNK_RESENDS) {
+        OSHelper::rmFile(ti->path);
         chunkhelper::trashChunk(ti, true);
         return false;
-        }
+    }
+
         if (ti->send(fd) == -1) {
         reportError(ti->name + ": Failed to send info.");
         chunkhelper::pushChunkSend(ti);
         return false;
     }
+        if (receiveResponse(fd, resp) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            chunkhelper::pushChunkSend(ti);
+            return false;
+        }
+
+        if (resp == RESPONSE_T::ABORT) {
+            reportDebug("Neighbor does not want this chunk." +
+                        ti->name, 2);
+                        OSHelper::rmFile(ti->path);
+            chunkhelper::trashChunk(ti, true);
+            return true;
+        }
 
     ti->tries_sent++;
     if (sendFile(fd, ti->path) == -1) {
@@ -187,6 +211,7 @@ bool CmdReturnHost::execute(
 bool CmdReturnPeer::execute(
         int64_t fd, sockaddr_storage &address, void *) {
     CMDS action = CMDS::RETURN_HOST;
+    RESPONSE_T resp = RESPONSE_T::AWAITING;
     TransferInfo helper_ti, *ti = nullptr;
     //TODO:checking send
     try {
@@ -204,7 +229,16 @@ bool CmdReturnPeer::execute(
         ti = (TransferInfo *) DATA->periodic_listeners.get(helper_ti.toString());
         // propably was received before
         if (ti == nullptr) {
+            resp = RESPONSE_T::ABORT;
+        }
+
+        if (sendResponse(fd, resp) == -1) {
+            reportDebug("Error while communicating with peer." + MyAddr(address).get(), 3);
             throw 1;
+        }
+
+        if (resp == RESPONSE_T::ABORT) {
+            return true;
         }
 
         std::string dir(DATA->config.getStringValue("WD") + "/received/" + ti->job_id);

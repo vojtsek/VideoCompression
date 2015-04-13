@@ -141,6 +141,18 @@ struct SynchronizedMap {
         map.clear();
         mtx.unlock();
     }
+    
+    /*!
+     * \brief getSize gets the size of the storage
+     * \return size of the storage
+     */
+    int64_t getSize() {
+        int64_t size;
+        mtx.lock();
+        size = map.size();
+        mtx.unlock();
+        return size;
+    }
 };
 
 template <typename T>

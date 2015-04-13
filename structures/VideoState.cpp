@@ -30,7 +30,6 @@ int64_t VideoState::split() {
 
     reportStatus("Splitting file: " + finfo.fpath);
     // how many left to receive
-    DATA->state.to_recv = chunk_count;
     struct sockaddr_storage my_addr, neighbor_addr, super_addr;
 
     // gather some neighbors
@@ -65,7 +64,6 @@ int64_t VideoState::split() {
         if (elapsed > finfo.duration) {
             // how many left to receive actually
             this->chunk_count = i;
-            DATA->state.to_recv = i;
             break;
         }
 
@@ -101,11 +99,9 @@ int64_t VideoState::split() {
 }
 
 void VideoState::abort() {
-    // TODO:revisit
     reportError("ABORTING process.");
     auto chunks = DATA->chunks_to_send.getValues();
     DATA->chunks_returned.clear();
-    DATA->chunks_to_send.clear();
     for (auto ti : chunks) {
         // remove waiting chunks
         DATA->periodic_listeners.removeIf(
@@ -113,10 +109,12 @@ void VideoState::abort() {
             return (l->toString().find("TI") !=
                     std::string::npos);
         });
+        DATA->chunks_to_send.remove(ti);
         delete ti;
     }
     clearProgress();
     DATA->state.working = false;
+    utilities::printOverallState(this);
 }
 
 int64_t VideoState::join() {
@@ -205,7 +203,7 @@ void VideoState::endProcess(int64_t duration) {
     for (auto &ti : tis) {
         ofs << ti->getInfo();
         csv_stream << ti->getCSV();
-        delete ti;
+        chunkhelper::trashChunk(ti, true);
     }
     ofs.flush();
     ofs.close();

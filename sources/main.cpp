@@ -20,6 +20,26 @@
 using namespace std;
 using namespace utilities;
 
+void cleanCommands(cmd_storage_t &cmds) {
+    // free the memory
+    for (auto &c : cmds) {
+        delete c.second;
+    }
+}
+
+void exitProgram(const std::string &msg, int64_t retval) {
+    if (!msg.empty()) {
+        reportError(msg);
+    }
+    // notify neighbors
+    DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
+    // clear memory
+    cleanCommands(DATA->cmds);
+    // handles curses end
+    endwin();
+    exit(retval);
+}
+
 void usage() {
     return;
 }
@@ -134,15 +154,18 @@ void initConfiguration(NetworkHandler &handler) {
     DATA->io_data.changeLogLocation(DATA->config.getStringValue("WD") + "/log_" +
                                     utilities::getTimestamp() + "_" +
                                     utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
-    DATA->io_data.info_handler.setLength(6);
+    DATA->io_data.info_handler.setLength(8);
     DATA->io_data.status_handler.setLength(y_space / 2);
 
     // obtain with which address is communicating
     struct sockaddr_storage addr, super_addr;
     networkHelper::getSuperPeerAddr(super_addr);
-    networkHelper::getMyAddress(super_addr,
-                addr, &handler);
-    DATA->config.my_IP = MyAddr(addr);
+    if (networkHelper::getMyAddress(super_addr,
+                addr, &handler) != -1) {
+        DATA->config.my_IP = MyAddr(addr);
+    } else {
+        exitProgram("Failed to obtain IP address.", 1);
+    }
      DATA->config.my_IP.port =
              DATA->config.getIntValue("LISTENING_PORT");
 }
@@ -174,13 +197,6 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->net_cmds.emplace(CMDS::GOODBYE_PEER, new CmdGoodbyePeer(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::GOODBYE_HOST, new CmdGoodbyeHost(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
-}
-
-void cleanCommands(cmd_storage_t &cmds) {
-    // free the memory
-    for (auto &c : cmds) {
-        delete c.second;
-    }
 }
 
 void periodicActions(NetworkHandler &net_handler, VideoState *state) {
@@ -224,7 +240,7 @@ int main(int argc, char **argv) {
     }
     VideoState state(&net_handler);
 
-    // sets handle of SIGPIPE
+    // sets handler of SIGPIPE
     struct sigaction sa;
         memset(&sa, 0, sizeof(struct sigaction));
         sa.sa_handler = &networkHelper::sigPipeHandler;
@@ -284,11 +300,5 @@ int main(int argc, char **argv) {
     } catch (exception e) {
        printw(e.what());
     }
-    // notify neighbors
-    DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
-    // clear memory
-    cleanCommands(DATA->cmds);
-    // handles curses end
-    endwin();
-	return (0);
+    exitProgram("", 0);
 }

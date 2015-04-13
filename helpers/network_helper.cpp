@@ -146,21 +146,33 @@ int64_t networkHelper::getPeerAddr(
 
 int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         struct sockaddr_storage &addr, NetworkHandler *handler) {
-    int64_t sock;
+    int64_t sock, family;
 
+    if (DATA->config.IPv4_ONLY) {
+        family = AF_INET;
+    } else {
+        family = AF_INET6;
+    }
+    try {
     // connect to it
     if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
         reportDebug("Error getting host address.", 2);
-        //TODO: set dirty flag??
-        return -1;
+        throw 1;
     }
 
     // dig the addres from the file descriptor
     if ((networkHelper::getHostAddr(addr, sock)) == -1) {
         reportDebug("Error getting host address.", 2);
         close(sock);
-        return -1;
+        throw 1;
     }
+    } catch (int) {
+        // in case of failure fallback to address from the configuration
+        addr = networkHelper::addrstr2storage(
+                    DATA->config.getStringValue("MY_IP").c_str(),
+                    DATA->config.getIntValue("LISTENING_PORT"), family);
+    }
+
     close(sock);
     // finally set the port
     networkHelper::changeAddressPort(addr,

@@ -28,6 +28,10 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
         ti = DATA->chunks_to_send.pop();
         // assure no duplicates
                 DATA->chunks_to_send.remove(ti);
+                // already encoded in fact
+                if (DATA->chunks_returned.contains(ti->name)) {
+                    continue;
+                }
         // sending the file was not succesful
         // first time send -> to process
         if (!ti->addressed) {
@@ -112,10 +116,9 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
             entry.second->quality = entry.second->overall_time /
                     entry.second->processed_chunks;
         }});
-    // update counters
-    --DATA->state.to_recv;
-    reportError(utilities::m_itoa( DATA->state.to_recv));
-    ++state->processed_chunks;
+    // update counter
+    state->processed_chunks = 
+            DATA->chunks_returned.getSize();
     utilities::printOverallState(state);
 }
 

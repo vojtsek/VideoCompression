@@ -24,8 +24,6 @@ struct State {
     //! how many chunks it's able to process
     std::atomic<int> can_accept;
     //! how many chunks remains to receive
-    std::atomic<int> to_recv;
-    //!
 };
 
 /*!
@@ -160,6 +158,7 @@ struct Data {
     SynchronizedMap<TransferInfo> chunks_returned;
     //! holds structures inheriting Listener class, invokes them periodically
     SynchronizedMap<Listener> periodic_listeners;
+    //! storage for chunks that were created during the split
 
     //! known codecs to encode into
     static std::vector<std::string> getKnownCodecs() {

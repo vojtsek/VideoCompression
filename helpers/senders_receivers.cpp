@@ -128,6 +128,10 @@ int64_t receiveFile(int64_t fd, std::string fn) {
     int64_t o_file;
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
+        if (OSHelper::isFileOk(fn)) {
+            reportDebug(fn + ": File exists!", 2);
+            return -1;
+        }
         // opens resulting file destructively
         if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
             reportDebug(fn + ": Failed to open the output file. ", 2);
