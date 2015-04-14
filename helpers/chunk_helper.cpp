@@ -104,8 +104,8 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
     OSHelper::rmFile(DATA->config.getStringValue("WD") +
-                     "/" + ti->job_id +
-              "/" + ti->name + ti->original_extension);
+                     PATH_SEPARATOR + ti->job_id +
+              PATH_SEPARATOR + ti->name + ti->original_extension);
     DATA->neighbors.setNeighborFree(ti->address, true);
     // update quality
     DATA->neighbors.applyToNeighbors([&](
@@ -210,7 +210,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             // construct the paths
             file_out = ti->path;
             file_in = DATA->config.getStringValue("WD") + "/to_process/" +
-                            ti->job_id + "/" + ti->name + ti->original_extension;
+                            ti->job_id + PATH_SEPARATOR + ti->name + ti->original_extension;
             reportDebug("Encoding: " + file_in, 2);
             snprintf(cmd, BUF_LENGTH, "%s",
                              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
@@ -227,7 +227,8 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                         ti->duration * 2, cmd, 11, cmd,
                              "-i", file_in.c_str(),
                              "-c:v", ti->output_codec.c_str(),
-                             "-preset", "ultrafast",
+                             "-preset",
+                             DATA->config.getStringValue("QUALITY").c_str(),
                              "-nostdin",
                              "-qp", "0",
                              file_out.c_str());

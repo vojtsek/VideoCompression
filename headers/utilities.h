@@ -111,6 +111,13 @@ namespace utilities
     bool knownFormat(const std::string &format);
 
     /*!
+     * \brief knownQuality  checks, whether the choosen quality is valid
+     * \param quality given quality
+     * \return true if the quality is known
+     */
+    bool knownQuality(const std::string &quality);
+
+    /*!
      * \brief isAcceptable checks if the character is valid input
      * \param c the character to check
      * \return true if the character is acceptable

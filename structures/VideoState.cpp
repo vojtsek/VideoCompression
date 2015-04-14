@@ -14,13 +14,36 @@ int64_t VideoState::split() {
 
     // job with timestamp
     job_id = "job_" + utilities::getTimestamp();
+        ofs.open(
+          DATA->config.getStringValue("WD") +
+                    PATH_SEPARATOR + job_id + ".out");
+    if (DATA->config.encode_first) {
+            std::string out,err;
+            char cmd[BUF_LENGTH];
+            snprintf(cmd, BUF_LENGTH, "%s",
+                                             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
+            duration = Measured<>::exec_measure(
+                                    OSHelper::runExternal, out, err,
+                                    finfo.duration * 2, cmd, 11, cmd,
+                                             "-i", finfo.fpath.c_str(),
+                                             "-c:v", "libx264",
+                                             "-preset",
+                                                                                             DATA->config.getStringValue("QUALITY").c_str(),
+                                             "-nostdin",
+                                             "-qp", "0",
+                                             "encodingTest.mkv");
+            OSHelper::rmFile("encodingTest.mkv");
+
+            ofs << "As whole: " << duration << std::endl;
+    }
     // absolute path
-    std::string path(DATA->config.getStringValue("WD")
-                     + std::string("/") + job_id);
+    dir_location = DATA->config.getStringValue("WD")
+                     + std::string(PATH_SEPARATOR) + job_id;
     std::string chunk_name;
     char chunk_id[BUF_LENGTH];
 
-    if (OSHelper::prepareDir(path, false) == -1) {
+    start_time = std::chrono::system_clock::now();
+    if (OSHelper::prepareDir(dir_location, false) == -1) {
         reportError("Failed to create the job directory.");
         return -1;
     }
@@ -52,6 +75,12 @@ int64_t VideoState::split() {
     utilities::printOverallState(this);
 
     for (int64_t i = 0; i < chunk_count; ++i) {
+        // the process was aborted by the user
+        if (aborted) {
+            aborted = false;
+
+            break;
+        }
         double percent = (double) i / chunk_count;
 
         // format the command
@@ -70,7 +99,7 @@ int64_t VideoState::split() {
         // creates new TransferInfo structure
         TransferInfo *ti = new TransferInfo(0, job_id, chunk_name,
                                             finfo.extension, o_format,
-                                            path + "/" + chunk_name + finfo.extension,
+                                            dir_location + PATH_SEPARATOR + chunk_name + finfo.extension,
                                             o_codec);
 
         // creates chunk and measures time
@@ -80,6 +109,8 @@ int64_t VideoState::split() {
         if (duration < 0) {
             reportError("Failed to create " + ti->name);
             abort();
+            // resets flag for future
+            aborted = false;
             return -1;
         }
         sum += duration;
@@ -91,8 +122,7 @@ int64_t VideoState::split() {
     // 100%
     printProgress(1);
     // report file
-    ofs.open(DATA->config.getStringValue("WD") + "/" + job_id + ".out");
-    reportTime("Splitting: ", sum / 1000);
+       reportTime("Splitting: ", sum / 1000);
     // removes the progress bar
     clearProgress();
     return 0;
@@ -100,6 +130,7 @@ int64_t VideoState::split() {
 
 void VideoState::abort() {
     reportError("ABORTING process.");
+    aborted = true;
     auto chunks = DATA->chunks_to_send.getValues();
     DATA->chunks_returned.clear();
     for (auto ti : chunks) {
@@ -113,13 +144,16 @@ void VideoState::abort() {
         delete ti;
     }
     clearProgress();
+    // adjusts the state variable
     DATA->state.working = false;
+    // removes useless files
+    OSHelper::rmrDir(dir_location, true);
     utilities::printOverallState(this);
 }
 
 int64_t VideoState::join() {
     std::string out, err, list_loc(DATA->config.getStringValue("WD") + "/received/" + job_id + "/join_list.txt"),
-            output(DATA->config.getStringValue("WD") + "/" + finfo.basename + "_output" + o_format);
+            output(DATA->config.getStringValue("WD") + PATH_SEPARATOR + finfo.basename + "_output" + o_format);
     std::string file, file_item;
     std::ofstream ofs_loc(list_loc);
     char fn[BUF_LENGTH], cmd[BUF_LENGTH];
@@ -135,7 +169,7 @@ int64_t VideoState::join() {
     for (int64_t i = 0; i < chunk_count; ++i) {
         snprintf(fn, BUF_LENGTH, "%03lu_splitted", i);
         file = DATA->config.getStringValue("WD") +
-                "/received/" + job_id + "/" + fn + o_format;
+                "/received/" + job_id + PATH_SEPARATOR + fn + o_format;
         if (OSHelper::getFileSize(file) <= 0) {
             reportError("file: '" + file + "'' is not ok, failed.");
             abort();
@@ -205,6 +239,8 @@ void VideoState::endProcess(int64_t duration) {
         csv_stream << ti->getCSV();
         chunkhelper::trashChunk(ti, true);
     }
+    ofs << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>
+                                        (std::chrono::system_clock::now() - start_time)).count() << std::endl;
     ofs.flush();
     ofs.close();
     csv_stream.flush();
@@ -226,8 +262,8 @@ void VideoState::printVideoState() {
                                                                finfo.codec), PLAIN);
     }
     if (finfo.bitrate) {
-        DATA->io_data.info_handler.add(utilities::formatString("Bitrate:",
-                                                               utilities::m_itoa(finfo.bitrate)), PLAIN);
+        DATA->io_data.info_handler.add(utilities::formatString("Quality:",
+                                                               DATA->config.getStringValue("QUALITY")), PLAIN);
     }
     if (finfo.duration) {
         DATA->io_data.info_handler.add(utilities::formatString("Duration:",
@@ -238,16 +274,15 @@ void VideoState::printVideoState() {
                                                                utilities::m_itoa(finfo.fsize)), PLAIN);
     }
     if (chunk_size) {
-        DATA->io_data.info_handler.add(utilities::formatString("Chunk size:",
-                                                               utilities::m_itoa(
-                                                                   DATA->config.getIntValue("CHUNK_SIZE"))), PLAIN);
+        DATA->io_data.info_handler.add(utilities::formatString("Chunk count:",
+                                                               utilities::m_itoa(chunk_count)), PLAIN);
     }
     if (!o_codec.empty()) {
         DATA->io_data.info_handler.add(utilities::formatString("Output codec:",
                                                                o_codec), PLAIN);
     }
     if (!o_format.empty()) {
-        DATA->io_data.info_handler.add(utilities::formatString("Output extension:",
+        DATA->io_data.info_handler.add(utilities::formatString("Output format:",
                                                                o_format), PLAIN);
     }
     DATA->io_data.info_handler.print();

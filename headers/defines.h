@@ -27,6 +27,7 @@
 #define CHUNK_RESENDS 5
 // how many repetitions of encoding/splitting
 #define TRIES_FOR_CHUNK 3
+#define PATH_SEPARATOR "/"
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

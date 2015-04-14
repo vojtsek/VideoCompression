@@ -14,7 +14,7 @@ enum class RESPONSE_T : int64_t { ACK_FREE, ACK_BUSY, AWAITING, ABORT };
 
 //! used to send commands over the network, saved in the map
 enum class CMDS : char { TERM, DEFCMD, SHOW, START, LOAD,
-            SET, SET_CODEC, SET_SIZE, SET_FORMAT,
+            SET, SET_CODEC, SET_SIZE, SET_FORMAT, SET_QUALITY,
             SCROLL_UP, SCROLL_DOWN, ABORT_C,
           ASK_PEER, ASK_HOST,
           CONFIRM_PEER, CONFIRM_HOST,

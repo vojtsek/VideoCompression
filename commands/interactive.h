@@ -109,6 +109,17 @@ public:
 };
 
 /*!
+ * \brief The CmdSetQuality class
+ * sets the output quality, called by CmdSet
+ */
+class CmdSetQuality: public Command {
+public:
+    CmdSetQuality(VideoState *st): Command(st) {}
+    virtual void execute();
+};
+
+
+/*!
  * \brief The CmdSetFormat class
  * sets the output container, called by CmdSet
  */

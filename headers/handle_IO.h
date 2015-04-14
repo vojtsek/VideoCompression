@@ -132,5 +132,11 @@ void printProgress(double percent);
  */
 std::string loadInput(const std::string &histf,
                       const std::string &msg, bool save, bool changeable);
-
+/*!
+     * \brief isBackspace decides if given char represents backspace key
+     * \param c code of the character
+     * \return true if the code corresponds to backspace key
+     * terminals can handle backspace key differently
+     */
+    bool isBackspace(wchar_t c);
 #endif

@@ -244,6 +244,11 @@ void clearNlines(int64_t n) {
     move(orig_y, orig_x);
 }
 
+bool isBackspace(wchar_t c) {
+    // TODO: hmm not nice
+    return (c == KEY_BACKSPACE);
+}
+
 int64_t getLine(char *line, int64_t len,
                 const std::string &histf, bool save, bool changeable) {
     HistoryStorage hist(histf);
@@ -292,7 +297,7 @@ int64_t getLine(char *line, int64_t len,
                 line = start + read;
             } catch (...) {}
         // backspace
-        } else if ((c == 8) && changeable) {
+        } else if (isBackspace(c) && changeable) {
             int64_t y, x;
             getyx(stdscr, y, x);
             // moves the x coordinate back

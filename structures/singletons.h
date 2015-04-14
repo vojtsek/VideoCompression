@@ -88,7 +88,9 @@ struct Configuration {
     //! whether using only IPv4 addresses
     bool IPv4_ONLY;
     //! determines if accept chunks to encode while working
-    bool serve_while_working;
+    bool serve_while_working = false;
+    //! if encode video as a whole
+    bool encode_first = false;
     //! level of debug messages to show
     int64_t debug_level = 0;
     //! map of integer values
@@ -168,6 +170,12 @@ struct Data {
     //! containers which could wrap the resulting file
     static std::vector<std::string> getKnownFormats() {
         return {"avi", "mkv", "ogg"};
+    }
+
+    //! determines encoding quality
+    static std::vector<std::string> getKnownQualities() {
+        return {"ultrafast", "superfast", "veryfast", "faster", "fast",
+                    "medium", "slow", "slower", "veryslow"};
     }
 
     /*!

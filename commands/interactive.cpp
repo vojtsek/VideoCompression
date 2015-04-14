@@ -39,7 +39,7 @@ bool CmdShow::execute(int64_t, sockaddr_storage &, void *) {
 }
 
 void CmdShow::execute() {
-    std::string what = loadInput("show.hist", "", false, false);
+    std::string what = loadInput("lists/show_options.list", "", false, false);
     // showing state
     if (what == "state") {
         utilities::printOverallState(state);
@@ -84,7 +84,7 @@ void CmdStart::execute() {
 
 void CmdSetCodec::execute() {
     // reads the input and sets the codec
-    std::string in = loadInput("codecs", "Enter desired output codec:", false, false);
+    std::string in = loadInput("lists/codecs.list", "Enter desired output codec:", false, false);
     if (utilities::knownCodec(in)) {
         state->o_codec = in;
         reportSuccess("Output codec set to: " + in);
@@ -104,6 +104,10 @@ void CmdSetChSize::execute() {
     size_t nsize = DATA->config.getIntValue("CHUNK_SIZE");
     std::stringstream ss(in), msg;
     ss >> nsize;
+    if (nsize <= 0) {
+        reportError("Should be number");
+        return;
+    }
     // is supposed to be stored in bytes
     state->changeChunkSize(nsize * 1024);
     msg << "Chunk size set to: " << nsize << " kB";
@@ -112,7 +116,7 @@ void CmdSetChSize::execute() {
 
 void CmdSetFormat::execute() {
     // loads the desired container format
-    std::string in = loadInput("", "Enter desired output format:", false, false);
+    std::string in = loadInput("lists/formats.list", "Enter desired output format:", false, false);
     if (utilities::knownFormat(in)) {
         state->o_format = "." + in;
         reportSuccess("Output format set to: " + in);
@@ -126,17 +130,40 @@ void CmdSetFormat::execute() {
     }
 }
 
+void CmdSetQuality::execute() {
+    // loads the desired container format
+    std::string in = loadInput("lists/qualities.list", "Enter desired quality:", false, false);
+    if (utilities::knownQuality(in)) {
+        try {
+            DATA->config.strValues.at("QUALITY") = in;
+        } catch (std::out_of_range) {
+            DATA->config.strValues.emplace("QUALITY", in);
+        }
+
+        reportSuccess("Output quality set to: " + in);
+    } else {
+        reportError(in + ": Not a valid format.");
+        std::string msg;
+        msg += "Available options: ";
+        for (string c : Data::getKnownQualities())
+            msg += c += ", ";
+        reportStatus(msg.substr(0, msg.length() - 2));
+    }
+}
+
 void CmdSet::execute() {
     // determines, which option to set
-    std::string line = loadInput("set.history", "What option set?", false, false);
+    std::string line = loadInput("lists/set_options.list", "What option set?", false, false);
     if (line.find("codec") != std::string::npos)
         DATA->cmds[CMDS::SET_CODEC]->execute();
     else if (line.find("chunksize") != std::string::npos)
         DATA->cmds[CMDS::SET_SIZE]->execute();
     else if (line.find("format") != std::string::npos)
         DATA->cmds[CMDS::SET_FORMAT]->execute();
+    else if (line.find("quality") != std::string::npos)
+        DATA->cmds[CMDS::SET_QUALITY]->execute();
     else
-        reportStatus("Available options: 'codec'', 'chunksize', 'format'");
+        reportStatus("Available options: 'codec'', 'chunksize', 'quality'");
     state->printVideoState();
 }
 

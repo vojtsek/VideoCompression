@@ -99,14 +99,14 @@ int64_t OSHelper::prepareDir(std::string location, bool destroy) {
             location = location.substr(pos + 1, location.length());
         }
         // update current
-        current += "/" + directory;
+        current += PATH_SEPARATOR + directory;
         // creates the directory
         if (OSHelper::mkDir(current, destroy) == -1) {
             return -1;
         }
     }
     // eventually the location contains the last directory
-    current += "/" + location;
+    current += PATH_SEPARATOR + location;
     return OSHelper::mkDir(current, destroy);
 }
 

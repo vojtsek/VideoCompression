@@ -13,6 +13,8 @@
 struct VideoState {
     //! holds the information about the loaded file
     struct FileInfo finfo;
+    //! flag that determines abortion of the process
+    bool aborted;
     //! how many seconds per one chunk
     int64_t secs_per_chunk;
     //! number of chunks
@@ -29,15 +31,19 @@ struct VideoState {
     std::string o_format;
     //! codec used for encoding
     std::string o_codec;
+    //! quality of the encoding
+    std::string quality;
     //! filestream pointing to the log file
     std::ofstream ofs;
+    //! to measure whole times
+    std::chrono::system_clock::time_point start_time;
     //! reference to the NetworkHandler instance
     NetworkHandler *net_handler;
 
-    VideoState(NetworkHandler *nh): secs_per_chunk(0), chunk_count(0),
+    VideoState(NetworkHandler *nh): aborted(false), secs_per_chunk(0), chunk_count(0),
         chunk_size(DATA->config.getIntValue("CHUNK_SIZE")),
         processed_chunks(0), dir_location(DATA->config.getStringValue("WD")),
-      o_format(".mkv"), o_codec("libx264") {
+      o_format(".mkv"), o_codec("libx264"), quality("ultrafast") {
         net_handler = nh;
     }
 

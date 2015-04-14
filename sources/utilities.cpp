@@ -90,7 +90,6 @@ void utilities::printOverallState(VideoState *state) {
     (state->chunk_count != 0)) {
         type = SUCCESS;
     }
-    reportError("HERE");
     DATA->io_data.info_handler.clear();
     // adds the messages
     DATA->io_data.info_handler.add(utilities::formatString(
@@ -105,7 +104,7 @@ void utilities::printOverallState(VideoState *state) {
     DATA->io_data.info_handler.add(utilities::formatString(
                                        "encoded chunks:",
                                        utilities::m_itoa(state->processed_chunks) +
-                                       "/" + utilities::m_itoa(state->chunk_count)), type);
+                                       PATH_SEPARATOR + utilities::m_itoa(state->chunk_count)), type);
     }
     if (DATA->chunks_received.getValues().size() > 0) {
     DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
@@ -190,8 +189,8 @@ std::string utilities::formatString(
 
 std::string utilities::pathFromChunk(
         TransferInfo *ti,const string &which) {
-    return std::string(DATA->config.getStringValue("WD") + "/" +
-                     ti->job_id + "/" + which + "/" + ti->name
+    return std::string(DATA->config.getStringValue("WD") + PATH_SEPARATOR +
+                     ti->job_id + PATH_SEPARATOR + which + PATH_SEPARATOR + ti->name
                 );
 }
 
@@ -213,10 +212,12 @@ bool utilities::isAcceptable(char c) {
     return ((isalnum(c)) || (find(acc.begin(), acc.end(), c) != acc.end()));
 }
 
+
+// TODO: handle this generically
 bool utilities::knownCodec(const std::string &cod) {
-    vector<string> know = Data::getKnownCodecs();
+    vector<string> known = Data::getKnownCodecs();
     // try to find current codec
-    for (string &c : know) {
+    for (string &c : known) {
         if (c == cod) {
             return true;
         }
@@ -225,10 +226,21 @@ bool utilities::knownCodec(const std::string &cod) {
 }
 
 bool utilities::knownFormat(const std::string &format) {
-    vector<string> know = Data::getKnownFormats();
+    vector<string> known = Data::getKnownFormats();
     // try to find given format
-    for (string &f : know) {
+    for (string &f : known) {
         if (f == format) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool utilities::knownQuality(const std::string &quality) {
+    vector<string> known = Data::getKnownQualities();
+    // try to find given format
+    for (string &q : known) {
+        if (q == quality) {
             return true;
         }
     }

@@ -56,9 +56,17 @@ bool argsContains(char **argv, const char *str) {
 }
 
 int64_t parseOptions(int64_t argc, char **argv) {
+/*
+ * -s ...run as superpeer
+ * TODO: -c address:port_number ...node to contact if no neighbors
+ * -p port ...listenning port
+ * -d level ...debug level
+ * -t ...test, i.e. encode the loaded file first and measure the time
+ */
+
     int opt;
     // use of getopt
-    while ((opt = getopt(argc, argv, "sc:p:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "tsc:p:d:")) != -1) {
         switch (opt) {
         // listening port set
         case 'p':
@@ -75,6 +83,8 @@ int64_t parseOptions(int64_t argc, char **argv) {
         // port to listen superpeer
         case 'c':
             DATA->config.intValues.emplace("SUPERPEER_PORT", atoi(optarg));
+        case 't':
+            DATA->config.encode_first = true;
         // unknown option
         case '?':
             usage();
@@ -96,6 +106,10 @@ int64_t readConfiguration(const std::string &cf) {
         std::stringstream ss(line);
         // reads the line splitted
         ss >> param_name;
+        // ignore comments
+        if (*param_name.begin() == '#') {
+            continue;
+        }
         ss >> value;
         try {
             // tries to read the integer
@@ -126,6 +140,7 @@ void superPeerRoutine(NetworkHandler &net_handler) {
 }
 
 void initConfiguration(NetworkHandler &handler) {
+    // TODO: essential values check
     // data initialized with default values
     // called after the config file was read
     DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
@@ -180,6 +195,7 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->cmds.emplace(CMDS::SET_CODEC, new CmdSetCodec(&state));
     DATA->cmds.emplace(CMDS::SET_SIZE, new CmdSetChSize(&state));
     DATA->cmds.emplace(CMDS::SET_FORMAT, new CmdSetFormat(&state));
+    DATA->cmds.emplace(CMDS::SET_QUALITY, new CmdSetQuality(&state));
     DATA->cmds.emplace(CMDS::SCROLL_DOWN, new CmdScrollDown(&state));
     DATA->cmds.emplace(CMDS::SCROLL_UP, new CmdScrollUp(&state));
     DATA->net_cmds.emplace(CMDS::CONFIRM_HOST, new CmdConfirmHost(&state, &net_handler));
@@ -231,7 +247,7 @@ int main(int argc, char **argv) {
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
-    DATA->config.strValues.at("WD") = DATA->config.getStringValue("WD") + "/" +
+    DATA->config.strValues.at("WD") = DATA->config.getStringValue("WD") + PATH_SEPARATOR +
            utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
     if (OSHelper::prepareDir(
                 DATA->config.getStringValue("WD"), false) == -1) {

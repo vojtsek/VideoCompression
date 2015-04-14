@@ -39,7 +39,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
                 throw 1;
             }
             reportDebug("I have this chunk already.", 2);
-            throw 1;
+            return true;
         }
         DATA->chunks_received.push(ti);
 
@@ -58,7 +58,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         // receives the file, measures duration
 
         std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-        if (receiveFile(fd, dir + "/" + ti->name + ti->original_extension) == -1) {
+        if (receiveFile(fd, dir + PATH_SEPARATOR + ti->name + ti->original_extension) == -1) {
                     reportError(ti->name + ": Failed to transfer file.");
                     throw 1;
         }
@@ -68,7 +68,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         reportDebug("Pushing chunk " + ti->name + "(" +
             utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
         ti->path = std::string(DATA->config.getStringValue("WD") + "/processed/" + ti->job_id +
-                   "/" + ti->name + ti->desired_extension);
+                   PATH_SEPARATOR + ti->name + ti->desired_extension);
         // this helps to determine, that the chunk should be send to src_adress
         // when popped from the queue later
         ti->addressed = true;
@@ -189,7 +189,10 @@ bool CmdReturnHost::execute(
         if (resp == RESPONSE_T::ABORT) {
             reportDebug("Neighbor does not want this chunk." +
                         ti->name, 2);
-                        OSHelper::rmFile(ti->path);
+            // remove files associated with this chunk
+            OSHelper::rmFile(ti->path);
+            OSHelper::rmFile(utilities::pathFromChunk(
+                                 ti, "to_process") + ti->original_extension);
             chunkhelper::trashChunk(ti, true);
             return true;
         }
@@ -251,14 +254,14 @@ bool CmdReturnPeer::execute(
 
                 std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         if (receiveFile(fd,
-                dir + "/" + ti->name + ti->desired_extension) == -1) {
+                dir + PATH_SEPARATOR + ti->name + ti->desired_extension) == -1) {
                     reportError(ti->name + ": Failed to transfer file.");
                     throw 1;
         }
         ti->receiving_time = (std::chrono::duration_cast<std::chrono::milliseconds>
                                     (std::chrono::system_clock::now() - start)).count();
 
-        ti->path = dir + "/" + ti->name + ti->desired_extension;
+        ti->path = dir + PATH_SEPARATOR + ti->name + ti->desired_extension;
 
         //handler->confirmNeighbor(ti->address);
         // this is first time the chunk returned
