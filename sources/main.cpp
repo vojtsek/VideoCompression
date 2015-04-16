@@ -151,16 +151,30 @@ void initConfiguration(NetworkHandler &handler) {
     // data initialized with default values
     // called after the config file was read
     DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
-    if (DATA->config.getStringValue("WD") == "") {
+    // from config file
+    std::string wdir = DATA->config.getStringValue("WD");
+    if (wdir == "") {
         // if the WD is not determined, use current working dir
         char dirp[BUF_LENGTH];
         if (getcwd(dirp, BUF_LENGTH) == NULL) {
-            DATA->config.strValues.emplace("WD",
-                                           std::string(dirp));
+            wdir = std::string(dirp);
         } else {
-            DATA->config.strValues.emplace("WD", ".");
+            wdir = ".";
         }
     }
+    wdir += PATH_SEPARATOR + utilities::m_itoa(
+                DATA->config.getIntValue("LISTENING_PORT"));
+    if (OSHelper::prepareDir(
+                wdir, false) == -1) {
+        exitProgram("Failed to prepare working directory.", 1);
+        return 1;
+    }
+    try {
+            DATA->config.strValues.at("WD") = wdir;
+    } catch (std::out_of_range) {
+        DATA->config.strValues.emplace("WD", wdir);
+    }
+
     DATA->config.intValues.emplace("UPP_LIMIT", 8);
     DATA->config.IPv4_ONLY = false;
     int64_t x,y, y_space;
@@ -249,13 +263,6 @@ int main(int argc, char **argv) {
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
-    DATA->config.strValues.at("WD") = DATA->config.getStringValue("WD") + PATH_SEPARATOR +
-           utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT"));
-    if (OSHelper::prepareDir(
-                DATA->config.getStringValue("WD"), false) == -1) {
-        reportError("Failed to prepare working directory.");
-        return 1;
-    }
     VideoState state(&net_handler);
 
     // sets handler of SIGPIPE
