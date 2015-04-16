@@ -28,15 +28,16 @@ void cleanCommands(cmd_storage_t &cmds) {
 }
 
 void exitProgram(const std::string &msg, int64_t retval) {
-    if (!msg.empty()) {
-        reportError(msg);
-    }
+    //TODO:not nice
+    if (msg.empty()) {
     // notify neighbors
     DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
     // clear memory
     cleanCommands(DATA->cmds);
+    }
     // handles curses end
     endwin();
+    printf("%s\n", msg.c_str());
     exit(retval);
 }
 
@@ -96,8 +97,14 @@ int64_t parseOptions(int64_t argc, char **argv) {
 }
 
 int64_t readConfiguration(const std::string &cf) {
+    if (!OSHelper::isFileOk(cf)) {
+        return -1;
+    }
     // config file
     ifstream ifs(cf);
+    if (!ifs.is_open()) {
+        return -1;
+    }
     std::string param_name, value, line;
     int64_t intvalue;
     while(ifs.good()) {
@@ -230,17 +237,12 @@ void periodicActions(NetworkHandler &net_handler, VideoState *state) {
 }
 
 int main(int argc, char **argv) {
-	if (argc > 2) {
-		usage();
-    }
-
     // handle the options
     parseOptions(argc, argv);
     // inits the curses variables
     initCurses();
     if (readConfiguration("CONF") == -1) {
-        reportError("Error reading configuration!");
-        return 1;
+        exitProgram("Failed to read configuration.", 1);
     }
 
     NetworkHandler net_handler;

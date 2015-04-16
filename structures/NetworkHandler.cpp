@@ -250,7 +250,7 @@ int64_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     }
     // update the interval
     DATA->neighbors.setInterval(addr,
-                                DATA->config.getIntValue("CHECK_INTERVALS"));
+                                DATA->config.getIntValue("NEIGHBOR_CHECK_TIMEOUT"));
     return sock;
 }
 

@@ -45,6 +45,8 @@ struct TransferInfo : public Listener, Sendable {
     std::string original_extension;
     //! determines desired container format
     std::string desired_extension;
+    //! determines quality of encoding
+    std::string quality;
     /*!
      * \brief path to the associated file
      * valid when created, pushed to process and when returned

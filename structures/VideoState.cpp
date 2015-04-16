@@ -291,7 +291,7 @@ void VideoState::printVideoState() {
 void VideoState::loadFileInfo(struct FileInfo &finfo) {
     this->finfo = finfo;
     // updates size
-    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE"));
+    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE") * 1024);
 }
 
 void VideoState::resetFileInfo() {
