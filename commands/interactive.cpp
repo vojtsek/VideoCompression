@@ -85,7 +85,7 @@ void CmdStart::execute() {
 void CmdSetCodec::execute() {
     // reads the input and sets the codec
     std::string in = loadInput("lists/codecs.list", "Enter desired output codec:", false, false);
-    if (utilities::knownCodec(in)) {
+    if (utilities::isKnown(in, DATA->getKnownCodecs())) {
         state->o_codec = in;
         reportSuccess("Output codec set to: " + in);
     } else {
@@ -117,7 +117,7 @@ void CmdSetChSize::execute() {
 void CmdSetFormat::execute() {
     // loads the desired container format
     std::string in = loadInput("lists/formats.list", "Enter desired output format:", false, false);
-    if (utilities::knownFormat(in)) {
+    if (utilities::isKnown(in, DATA->getKnownFormats())) {
         state->o_format = "." + in;
         reportSuccess("Output format set to: " + in);
     } else {
@@ -133,7 +133,7 @@ void CmdSetFormat::execute() {
 void CmdSetQuality::execute() {
     // loads the desired container format
     std::string in = loadInput("lists/qualities.list", "Enter desired quality:", false, false);
-    if (utilities::knownQuality(in)) {
+    if (utilities::isKnown(in, DATA->getKnownQualities())) {
         try {
             DATA->config.strValues.at("QUALITY") = in;
         } catch (std::out_of_range) {

@@ -97,25 +97,12 @@ namespace utilities
     void printOverallState(VideoState *state);
 
     /*!
-     * \brief knownCodec checks, whether the codec is known
-     * \param cod string representation of the codec
-     * \return true if codec is known
+     * \brief isKnown checks, whether the string is allowed
+     * \param cod string to explore
+     * \return true if the string is known
      */
-    bool knownCodec(const std::string &cod);
-
-    /*!
-     * \brief knownFormat  checks, whether the given format (i.e. extension) is known
-     * \param format extension to check
-     * \return true if the format is known
-     */
-    bool knownFormat(const std::string &format);
-
-    /*!
-     * \brief knownQuality  checks, whether the choosen quality is valid
-     * \param quality given quality
-     * \return true if the quality is known
-     */
-    bool knownQuality(const std::string &quality);
+    bool isKnown(const std::string &cod,
+                 const std::vector<std::string> &known);
 
     /*!
      * \brief isAcceptable checks if the character is valid input

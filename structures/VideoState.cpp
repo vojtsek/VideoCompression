@@ -25,8 +25,8 @@ int64_t VideoState::split() {
                                     finfo.duration * 2, cmd, 13	, cmd,
                                              "-i", finfo.fpath.c_str(),
                                              "-c:v", "libx264",
-                                             "-preset",
-                                             "-c:a", "copy",                                           DATA->config.getStringValue("QUALITY").c_str(),
+                                             "-preset",DATA->config.getStringValue("QUALITY").c_str(),
+                                             "-c:a", "copy",
                                              "-nostdin",
                                              "-qp", "0",
                                              "encodingTest.mkv");
@@ -101,6 +101,7 @@ int64_t VideoState::split() {
 
         // creates chunk and measures time
         ti->start = elapsed;
+        ti->quality = DATA->config.getStringValue("QUALITY");
         duration = chunkhelper::createChunk(this,
                     ti, &retval);
         if (duration < 0) {
@@ -229,7 +230,7 @@ void VideoState::endProcess(int64_t duration) {
     // sorts the chunks
     std::sort(tis.begin(), tis.end(), [&](
               TransferInfo *t1, TransferInfo *t2) {
-        return (t1->encoding_time < t2->encoding_time);
+        return (t1->time_per_kb < t2->time_per_kb);
     });
     // traverses chunks and reports
     for (auto &ti : tis) {

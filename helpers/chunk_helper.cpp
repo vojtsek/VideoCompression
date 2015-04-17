@@ -35,6 +35,10 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
         // sending the file was not succesful
         // first time send -> to process
         if (!ti->addressed) {
+            // process was aborted
+            if (!DATA->state.working) {
+                continue;
+            }
             // obtain free neighbor
             if (DATA->neighbors.getFreeNeighbor(
                      free_address) == 0) {
@@ -98,6 +102,9 @@ void chunkhelper::chunkProcessRoutine() {
 
 void chunkhelper::processReturnedChunk(TransferInfo *ti,
                           NetworkHandler *, VideoState *state) {
+    ti->time_per_kb = (double)
+            (ti->sending_time + ti->receiving_time + ti->encoding_time) *
+            1024 / (double) ti->chunk_size;
     chunkhelper::trashChunk(ti, false);
     // ti will be deleted while postprocessing
 
@@ -110,7 +117,7 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
     DATA->neighbors.applyToNeighbors([&](
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, ti->address)) {
-            entry.second->overall_time += ti->encoding_time;
+            entry.second->overall_time += ti->time_per_kb;
             entry.second->processed_chunks++;
             entry.second->quality = entry.second->overall_time /
                     entry.second->processed_chunks;
@@ -150,6 +157,11 @@ int64_t chunkhelper::createChunk(VideoState *state,
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
         OSHelper::rmFile(ti->path);
+    if (!OSHelper::prepareDir(SPLITTED_PATH, false) == -1) {
+        reportError("Failed to prepare directory while creating " +
+                    ti->name);
+        return -1;
+    }
     while (tries-- > 0) {
             reportDebug("Creating chunk " +
                                     ti->path, 2);
@@ -227,7 +239,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                              "-i", file_in.c_str(),
                              "-c:v", ti->output_codec.c_str(),
                              "-preset",
-                             DATA->config.getStringValue("QUALITY").c_str(),
+                             ti->quality.c_str(),
                                     "-c:a", "copy",
                              "-nostdin",
                              "-qp", "0",
@@ -292,10 +304,13 @@ double chunkhelper::getChunkDuration(const string &fp) {
     // TODO: should use JSON
     std::string dur_str(utilities::extract(
                             out, "duration", 1).at(0));
-    //TODO: handle exception
-    std::stringstream ssd(dur_str.substr(dur_str.find("=") + 1));
-    ssd >> duration;
-    return duration;
+    try {
+            std::stringstream ssd(dur_str.substr(dur_str.find("=") + 1));
+            ssd >> duration;
+            return duration;
+    } catch (std::exception) {
+        return -1;
+    }
 }
 
 void chunkhelper::trashChunk(TransferInfo *ti, bool del) {

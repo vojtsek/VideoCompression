@@ -91,7 +91,8 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     // too many failed send attempts -> invalid file
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
-            OSHelper::rmFile(ti->path);
+            ti->path = SPLITTED_PATH +
+                    PATH_SEPARATOR + ti->name + ti->original_extension;
             reportDebug("Reencoding " + ti->name, 2);
             double retval;
             // reencode the chunk

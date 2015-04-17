@@ -213,34 +213,10 @@ bool utilities::isAcceptable(char c) {
 }
 
 
-// TODO: handle this generically
-bool utilities::knownCodec(const std::string &cod) {
-    vector<string> known = Data::getKnownCodecs();
-    // try to find current codec
-    for (string &c : known) {
+bool utilities::isKnown(const std::string &cod,
+                        const std::vector<std::string> &known) {
+    for (const std::string &c : known) {
         if (c == cod) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool utilities::knownFormat(const std::string &format) {
-    vector<string> known = Data::getKnownFormats();
-    // try to find given format
-    for (string &f : known) {
-        if (f == format) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool utilities::knownQuality(const std::string &quality) {
-    vector<string> known = Data::getKnownQualities();
-    // try to find given format
-    for (string &q : known) {
-        if (q == quality) {
             return true;
         }
     }

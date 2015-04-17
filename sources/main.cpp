@@ -86,8 +86,10 @@ int64_t parseOptions(int64_t argc, char **argv) {
         // port to listen superpeer
         case 'c':
             DATA->config.intValues.emplace("SUPERPEER_PORT", atoi(optarg));
+            break;
         case 't':
             DATA->config.encode_first = true;
+            break;
         // unknown option
         case '?':
             usage();

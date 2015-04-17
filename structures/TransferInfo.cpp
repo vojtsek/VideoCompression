@@ -106,6 +106,11 @@ int64_t TransferInfo::send(int64_t fd) {
         reportDebug("Failed to send codec.", 1);
         return -1;
     }
+
+    if (sendString(fd, quality) == -1) {
+        reportDebug("Failed to send codec.", 1);
+        return -1;
+    }
     return 0;
 }
 
@@ -184,6 +189,11 @@ int64_t TransferInfo::receive(int64_t fd) {
         reportDebug("Failed to receive timestamp.", 1);
         return -1;
     }
+
+    if ((quality = receiveString(fd)).empty()) {
+        reportDebug("Failed to receive timestamp.", 1);
+        return -1;
+    }
     return 0;
 }
 
@@ -213,10 +223,12 @@ std::string TransferInfo::getInfo() {
     std::stringstream ss;
     ss << "----------------------------------" << std::endl;
     ss << "Name: " << name << std::endl;
+    ss << "Size: " << chunk_size / 1024 << " kiloBytes" << std::endl;
     ss << "Times sent: " << sent_times << std::endl;
     ss << "Sending time: " << sending_time << std::endl;
     ss << "Receiving time: " << receiving_time << std::endl;
     ss << "Encoding time: " << encoding_time << std::endl;
+    ss << "Time per kB: " << time_per_kb << std::endl;
     ss << "Encoded by: " << MyAddr(address).get() << std::endl;
     ss << "---------------------------------" << std::endl;
     return ss.str();

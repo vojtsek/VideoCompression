@@ -31,6 +31,8 @@ struct TransferInfo : public Listener, Sendable {
     int64_t duration;
     //! how many times failed to send, for local purposes only(not transfered)
     int64_t tries_sent;
+    //! represents time unit per kilobyte
+    double time_per_kb;
     //! start offset
     double start;
     //! address assigned when distributing

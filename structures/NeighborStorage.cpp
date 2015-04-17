@@ -34,15 +34,7 @@ int64_t NeighborStorage::removeNeighbor(
 
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (networkHelper::cmpStorages(it->second->address, addr)) {
-            // removes if there are some chunks addressed to this neighbor
-            // TODO: meaningful?
-            DATA->chunks_to_send.removeIf(
-                        [&](TransferInfo *ti) -> bool {
-                return networkHelper::cmpStorages(
-                            ti->address, it->second->address);
-            });
-
-            trashNeighborChunks(addr);
+           trashNeighborChunks(addr);
             // remove from periodic listeners, checks no longer needed
             DATA->periodic_listeners.removeIf(
                         [&](Listener *listener) -> bool {
@@ -212,15 +204,23 @@ std::vector<struct sockaddr_storage>
 
 void NeighborStorage::trashNeighborChunks(
         const sockaddr_storage &addr) {
+    // removes if there are some chunks addressed to this neighbor
+            DATA->chunks_to_send.removeIf(
+                        [&](TransferInfo *ti) -> bool {
+                return ((networkHelper::cmpStorages(ti->address, addr)) ||
+                         (networkHelper::cmpStorages(ti->src_address, addr)));
+            });
+
+        // traverse chunks to be encoded
     for (auto &ti :
          DATA->chunks_received.getValues()) {
         // corresponding chunk
         if (networkHelper::cmpStorages(
                     ti->address, addr)) {
-                    OSHelper::rmFile(utilities::pathFromChunk(
-                             ti, "to_process"));
-                    OSHelper::rmFile(utilities::pathFromChunk(
-                             ti, "processed"));
+                    OSHelper::rmFile(TO_PROCESS_PATH + PATH_SEPARATOR +
+                             ti->name + ti->original_extension);
+                    OSHelper::rmFile(PROCESSED_PATH + PATH_SEPARATOR +
+                             ti->name + ti->desired_extension);
                     chunkhelper::trashChunk(ti, true);
         }
     }

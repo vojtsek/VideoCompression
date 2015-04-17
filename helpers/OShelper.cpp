@@ -202,6 +202,7 @@ int64_t OSHelper::runExternal(
             return -1;
         }
         if (infop.si_status != 0) {
+            reportError("FAIL");
             return -1;
         }
         // reads the output from the pipe to the buffer

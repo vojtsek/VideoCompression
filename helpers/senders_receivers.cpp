@@ -129,6 +129,7 @@ int64_t receiveFile(int64_t fd, std::string fn) {
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         if (OSHelper::isFileOk(fn)) {
+            //TODO: can be a problem
             reportDebug(fn + ": File exists!", 2);
             return -1;
         }

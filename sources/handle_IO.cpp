@@ -144,7 +144,7 @@ void initCurses() {
     initscr();
     // allows reading function keys
     keypad(stdscr, TRUE);
-    // resizing; TODO: should not handle somehow
+    // resizing;
     signal (SIGWINCH, &resizeHandler);
     // implicitly not show pressed keys
     noecho();
@@ -245,7 +245,7 @@ void clearNlines(int64_t n) {
 }
 
 bool isBackspace(wchar_t c) {
-    // TODO: hmm not nice
+    // may be a problem on some terminal
     return (c == KEY_BACKSPACE);
 }
 
