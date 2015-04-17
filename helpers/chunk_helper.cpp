@@ -96,7 +96,6 @@ void chunkhelper::chunkProcessRoutine() {
     while (1) {
         ti = DATA->chunks_to_encode.pop();
         chunkhelper::encodeChunk(ti);
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
     }
 }
 

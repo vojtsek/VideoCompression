@@ -147,6 +147,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             return true;
         }
 
+                DATA->neighbors.setNeighborFree(address, false);
         // too many tries should indicate invalid file
         ti->tries_sent++;
         if (sendFile(fd, ti->path) == -1) {
@@ -208,6 +209,7 @@ bool CmdReturnHost::execute(
     // remove the file, no longer needed
     OSHelper::rmFile(ti->path);
     chunkhelper::trashChunk(ti, true);
+        std::atomic_fetch_add(&DATA->state.can_accept, 1);
     utilities::printOverallState(state);
     return true;
 }

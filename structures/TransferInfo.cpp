@@ -108,9 +108,21 @@ int64_t TransferInfo::send(int64_t fd) {
     }
 
     if (sendString(fd, quality) == -1) {
-        reportDebug("Failed to send codec.", 1);
+        reportDebug("Failed to send quality.", 1);
         return -1;
     }
+
+        RESPONSE_T resp;
+    if (receiveResponse(fd, resp) == -1) {
+        reportDebug("Failed to confirm chunk", 1);
+        return -1;
+    }
+
+    if (resp != RESPONSE_T::ACK_FREE) {
+        reportDebug("Failed to confirm chunk", 1);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -194,6 +206,13 @@ int64_t TransferInfo::receive(int64_t fd) {
         reportDebug("Failed to receive timestamp.", 1);
         return -1;
     }
+
+    RESPONSE_T resp = RESPONSE_T::ACK_FREE;
+    if (sendResponse(fd, resp) == -1) {
+        reportDebug("Failed to send confirmation.", 1);
+        return -1;
+    }
+
     return 0;
 }
 
