@@ -103,9 +103,8 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
 
     reportDebug("Chunk returned: " + ti->toString(), 2);
     DATA->chunks_returned.push(ti);
-    OSHelper::rmFile(DATA->config.getStringValue("WD") +
-                     PATH_SEPARATOR + ti->job_id +
-              PATH_SEPARATOR + ti->name + ti->original_extension);
+    OSHelper::rmFile(SPLITTED_PATH + PATH_SEPARATOR +
+                     ti->name + ti->original_extension);
     DATA->neighbors.setNeighborFree(ti->address, true);
     // update quality
     DATA->neighbors.applyToNeighbors([&](
@@ -199,7 +198,7 @@ int64_t chunkhelper::createChunk(VideoState *state,
 int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
     std::string out, err, res_dir;
     char cmd[BUF_LENGTH];
-    res_dir = DATA->config.getStringValue("WD") + "/processed/" + ti->job_id;
+    res_dir = PROCESSED_PATH;
     int64_t duration, tries = TRIES_FOR_CHUNK;
     std::string file_in, file_out;
     while (tries-- > 0) {
@@ -209,8 +208,8 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             }
             // construct the paths
             file_out = ti->path;
-            file_in = DATA->config.getStringValue("WD") + "/to_process/" +
-                            ti->job_id + PATH_SEPARATOR + ti->name + ti->original_extension;
+            file_in = TO_PROCESS_PATH + PATH_SEPARATOR +
+                    ti->name + ti->original_extension;
             reportDebug("Encoding: " + file_in, 2);
             snprintf(cmd, BUF_LENGTH, "%s",
                              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
@@ -224,11 +223,12 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             // spawns the encoding process
             duration = Measured<>::exec_measure(
                         OSHelper::runExternal, out, err,
-                        ti->duration * 2, cmd, 11, cmd,
+                        ti->duration * 2, cmd, 13, cmd,
                              "-i", file_in.c_str(),
                              "-c:v", ti->output_codec.c_str(),
                              "-preset",
                              DATA->config.getStringValue("QUALITY").c_str(),
+                                    "-c:a", "copy",
                              "-nostdin",
                              "-qp", "0",
                              file_out.c_str());

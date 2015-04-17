@@ -72,7 +72,7 @@ bool CmdAskHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
                 return false;
             }
             // TODO: IPv4
-        addr.ss_family = AF_INET6;
+        //addr.ss_family = AF_INET6;
         // fails if the node is not alive
         if (networkHelper::getMyAddress(
                     addr, communicating_addr, handler) == -1) {

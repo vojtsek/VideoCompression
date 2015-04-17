@@ -123,6 +123,7 @@ gen_conf_row "On which port contact default" "SUPERPEER_PORT" "$CPORT"
 gen_conf_row "Which address contact by default?" "SUPERPEER_ADDR" "$CADDR"
 gen_conf_row "IP address used" "MY_IP" "$IP"
 gen_conf_row "What quality of encoding use?" "QUALITY" "$QUALITY"
+gen_conf_row "Transfer buffer length [bytes]" "TRANSFER_BUF_LENGTH" "1048576"
 
 echo "Configuration successfuly created"
 
@@ -130,7 +131,7 @@ mkdir -p $BUILD_DIR || exit_config "Failed to create build dir."
 mv "$CONFIG_FILE" "${BUILD_DIR}/CONF"
 cp -r "${WORKING_DIR}/lists" "$BUILD_DIR"
 arch=32
-uname -i | grep 64
+uname -a | grep "x86_64"
 [[ $? == 0 ]] && arch=64
 echo "Building for ${arch}-bit"
 cp "Makefile.$arch" "Makefile"

@@ -20,21 +20,23 @@
 using namespace std;
 using namespace utilities;
 
-void cleanCommands(cmd_storage_t &cmds) {
+void cleanCommands() {
     // free the memory
-    for (auto &c : cmds) {
+    for (auto &c : DATA->cmds) {
+        delete c.second;
+    }
+    for (auto &c : DATA->net_cmds) {
         delete c.second;
     }
 }
 
 void exitProgram(const std::string &msg, int64_t retval) {
-    //TODO:not nice
-    if (msg.empty()) {
-    // notify neighbors
-    DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
+    try {
+            // notify neighbors
+            DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
+    } catch (std::out_of_range) {}
     // clear memory
-    cleanCommands(DATA->cmds);
-    }
+    cleanCommands();
     // handles curses end
     endwin();
     printf("%s\n", msg.c_str());
@@ -167,14 +169,20 @@ void initConfiguration(NetworkHandler &handler) {
     if (OSHelper::prepareDir(
                 wdir, false) == -1) {
         exitProgram("Failed to prepare working directory.", 1);
-        return 1;
     }
+
+    if (OSHelper::prepareDir(
+                wdir + PATH_SEPARATOR + "logs", false) == -1) {
+        exitProgram("Failed to prepare working directory.", 1);
+    }
+
     try {
             DATA->config.strValues.at("WD") = wdir;
     } catch (std::out_of_range) {
         DATA->config.strValues.emplace("WD", wdir);
     }
 
+    // how many neighbors contact when gathering
     DATA->config.intValues.emplace("UPP_LIMIT", 8);
     DATA->config.IPv4_ONLY = false;
     int64_t x,y, y_space;
@@ -187,9 +195,8 @@ void initConfiguration(NetworkHandler &handler) {
     DATA->io_data.info_win = derwin(stdscr, y_space/ 2, x, 3, 0);
     DATA->io_data.status_handler.changeWin(DATA->io_data.status_win);
     DATA->io_data.info_handler.changeWin(DATA->io_data.info_win);
-    DATA->io_data.changeLogLocation(DATA->config.getStringValue("WD") + "/log_" +
-                                    utilities::getTimestamp() + "_" +
-                                    utilities::m_itoa(DATA->config.getIntValue("LISTENING_PORT")));
+    DATA->io_data.changeLogLocation(LOG_PATH + PATH_SEPARATOR +
+                                    utilities::getTimestamp() + ".log");
     DATA->io_data.info_handler.setLength(8);
     DATA->io_data.status_handler.setLength(y_space / 2);
 

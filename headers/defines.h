@@ -28,6 +28,11 @@
 // how many repetitions of encoding/splitting
 #define TRIES_FOR_CHUNK 3
 #define PATH_SEPARATOR "/"
+#define LOG_PATH DATA->config.getStringValue("WD") + PATH_SEPARATOR + "logs"
+#define SPLITTED_PATH DATA->config.getStringValue("WD") + PATH_SEPARATOR + "splitted"
+#define TO_PROCESS_PATH DATA->config.getStringValue("WD") + PATH_SEPARATOR + "to_process"
+#define PROCESSED_PATH DATA->config.getStringValue("WD") + PATH_SEPARATOR + "processed"
+#define RECEIVED_PATH DATA->config.getStringValue("WD") + PATH_SEPARATOR + "received"
 #define LINE_LENGTH 80
 #define BUF_LENGTH 512
 #define DEFAULT 1

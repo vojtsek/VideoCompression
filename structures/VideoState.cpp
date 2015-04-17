@@ -14,9 +14,7 @@ int64_t VideoState::split() {
 
     // job with timestamp
     job_id = "job_" + utilities::getTimestamp();
-        ofs.open(
-          DATA->config.getStringValue("WD") +
-                    PATH_SEPARATOR + job_id + ".out");
+        ofs.open(LOG_PATH + PATH_SEPARATOR + job_id + ".out");
     if (DATA->config.encode_first) {
             std::string out,err;
             char cmd[BUF_LENGTH];
@@ -24,11 +22,11 @@ int64_t VideoState::split() {
                                              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
             duration = Measured<>::exec_measure(
                                     OSHelper::runExternal, out, err,
-                                    finfo.duration * 2, cmd, 11, cmd,
+                                    finfo.duration * 2, cmd, 13	, cmd,
                                              "-i", finfo.fpath.c_str(),
                                              "-c:v", "libx264",
                                              "-preset",
-                                                                                             DATA->config.getStringValue("QUALITY").c_str(),
+                                             "-c:a", "copy",                                           DATA->config.getStringValue("QUALITY").c_str(),
                                              "-nostdin",
                                              "-qp", "0",
                                              "encodingTest.mkv");
@@ -37,8 +35,7 @@ int64_t VideoState::split() {
             ofs << "As whole: " << duration << std::endl;
     }
     // absolute path
-    dir_location = DATA->config.getStringValue("WD")
-                     + std::string(PATH_SEPARATOR) + job_id;
+    dir_location = SPLITTED_PATH;
     std::string chunk_name;
     char chunk_id[BUF_LENGTH];
 
@@ -87,7 +84,7 @@ int64_t VideoState::split() {
         printProgress(percent);
         // add the duration of the last chunk
         elapsed += retval;
-        snprintf(chunk_id, BUF_LENGTH, "%03lu_splitted", i);
+        snprintf(chunk_id, BUF_LENGTH, "%s_%03lu_splitted", job_id.c_str(), i);
         chunk_name = std::string(chunk_id);
         // possible situation - in the end actually
         if (elapsed > finfo.duration) {
@@ -152,7 +149,8 @@ void VideoState::abort() {
 }
 
 int64_t VideoState::join() {
-    std::string out, err, list_loc(DATA->config.getStringValue("WD") + "/received/" + job_id + "/join_list.txt"),
+    std::string out, err,
+            list_loc(RECEIVED_PATH + PATH_SEPARATOR + "join_list.txt"),
             output(DATA->config.getStringValue("WD") + PATH_SEPARATOR + finfo.basename + "_output" + o_format);
     std::string file, file_item;
     std::ofstream ofs_loc(list_loc);
@@ -167,9 +165,8 @@ int64_t VideoState::join() {
 
     // create the joining text file
     for (int64_t i = 0; i < chunk_count; ++i) {
-        snprintf(fn, BUF_LENGTH, "%03lu_splitted", i);
-        file = DATA->config.getStringValue("WD") +
-                "/received/" + job_id + PATH_SEPARATOR + fn + o_format;
+        snprintf(fn, BUF_LENGTH, "%s_%03lu_splitted", job_id.c_str(), i);
+        file = RECEIVED_PATH + PATH_SEPARATOR + fn + o_format;
         if (OSHelper::getFileSize(file) <= 0) {
             reportError("file: '" + file + "'' is not ok, failed.");
             abort();
@@ -215,7 +212,8 @@ void VideoState::reportTime(std::string msg, int64_t time) {
 }
 
 void VideoState::endProcess(int64_t duration) {
-    std::ofstream csv_stream(DATA->config.getStringValue("WD") + "/data.csv");
+    std::ofstream csv_stream(LOG_PATH + PATH_SEPARATOR +
+                             job_id + "_data.csv");
     // 100%
     printProgress(1);
     reportSuccess("Succesfully joined.");
@@ -223,7 +221,7 @@ void VideoState::endProcess(int64_t duration) {
     // removes the progress bar
     clearProgress();
     // received chunks no longer needed
-    OSHelper::rmrDir(DATA->config.getStringValue("WD") + "/received/", true);
+    OSHelper::rmrDir(RECEIVED_PATH, true);
     // is ready
     DATA->state.working = false;
     ofs << "Information about particular chunks:" << std::endl;

@@ -49,7 +49,7 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
             throw 1;
         }
 
-        std::string dir(DATA->config.getStringValue("WD") + "/to_process/" + ti->job_id);
+        std::string dir(TO_PROCESS_PATH);
         if (OSHelper::prepareDir(dir, false) == -1) {
             reportError(ti->name + ": Error creating job dir.");
             throw 1;
@@ -58,7 +58,8 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         // receives the file, measures duration
 
         std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-        if (receiveFile(fd, dir + PATH_SEPARATOR + ti->name + ti->original_extension) == -1) {
+        if (receiveFile(fd, dir + PATH_SEPARATOR +
+                        ti->name + ti->original_extension) == -1) {
                     reportError(ti->name + ": Failed to transfer file.");
                     throw 1;
         }
@@ -67,8 +68,8 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
 
         reportDebug("Pushing chunk " + ti->name + "(" +
             utilities::m_itoa(ti->chunk_size) + ") to process.", 2);
-        ti->path = std::string(DATA->config.getStringValue("WD") + "/processed/" + ti->job_id +
-                   PATH_SEPARATOR + ti->name + ti->desired_extension);
+        ti->path = PROCESSED_PATH + PATH_SEPARATOR +
+                ti->name + ti->desired_extension;
         // this helps to determine, that the chunk should be send to src_adress
         // when popped from the queue later
         ti->addressed = true;
@@ -128,7 +129,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
 
-        // problems occured
+        // neighbor has this chunk in queue already
         if (resp == RESPONSE_T::ABORT) {
             reportDebug(ti->name +
                 ": This chunk is already being processed by this neighbor.", 2);
@@ -140,7 +141,6 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             // resets the timeout
             ti->time_left = DATA->config.getIntValue(
                         "COMPUTATION_TIMEOUT");
-            // TODO: think about this
             // returns true, assuming the neighbor will do its job
             // otherwise the periodic listener will be invoked later
             return true;
@@ -191,8 +191,8 @@ bool CmdReturnHost::execute(
                         ti->name, 2);
             // remove files associated with this chunk
             OSHelper::rmFile(ti->path);
-            OSHelper::rmFile(utilities::pathFromChunk(
-                                 ti, "to_process") + ti->original_extension);
+            OSHelper::rmFile(TO_PROCESS_PATH + PATH_SEPARATOR +
+                             ti->name + ti->original_extension);
             chunkhelper::trashChunk(ti, true);
             return true;
         }
@@ -216,7 +216,6 @@ bool CmdReturnPeer::execute(
     CMDS action = CMDS::RETURN_HOST;
     RESPONSE_T resp = RESPONSE_T::AWAITING;
     TransferInfo helper_ti, *ti = nullptr;
-    //TODO:checking send
     try {
         if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -244,11 +243,12 @@ bool CmdReturnPeer::execute(
             return true;
         }
 
-        std::string dir(DATA->config.getStringValue("WD") + "/received/" + ti->job_id);
+        std::string dir(RECEIVED_PATH);
         if (OSHelper::prepareDir(dir, false) == -1) {
             reportError(ti->name + ": Error creating received job dir.");
             throw 1;
         }
+        // update times
         ti->encoding_time = helper_ti.encoding_time;
         ti->sending_time = helper_ti.sending_time;
 
@@ -263,7 +263,6 @@ bool CmdReturnPeer::execute(
 
         ti->path = dir + PATH_SEPARATOR + ti->name + ti->desired_extension;
 
-        //handler->confirmNeighbor(ti->address);
         // this is first time the chunk returned
         if (!DATA->chunks_returned.contains(ti->toString())) {
             chunkhelper::processReturnedChunk(ti, handler, state);
