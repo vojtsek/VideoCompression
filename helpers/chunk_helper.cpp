@@ -129,7 +129,6 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
 
 void chunkhelper::pushChunkProcess(TransferInfo *ti) {
     // decrease number of acceptible chunks
-    std::atomic_fetch_sub(&DATA->state.can_accept, 1);
     DATA->chunks_to_encode.push(ti);
 }
 

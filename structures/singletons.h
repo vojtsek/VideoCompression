@@ -21,9 +21,6 @@ struct State {
     bool enough_neighbors = false;
     //! if is processing file currently
     bool working = false;
-    //! how many chunks it's able to process
-    std::atomic<int> can_accept;
-    //! how many chunks remains to receive
 };
 
 /*!

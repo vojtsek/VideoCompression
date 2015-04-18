@@ -162,7 +162,6 @@ void initConfiguration(NetworkHandler &handler) {
     // TODO: essential values check
     // data initialized with default values
     // called after the config file was read
-    DATA->state.can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS");
     // from config file
     std::string wdir = DATA->config.getStringValue("WD");
     if (wdir == "") {

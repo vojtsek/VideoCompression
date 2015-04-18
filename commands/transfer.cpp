@@ -209,7 +209,6 @@ bool CmdReturnHost::execute(
     // remove the file, no longer needed
     OSHelper::rmFile(ti->path);
     chunkhelper::trashChunk(ti, true);
-        std::atomic_fetch_add(&DATA->state.can_accept, 1);
     utilities::printOverallState(state);
     return true;
 }
@@ -310,6 +309,7 @@ bool CmdGatherNeighborsPeer::execute(
         if ((sock = handler->checkNeighbor(requester_addr)) == -1) {
             reportDebug("Failed to contact: " + requester_maddr.get(), 3);
         } else {
+            reportError("Advertising");
             handler->spawnOutgoingConnection(requester_addr, sock,
             { CMDS::PING_PEER }, true, nullptr);
         }

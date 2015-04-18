@@ -81,7 +81,8 @@ bool networkHelper::addrIn(
 }
 
 bool networkHelper::isFree() {
-    int64_t can_accept = std::atomic_load(&DATA->state.can_accept);
+    int64_t can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHNUKS") -
+            DATA->chunks_received.getSize();
 
     // able to do some work?
     if ((can_accept <= 0) || (DATA->state.working &&
