@@ -75,7 +75,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             if (ngh->quality > 0) {
                 ti->time_left = TIME_CONSTANT * ngh->quality *
                         // divide by 1000 for milliseconds, 1024 for kilobytes
-                    ti->chunk_size / (1024 * 1000);
+                    ti->chunk_size / (1024.0 * 1000);
             }
             DATA->periodic_listeners.push(ti);
             ti->sent_times++;
@@ -83,7 +83,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             DATA->neighbors.setNeighborFree(free_address, false);
             reportDebug(ti->name + " was sent. " +
                         MyAddr(free_address).get() +
-                        "; timeout: " + utilities::m_itoa(ti->time_left), 2);
+                        "; timeout: " + utilities::m_itoa((int) ti->time_left), 2);
         } else {
             // in case of returning chunk
             int64_t sock = net_handler->checkNeighbor(ti->src_address);
@@ -125,7 +125,6 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, ti->address)) {
             entry.second->overall_time += ti->time_per_kb;
-            reportError(utilities::m_itoa((double) entry.second->overall_time));
             entry.second->processed_chunks++;
             entry.second->quality = (double) entry.second->overall_time /
                     (double) entry.second->processed_chunks;

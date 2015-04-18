@@ -3,13 +3,13 @@
 
 #include <fstream>
 #include <algorithm>
+#include <dirent.h>
 
 
 int64_t VideoState::split() {
     // sets busy state
     DATA->state.working = true;
     processed_chunks = 0;
-    double sum = 0.0, retval = 0.0, elapsed = 0.0;
     int64_t duration;
 
     // job with timestamp
@@ -71,6 +71,46 @@ int64_t VideoState::split() {
     // reports
     utilities::printOverallState(this);
 
+    std::string out,err;
+    char cmd[BUF_LENGTH], chunk_duration[BUF_LENGTH];
+    snprintf(cmd, BUF_LENGTH, "%s",
+             DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
+    snprintf(chunk_duration, BUF_LENGTH, "%lu", secs_per_chunk);
+   // std::thread thr(reportFileProgress, output, sum_size);
+    // spawn the joining command
+    duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                        out, err, 1200, cmd, 15, cmd,
+                    "-i", finfo.fpath.c_str(),
+                    "-f", "segment",
+                    "-segment_time", chunk_duration,
+                    "-reset_timestamps", "1",
+                    "-c", "copy",
+                    "-nostdin", "-map", "0",
+                    std::string(SPLITTED_PATH + PATH_SEPARATOR + job_id + "_%d" + finfo.extension).c_str());
+    if ((err.find("failed") != std::string::npos) ||
+            (duration < 0)) {
+        //reportError(output + ": Error while joining file.");
+        //reportError(err);
+        clearProgress();
+        return -1;
+    }
+    // wait for end of the process
+
+    DIR * dirp;
+    struct dirent * entry;
+    chunk_count = 0;
+
+    dirp = opendir(std::string(SPLITTED_PATH).c_str()); /* There should be error handling after this */
+    while ((entry = readdir(dirp)) != NULL) {
+        if (entry->d_type == DT_REG) {
+            std::string name(entry->d_name);
+            if (name.find(job_id) != std::string::npos) {
+             chunk_count++;
+            }
+        }
+    }
+    closedir(dirp);
+
     for (int64_t i = 0; i < chunk_count; ++i) {
         // the process was aborted by the user
         if (aborted) {
@@ -78,21 +118,10 @@ int64_t VideoState::split() {
 
             break;
         }
-        double percent = (double) i / chunk_count;
-
         // format the command
-        printProgress(percent);
         // add the duration of the last chunk
-        elapsed += retval;
-        snprintf(chunk_id, BUF_LENGTH, "%s_%03lu_splitted", job_id.c_str(), i);
+        snprintf(chunk_id, BUF_LENGTH, "%s_%lu", job_id.c_str(), i);
         chunk_name = std::string(chunk_id);
-        // possible situation - in the end actually
-        if (elapsed > finfo.duration) {
-            // how many left to receive actually
-            this->chunk_count = i;
-            break;
-        }
-
         // creates new TransferInfo structure
         TransferInfo *ti = new TransferInfo(0, job_id, chunk_name,
                                             finfo.extension, o_format,
@@ -100,29 +129,18 @@ int64_t VideoState::split() {
                                             o_codec);
 
         // creates chunk and measures time
-        ti->start = elapsed;
+      //  ti->start = elapsed;
         ti->quality = DATA->config.getStringValue("QUALITY");
-        duration = chunkhelper::createChunk(this,
-                    ti, &retval);
-        if (duration < 0) {
-            reportError("Failed to create " + ti->name);
-            abort();
-            // resets flag for future
-            aborted = false;
-            return -1;
-        }
-        sum += duration;
+        ti->chunk_size = OSHelper::getFileSize(ti->path);
+     //   duration = chunkhelper::createChunk(this,
+     //               ti, &retval);
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state
         utilities::printOverallState(this);
     }
-    // 100%
-    printProgress(1);
     // report file
-       reportTime("Splitting: ", sum / 1000);
-    // removes the progress bar
-    clearProgress();
+       reportTime("Splitting: ", duration / 1000);
     return 0;
 }
 
@@ -165,8 +183,9 @@ int64_t VideoState::join() {
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
     // create the joining text file
+
     for (int64_t i = 0; i < chunk_count; ++i) {
-        snprintf(fn, BUF_LENGTH, "%s_%03lu_splitted", job_id.c_str(), i);
+        snprintf(fn, BUF_LENGTH, "%s_%lu", job_id.c_str(), i);
         file = RECEIVED_PATH + PATH_SEPARATOR + fn + o_format;
         if (OSHelper::getFileSize(file) <= 0) {
             reportError("file: '" + file + "'' is not ok, failed.");
