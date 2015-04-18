@@ -128,7 +128,7 @@ gen_conf_row "Transfer buffer length [bytes]" "TRANSFER_BUF_LENGTH" "1048576"
 echo "Configuration successfuly created"
 
 mkdir -p $BUILD_DIR || exit_config "Failed to create build dir."
-mv "$CONFIG_FILE" "${BUILD_DIR}/CONF"
+cp "$CONFIG_FILE" "${BUILD_DIR}/CONF"
 cp -r "${WORKING_DIR}/lists" "$BUILD_DIR"
 arch=32
 uname -a | grep "x86_64"

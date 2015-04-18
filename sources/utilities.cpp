@@ -106,7 +106,7 @@ void utilities::printOverallState(VideoState *state) {
                                        utilities::m_itoa(state->processed_chunks) +
                                        PATH_SEPARATOR + utilities::m_itoa(state->chunk_count)), type);
     }
-    if (DATA->chunks_received.getValues().size() > 0) {
+    if (DATA->chunks_received.getSize() > 0) {
     DATA->io_data.info_handler.add("Chunks that I am processing: ", DEBUG);
     // chunks being processed
     for (const auto &c : DATA->chunks_received.getValues()) {

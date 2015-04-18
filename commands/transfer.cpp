@@ -255,6 +255,12 @@ bool CmdReturnPeer::execute(
         ti->encoding_time = helper_ti.encoding_time;
         ti->sending_time = helper_ti.sending_time;
 
+        if (DATA->chunks_returned.contains(ti->toString())) {
+                // the chunk returned before,
+                // propably was resent to other neighbor - no longer needed
+            reportError(ti->name + ": Too late.");
+            return true;
+        }
                 std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         if (receiveFile(fd,
                 dir + PATH_SEPARATOR + ti->name + ti->desired_extension) == -1) {
@@ -267,18 +273,12 @@ bool CmdReturnPeer::execute(
         ti->path = dir + PATH_SEPARATOR + ti->name + ti->desired_extension;
 
         // this is first time the chunk returned
-        if (!DATA->chunks_returned.contains(ti->toString())) {
-            chunkhelper::processReturnedChunk(ti, handler, state);
-            // all chunks has returned
-            if ((state->processed_chunks == state->chunk_count) &&
-            (state->chunk_count != 0)) {
-                state->join();
-            }
-            // the chunk returned before,
-            // propably was resent to other neighbor - no longer needed
-        } else {
-            reportError(ti->name + ": Too late.");
-        }
+                chunkhelper::processReturnedChunk(ti, handler, state);
+                // all chunks has returned
+                if ((state->processed_chunks == state->chunk_count) &&
+                    (state->chunk_count != 0)) {
+                        state->join();
+                }
     } catch (int) {
         return false;
     }
