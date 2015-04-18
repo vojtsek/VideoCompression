@@ -210,7 +210,7 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 
 bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("GOODBYE PEER", 5);
-    CMDS action = CMDS::GOODBYE_HOST;
+    CMDS action = CMDS::TERM;
     RESPONSE_T resp = RESPONSE_T::ACK_FREE;
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
