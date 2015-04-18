@@ -81,7 +81,7 @@ bool networkHelper::addrIn(
 }
 
 bool networkHelper::isFree() {
-    int64_t can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHNUKS") -
+    int64_t can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS") -
             DATA->chunks_received.getSize();
 
     // able to do some work?

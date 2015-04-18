@@ -71,8 +71,12 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             { CMDS::PING_PEER, CMDS::DISTRIBUTE_PEER }, true, (void *) ti);
             // start checking the processing time
             // is done here, so in case of failure it is handled
-            ti->time_left = DATA->neighbors.getNeighborInfo(free_address)->quality *
-                    ti->chunk_size / 1024;
+            NeighborInfo *ngh = DATA->neighbors.getNeighborInfo(free_address);
+            if (ngh->quality > 0) {
+                ti->time_left = TIME_CONSTANT * ngh->quality *
+                        // divide by 1000 for milliseconds, 1024 for kilobytes
+                    ti->chunk_size / (1024 * 1000);
+            }
             DATA->periodic_listeners.push(ti);
             ti->sent_times++;
             // update neighbor information
@@ -121,9 +125,10 @@ void chunkhelper::processReturnedChunk(TransferInfo *ti,
                      std::pair<std::string, NeighborInfo *> entry) {
         if (networkHelper::cmpStorages(entry.second->address, ti->address)) {
             entry.second->overall_time += ti->time_per_kb;
+            reportError(utilities::m_itoa((double) entry.second->overall_time));
             entry.second->processed_chunks++;
-            entry.second->quality = entry.second->overall_time /
-                    entry.second->processed_chunks;
+            entry.second->quality = (double) entry.second->overall_time /
+                    (double) entry.second->processed_chunks;
         }});
     // update counter
     state->processed_chunks = 

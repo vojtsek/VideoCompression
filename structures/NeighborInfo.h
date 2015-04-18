@@ -15,9 +15,9 @@ struct NeighborInfo : public Listener {
     // decreased periodically, reset each time the neighbor is checked
     int64_t intervals;
     //! represents quality - average computation time
-    int64_t quality;
+    double quality;
     //! overall computation time
-    int64_t overall_time;
+    double overall_time;
     //! number of chunks processed by this neighbor
     int64_t processed_chunks;
     //! whether the neighbor is free
