@@ -109,7 +109,7 @@ void CmdSetChSize::execute() {
         return;
     }
     // is supposed to be stored in bytes
-    state->changeChunkSize(nsize);
+    state->changeChunkSize(nsize * 1024);
     msg << "Chunk size set to: " << nsize << " kB";
     reportSuccess(msg.str());
 }

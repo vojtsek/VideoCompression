@@ -2,6 +2,7 @@
 #define SINGLETONS_H
 
 #include <atomic>
+#include <algorithm>
 #include <unordered_map>
 #include "structures/WindowPrinter.h"
 #include "headers/enums_types.h"
@@ -189,6 +190,26 @@ struct Data {
             { KEY_UP, CMDS::SCROLL_UP },
             { KEY_DOWN, CMDS::SCROLL_DOWN }
         };
+    }
+
+    double getQualityCoeff(std::string q) {
+        if (std::find(getKnownQualities().begin(), getKnownQualities().end(), q)
+                == getKnownQualities().end()) {
+            return 10.0;
+        }
+        static std::map<std::string, double> coeffs = {
+            {"veryslow", 10.0},
+            {"slower", 9.5},
+            {"slow", 8.0},
+            {"medium", 7.5},
+            {"fast", 7.0},
+            {"faster", 6.5},
+            {"veryfast", 6.0},
+            {"superfast", 5.5},
+            {"ultrafast", 5.0}
+        };
+
+        return coeffs[q];
     }
 
     Data(std::string log_location) : io_data(log_location) {}

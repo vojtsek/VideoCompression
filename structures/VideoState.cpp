@@ -76,31 +76,34 @@ int64_t VideoState::split() {
     snprintf(cmd, BUF_LENGTH, "%s",
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
     snprintf(chunk_duration, BUF_LENGTH, "%lu", secs_per_chunk);
-   // std::thread thr(reportFileProgress, output, sum_size);
-    // spawn the joining command
+    std::string output = SPLITTED_PATH + PATH_SEPARATOR +
+                job_id + "_%d" + finfo.extension;
+    // spawn the splitting command
     duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                        out, err, 1200, cmd, 15, cmd,
+                                        out, err, finfo.duration, cmd, 15, cmd,
                     "-i", finfo.fpath.c_str(),
                     "-f", "segment",
                     "-segment_time", chunk_duration,
                     "-reset_timestamps", "1",
                     "-c", "copy",
                     "-nostdin", "-map", "0",
-                    std::string(SPLITTED_PATH + PATH_SEPARATOR + job_id + "_%d" + finfo.extension).c_str());
+                    output.c_str());
     if ((err.find("failed") != std::string::npos) ||
             (duration < 0)) {
-        //reportError(output + ": Error while joining file.");
-        //reportError(err);
+        reportError(output + ": Error while splitting file.");
         clearProgress();
         return -1;
     }
-    // wait for end of the process
 
     DIR * dirp;
     struct dirent * entry;
     chunk_count = 0;
 
-    dirp = opendir(std::string(SPLITTED_PATH).c_str()); /* There should be error handling after this */
+    dirp = opendir(std::string(SPLITTED_PATH).c_str());
+    if (dirp == NULL) {
+        reportError("Failed to read splitted data");
+        abort();
+    }
     while ((entry = readdir(dirp)) != NULL) {
         if (entry->d_type == DT_REG) {
             std::string name(entry->d_name);
@@ -118,8 +121,6 @@ int64_t VideoState::split() {
 
             break;
         }
-        // format the command
-        // add the duration of the last chunk
         snprintf(chunk_id, BUF_LENGTH, "%s_%lu", job_id.c_str(), i);
         chunk_name = std::string(chunk_id);
         // creates new TransferInfo structure
@@ -128,12 +129,9 @@ int64_t VideoState::split() {
                                             dir_location + PATH_SEPARATOR + chunk_name + finfo.extension,
                                             o_codec);
 
-        // creates chunk and measures time
-      //  ti->start = elapsed;
         ti->quality = DATA->config.getStringValue("QUALITY");
         ti->chunk_size = OSHelper::getFileSize(ti->path);
-     //   duration = chunkhelper::createChunk(this,
-     //               ti, &retval);
+        ti->time_left = ti->chunk_size / 1024 * DATA->getQualityCoeff(ti->quality);
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state
@@ -165,6 +163,7 @@ void VideoState::abort() {
     // removes useless files
     OSHelper::rmrDir(dir_location, true);
     utilities::printOverallState(this);
+    reset();
 }
 
 int64_t VideoState::join() {
@@ -264,6 +263,17 @@ void VideoState::endProcess(int64_t duration) {
     csv_stream.flush();
     csv_stream.close();
     DATA->chunks_returned.clear();
+    reset();
+}
+
+void VideoState::reset() {
+    resetFileInfo();
+    aborted = false;
+    DATA->state.working = false;
+    chunk_count = 0;
+    processed_chunks = 0;
+    dir_location = "";
+
 }
 
 void VideoState::printVideoState() {
@@ -323,7 +333,7 @@ void VideoState::resetFileInfo() {
 }
 
 void VideoState::changeChunkSize(size_t nsize) {
-    // set the size
+    // set the size [bytes]
     chunk_size = nsize;
     // how many seconds *approximately* takes one chunk of this size
     secs_per_chunk = chunk_size  / finfo.bitrate;

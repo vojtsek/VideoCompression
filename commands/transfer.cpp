@@ -93,19 +93,19 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             // it's "local" chunk, so it's essential
             ti->path = SPLITTED_PATH +
                     PATH_SEPARATOR + ti->name + ti->original_extension;
-            reportDebug("Reencoding " + ti->name, 2);
-            double retval;
-            // reencode the chunk
-            chunkhelper::createChunk(state, ti, &retval);
-            if (retval < 0) {
-                reportError("Failed to reencode " + ti->name);
-                state->abort();
+            if (!OSHelper::isFileOk(ti->path)) {
+                // file is invalid, so the process has to be aborted
+                            state->abort();
+            } else {
+                // "disable" neighbor, if is ok, it's state will be updated later
+                DATA->neighbors.setNeighborFree(
+                            ti->address, false);
+                ti->tries_sent = 0;
+                chunkhelper::pushChunkSend(ti);
             }
-            // reset the counter
-            ti->tries_sent = 0;
-            chunkhelper::pushChunkSend(ti);
             return false;
         }
+        ti->tries_sent++;
     try {
         if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -148,12 +148,24 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         }
 
                 DATA->neighbors.setNeighborFree(address, false);
-        // too many tries should indicate invalid file
-        ti->tries_sent++;
         if (sendFile(fd, ti->path) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
+        DATA->neighbors.assignChunk(address, true, ti);
+        //TODO: may be invalid ptr
+        NeighborInfo *ngh = DATA->neighbors.getNeighborInfo(address);
+        if (ngh->quality > 0) {
+            ti->time_left = TIME_CONSTANT * ngh->quality *
+                    // divide by 1000 for milliseconds, 1024 for kilobytes
+                ti->chunk_size / (1024.0 * 1000);
+        }
+        DATA->periodic_listeners.push(ti);
+        ti->sent_times++;
+                reportDebug(ti->name + " was sent. " +
+                                        MyAddr(address).get() +
+                                        "; timeout: " + utilities::m_itoa((int) ti->time_left), 2);
+
     } catch (int) {
         // resend chunk in case of failure
         chunkhelper::pushChunkSend(ti);
@@ -253,6 +265,8 @@ bool CmdReturnPeer::execute(
         // update times
         ti->encoding_time = helper_ti.encoding_time;
         ti->sending_time = helper_ti.sending_time;
+        // remove chunk association
+        DATA->neighbors.assignChunk(address, false, ti);
 
         if (DATA->chunks_returned.contains(ti->toString())) {
                 // the chunk returned before,

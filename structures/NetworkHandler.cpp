@@ -304,6 +304,7 @@ void NetworkHandler::addNewNeighbor(
     // handles potential
     if (potential) {
         potential_mtx.lock();
+        reportStatus("Adding potential " + MyAddr(addr).get());
         potential_neighbors.push_back(addr);
         potential_mtx.unlock();
     } else {

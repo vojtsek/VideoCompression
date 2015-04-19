@@ -69,6 +69,11 @@ struct VideoState {
     int64_t join();
 
     /*!
+     * \brief reset resets the state so new process can begin
+     */
+    void reset();
+
+    /*!
      * \brief printVideoState
      * Prints information about loaded video file,
      * using WindowPrinter instance associated with

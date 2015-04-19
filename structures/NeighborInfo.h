@@ -4,6 +4,7 @@
 #include "structures/structures.h"
 #include "headers/defines.h"
 
+struct TransferInfo;
 /*!
  * \brief The NeighborInfo struct
  * holds information about particular neighbor
@@ -11,6 +12,8 @@
 struct NeighborInfo : public Listener {
     //! address and port of the neighbor
     struct sockaddr_storage address;
+    //! chunks associated with the neighbor
+    std::vector<TransferInfo *> chunks_assigned;
     //! how many intervals before check
     // decreased periodically, reset each time the neighbor is checked
     int64_t intervals;

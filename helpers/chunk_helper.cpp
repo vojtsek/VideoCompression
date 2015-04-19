@@ -69,21 +69,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             // send the chunk to process
             net_handler->spawnOutgoingConnection(free_address, sock,
             { CMDS::PING_PEER, CMDS::DISTRIBUTE_PEER }, true, (void *) ti);
-            // start checking the processing time
-            // is done here, so in case of failure it is handled
-            NeighborInfo *ngh = DATA->neighbors.getNeighborInfo(free_address);
-            if (ngh->quality > 0) {
-                ti->time_left = TIME_CONSTANT * ngh->quality *
-                        // divide by 1000 for milliseconds, 1024 for kilobytes
-                    ti->chunk_size / (1024.0 * 1000);
-            }
-            DATA->periodic_listeners.push(ti);
-            ti->sent_times++;
-            // update neighbor information
-            DATA->neighbors.setNeighborFree(free_address, false);
-            reportDebug(ti->name + " was sent. " +
-                        MyAddr(free_address).get() +
-                        "; timeout: " + utilities::m_itoa((int) ti->time_left), 2);
+                            DATA->neighbors.setNeighborFree(free_address, false);
         } else {
             // in case of returning chunk
             int64_t sock = net_handler->checkNeighbor(ti->src_address);

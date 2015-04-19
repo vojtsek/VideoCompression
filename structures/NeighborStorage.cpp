@@ -32,6 +32,11 @@ int64_t NeighborStorage::removeNeighbor(
                         return networkHelper::cmpStorages(ngh->address, addr);
     }), free_neighbors.end());
 
+    NeighborInfo *ngh = _get(addr);
+    if (ngh == nullptr) {
+        return 0;
+    }
+    // TODO: simplify
     for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
         if (networkHelper::cmpStorages(it->second->address, addr)) {
            trashNeighborChunks(addr);
@@ -42,18 +47,23 @@ int64_t NeighborStorage::removeNeighbor(
             });
             // remove from neighbors list
             neighbors.erase(it);
-            delete it->second;
             if (neighbors.size() < (unsigned)
                 DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
                 DATA->state.enough_neighbors = false;
             }
             reportError("Removed neighbor: " + MyAddr(addr).get());
-            n_mtx.unlock();
-            printNeighborsInfo();
-            return 1;
+            break;
         }
     }
+    for (const auto &ti : ngh->chunks_assigned) {
+        DATA->periodic_listeners.remove((Listener *) ti);
+        reportError("Repushing " + ti->toString());
+        chunkhelper::pushChunkSend(ti);
+    }
+    delete ngh;
+    // TODO: add as potential
     n_mtx.unlock();
+        printNeighborsInfo();
     return 0;
 }
 
@@ -102,11 +112,8 @@ void NeighborStorage::updateQuality(
     return;
 }
 
-NeighborInfo *NeighborStorage::getNeighborInfo(
-        const sockaddr_storage &addr) {
+NeighborInfo *NeighborStorage::_get(const sockaddr_storage &addr) {
     NeighborInfo *res = nullptr;
-    // should lock every time, except when setting neighbor free
-        n_mtx.lock();
     std::for_each (neighbors.begin(), neighbors.end(),
                    [&](std::pair<std::string, NeighborInfo *> entry) {
         // earns the NeighborInfo structure pointer
@@ -114,6 +121,14 @@ NeighborInfo *NeighborStorage::getNeighborInfo(
             res = entry.second;
         }
     });
+    return res;
+}
+
+NeighborInfo *NeighborStorage::getNeighborInfo(
+        const sockaddr_storage &addr) {
+    NeighborInfo *res = nullptr;
+        n_mtx.lock();
+        res = _get(addr);
         n_mtx.unlock();
     return res;
 }
@@ -224,6 +239,25 @@ void NeighborStorage::trashNeighborChunks(
                     chunkhelper::trashChunk(ti, true);
         }
     }
+}
+
+void NeighborStorage::assignChunk(const sockaddr_storage &addr,
+                                  bool assign, TransferInfo *ti) {
+    n_mtx.lock();
+    NeighborInfo *ngh = _get(addr);
+    if (ngh == nullptr) {
+        return;
+    }
+    if (assign) {
+        ngh->chunks_assigned.push_back(ti);
+    } else {
+        ngh->chunks_assigned.erase(
+            std::remove_if (ngh->chunks_assigned.begin(), ngh->chunks_assigned.end(),
+               [&](TransferInfo *that) {
+            return (that->toString() == ti->toString());
+        }), ngh->chunks_assigned.end());
+    }
+    n_mtx.unlock();
 }
 
 void NeighborStorage::printNeighborsInfo() {

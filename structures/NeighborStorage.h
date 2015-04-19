@@ -7,6 +7,7 @@
 #include "headers/enums_types.h"
 
 struct NeighborInfo;
+struct TransferInfo;
 
 /*!
  * \brief The NeighborStorage class maintains the neighbors
@@ -33,6 +34,12 @@ class NeighborStorage
      */
     bool _contains(const struct sockaddr_storage &addr);
 
+    /*!
+     * \brief _get gets the info about neighbor with the adddress, does not lock
+     * \param addr address of the neighbor
+     * \return neighbor with given address
+     */
+    NeighborInfo *_get(const struct sockaddr_storage &addr);
     /*!
      * \brief createHash gets string representation corresponding to given neighbor
      * \param addr address of desired neighbor
@@ -134,6 +141,15 @@ public:
      * \param free value that should be set
      */
     void setNeighborFree(const struct sockaddr_storage &addr, bool free);
+
+    /*!
+     * \brief assignChunk associates chunk with the neighbor
+     * \param addr neighbor to assign to
+     * \param assign whether assign or delete
+     * \param ti chunk to assign
+     */
+    void assignChunk(const struct sockaddr_storage &addr,
+                     bool assign, TransferInfo *ti);
 
     /*!
      * \brief applyToNeighbors traverses the list of neighbors
