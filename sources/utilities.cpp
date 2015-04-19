@@ -90,7 +90,6 @@ void utilities::printOverallState(VideoState *state) {
     (state->chunk_count != 0)) {
         type = SUCCESS;
     }
-    reportSuccess("PRINT");
     DATA->io_data.info_handler.clear();
     // adds the messages
     DATA->io_data.info_handler.add(utilities::formatString(

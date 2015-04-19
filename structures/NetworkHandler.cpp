@@ -241,11 +241,14 @@ void NetworkHandler::contactSuperPeer() {
 
 int64_t NetworkHandler::checkNeighbor(struct sockaddr_storage addr) {
     int64_t sock;
+    //TODO: connectPeer out of cmd
     // to use the function connectPeer
     CmdAskPeer cmd(nullptr, nullptr);
     // establish the connection
     if ((sock = cmd.connectPeer(&addr)) == -1) {
         reportDebug("Failed to check neighbor."  + MyAddr(addr).get(), 3);
+        // so check will be invoked next time
+        DATA->neighbors.setInterval(addr, TICK_DURATION);
         return -1;
     }
     // update the interval
@@ -304,7 +307,6 @@ void NetworkHandler::addNewNeighbor(
     // handles potential
     if (potential) {
         potential_mtx.lock();
-        reportStatus("Adding potential " + MyAddr(addr).get());
         potential_neighbors.push_back(addr);
         potential_mtx.unlock();
     } else {

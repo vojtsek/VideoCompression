@@ -131,7 +131,7 @@ int64_t VideoState::split() {
 
         ti->quality = DATA->config.getStringValue("QUALITY");
         ti->chunk_size = OSHelper::getFileSize(ti->path);
-        ti->time_left = ti->chunk_size / 1024 * DATA->getQualityCoeff(ti->quality);
+        ti->time_left = ti->chunk_size / (1024 * 1000) * DATA->getQualityCoeff(ti->quality);
         // queue chunk for send
         chunkhelper::pushChunkSend(ti);
         // update state
@@ -273,6 +273,7 @@ void VideoState::reset() {
     chunk_count = 0;
     processed_chunks = 0;
     dir_location = "";
+    changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE") * 1024);
 
 }
 
@@ -339,6 +340,6 @@ void VideoState::changeChunkSize(size_t nsize) {
     secs_per_chunk = chunk_size  / finfo.bitrate;
     // new chunk count
     chunk_count = (((size_t) finfo.fsize) / chunk_size) + 1;
-    DATA->config.intValues.at("CHUNK_SIZE") = nsize;
+    DATA->config.intValues.at("CHUNK_SIZE") = nsize / 1024;
     utilities::printOverallState(this);
 }

@@ -323,7 +323,6 @@ bool CmdGatherNeighborsPeer::execute(
         if ((sock = handler->checkNeighbor(requester_addr)) == -1) {
             reportDebug("Failed to contact: " + requester_maddr.get(), 3);
         } else {
-            reportError("Advertising");
             handler->spawnOutgoingConnection(requester_addr, sock,
             { CMDS::PING_PEER }, true, nullptr);
         }
