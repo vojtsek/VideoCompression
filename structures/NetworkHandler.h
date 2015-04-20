@@ -79,6 +79,13 @@ struct NetworkHandler {
 		*/
     int64_t getPotentialNeighborsCount();
 
+    /*!
+     * \brief connectPeer makes connection to the desired peer
+     * \param addr network address structure to connect to.
+     * \return file descriptor of the connection
+     */
+    int64_t connectPeer(struct sockaddr_storage *addr);
+
 		/*!
 		* \brief confirmNeighbor connect to a remote peer and spawns Confirm command
 		* \param addr address of the neighbor to be confirmed

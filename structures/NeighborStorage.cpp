@@ -34,34 +34,29 @@ int64_t NeighborStorage::removeNeighbor(
 
     NeighborInfo *ngh = _get(addr);
     if (ngh == nullptr) {
+        n_mtx.unlock();
         return 0;
     }
-    // TODO: simplify
-    for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
-        if (networkHelper::cmpStorages(it->second->address, addr)) {
-           trashNeighborChunks(addr);
-            // remove from periodic listeners, checks no longer needed
-            DATA->periodic_listeners.removeIf(
-                        [&](Listener *listener) -> bool {
-                return (listener->toString() == it->second->toString());
-            });
-            // remove from neighbors list
-            neighbors.erase(it);
-            if (neighbors.size() < (unsigned)
+      trashNeighborChunks(addr);
+        // remove from periodic listeners, checks no longer needed
+        DATA->periodic_listeners.removeIf(
+                                [&](Listener *listener) -> bool {
+                return (listener->toString() == ngh->toString());
+        });
+        // remove from neighbors list
+        neighbors.erase(
+                                neighbors.find(ngh->toString()));
+        if (neighbors.size() < (unsigned)
                 DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
                 DATA->state.enough_neighbors = false;
-            }
-            reportError("Removed neighbor: " + MyAddr(addr).get());
-            break;
         }
-    }
+        reportError("Removed neighbor: " + MyAddr(addr).get());
     for (const auto &ti : ngh->chunks_assigned) {
         DATA->periodic_listeners.remove((Listener *) ti);
         reportError("Repushing " + ti->toString());
         chunkhelper::pushChunkSend(ti);
     }
     delete ngh;
-    // TODO: add as potential
     n_mtx.unlock();
         printNeighborsInfo();
     return 0;

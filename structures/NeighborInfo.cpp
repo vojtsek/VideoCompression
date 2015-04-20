@@ -26,6 +26,7 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
         // failed to connect, going to be remove
         if (sock == -1) {
             dirty = true;
+            net_handler.addNewNeighbor(true, address);
             free = false;
             return;
         }

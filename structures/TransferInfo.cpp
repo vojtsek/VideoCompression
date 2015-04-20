@@ -67,6 +67,11 @@ int64_t TransferInfo::send(int64_t fd) {
         return -1;
     }
 
+    if (sendInt64(fd, time_left) == -1) {
+        reportDebug("Failed to send timeout.", 1);
+        return -1;
+    }
+
     if (sendAdrressStruct(fd, address) == -1) {
         reportDebug("Failed to send source address.", 1);
         return -1;
@@ -154,6 +159,11 @@ int64_t TransferInfo::receive(int64_t fd) {
 
      if (receiveInt64(fd, duration) == -1){
          reportDebug("Failed to receive chunk duration.", 1);
+         return -1;
+     }
+
+     if (receiveInt64(fd, time_left) == -1){
+         reportDebug("Failed to receive chunk timeout.", 1);
          return -1;
      }
 

@@ -80,7 +80,7 @@ int64_t VideoState::split() {
                 job_id + "_%d" + finfo.extension;
     // spawn the splitting command
     duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                        out, err, finfo.duration, cmd, 15, cmd,
+                                        out, err, 60, cmd, 15, cmd,
                     "-i", finfo.fpath.c_str(),
                     "-f", "segment",
                     "-segment_time", chunk_duration,
@@ -198,11 +198,10 @@ int64_t VideoState::join() {
     ofs_loc.flush();
     ofs_loc.close();
 
-    // TODO: check for hang
     std::thread thr(reportFileProgress, output, sum_size);
     // spawn the joining command
     duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                        out, err, 1200, cmd, 9, cmd,
+                                        out, err, 500, cmd, 9, cmd,
                     "-f", "concat",
                     "-i", list_loc.c_str(),
                     "-c", "copy",
@@ -337,7 +336,9 @@ void VideoState::changeChunkSize(size_t nsize) {
     // set the size [bytes]
     chunk_size = nsize;
     // how many seconds *approximately* takes one chunk of this size
-    secs_per_chunk = chunk_size  / finfo.bitrate;
+    if (finfo.bitrate) {
+            secs_per_chunk = chunk_size  / finfo.bitrate;
+    }
     // new chunk count
     chunk_count = (((size_t) finfo.fsize) / chunk_size) + 1;
     DATA->config.intValues.at("CHUNK_SIZE") = nsize / 1024;

@@ -79,7 +79,6 @@ struct Mutexes_Data {
  * provides methods to access it
  * filled in from configuration file
  */
-//TODO: filling method
 struct Configuration {
     //! whether the node should act like superpeer
     bool is_superpeer = false;

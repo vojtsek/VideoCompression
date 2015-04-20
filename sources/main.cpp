@@ -36,7 +36,8 @@ void exitProgram(const std::string &msg, int64_t retval) {
             DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
     } catch (std::out_of_range) {}
     // clear memory
-    cleanCommands();
+    //TODO: segfault
+    //cleanCommands();
     // handles curses end
     endwin();
     printf("%s\n", msg.c_str());
@@ -61,7 +62,7 @@ bool argsContains(char **argv, const char *str) {
 int64_t parseOptions(int64_t argc, char **argv) {
 /*
  * -s ...run as superpeer
- * TODO: -c address:port_number ...node to contact if no neighbors
+ * -c address:port_number ...node to contact if no neighbors
  * -p port ...listenning port
  * -d level ...debug level
  * -t ...test, i.e. encode the loaded file first and measure the time
@@ -307,13 +308,13 @@ int main(int argc, char **argv) {
         });
         thr.detach();
     } else {
-        //TODO mechanism to propagate fail outside of thread
         std::thread thr ([&]() {
                     // ping the super peer
                     net_handler.contactSuperPeer();
                     // creates the socket, binds and starts listening
                     net_handler.start_listening(
                                                 DATA->config.intValues.at("LISTENING_PORT"));
+                    exitProgram("Failed to bind.", 2);
         });
         thr.detach();
         std::thread thr2 ([&]() {

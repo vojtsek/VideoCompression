@@ -120,6 +120,16 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             return true;
         }
 
+                NeighborInfo *ngh = DATA->neighbors.getNeighborInfo(address);
+        if (ngh == nullptr) {
+            reportDebug("Invalid neighbor", 2);
+            throw 1;
+        }
+        if (ngh->quality > 0) {
+            ti->time_left = TIME_CONSTANT * ngh->quality *
+                    // divide by 1000 for milliseconds, 1024 for kilobytes
+                ti->chunk_size / (1024.0 * 1000);
+        }
         if (ti->send(fd) == -1) {
             reportError(ti->name + ": Failed to send info.");
             throw 1;
@@ -153,14 +163,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             throw 1;
         }
         DATA->neighbors.assignChunk(address, true, ti);
-        //TODO: may be invalid ptr
-        NeighborInfo *ngh = DATA->neighbors.getNeighborInfo(address);
-        if (ngh->quality > 0) {
-            ti->time_left = TIME_CONSTANT * ngh->quality *
-                    // divide by 1000 for milliseconds, 1024 for kilobytes
-                ti->chunk_size / (1024.0 * 1000);
-        }
-        DATA->periodic_listeners.push(ti);
+                DATA->periodic_listeners.push(ti);
         ti->sent_times++;
                 reportDebug(ti->name + " was sent. " +
                                         MyAddr(address).get() +
@@ -267,7 +270,8 @@ bool CmdReturnPeer::execute(
         ti->sending_time = helper_ti.sending_time;
         // remove chunk association
         DATA->neighbors.assignChunk(address, false, ti);
-
+        // neighbor is treated as free
+                DATA->neighbors.setNeighborFree(address, true);
         if (DATA->chunks_returned.contains(ti->toString())) {
                 // the chunk returned before,
                 // propably was resent to other neighbor - no longer needed

@@ -47,12 +47,6 @@ protected:
     //! pointer to NetworkHandlert instance
     NetworkHandler *handler;
 public:
-    /*!
-     * \brief connectPeer makes connection to the desired peer
-     * \param addr network address structure to connect to.
-     * \return file descriptor of the connection
-     */
-    int64_t connectPeer(struct sockaddr_storage *addr);
     NetworkCommand(VideoState *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
     /*!

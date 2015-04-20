@@ -156,6 +156,7 @@ bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) 
     if (resp != RESPONSE_T::ACK_FREE && resp != RESPONSE_T::ACK_BUSY) {
         reportError("Failed to ping neighbor " + MyAddr(address).get());
         DATA->neighbors.removeNeighbor(address);
+        handler->addNewNeighbor(true, address);
         return false;
     }
 

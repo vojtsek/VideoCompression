@@ -57,7 +57,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                                     }
                 // resend the chunk and wait a while, then try again
                 chunkhelper::pushChunkSend(ti);
-                sleep(5);
+                sleep(2);
                 continue;
             }
             // checks the neighbor and addresses the chunk
@@ -227,7 +227,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
             // spawns the encoding process
             duration = Measured<>::exec_measure(
                         OSHelper::runExternal, out, err,
-                        ti->duration * 2, cmd, 13, cmd,
+                        ti->time_left * 2, cmd, 13, cmd,
                              "-i", file_in.c_str(),
                              "-c:v", ti->output_codec.c_str(),
                              "-preset",
@@ -279,7 +279,7 @@ double chunkhelper::getChunkDuration(const string &fp) {
         return -1;
     }
     // gain some info about the video
-    if (OSHelper::runExternal(out, err, 5,
+    if (OSHelper::runExternal(out, err, 10,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 3,
                                DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
                                path.c_str(), "-show_format"
@@ -293,7 +293,6 @@ double chunkhelper::getChunkDuration(const string &fp) {
     }
 
     // parse the JSON output and save
-    // TODO: should use JSON
     std::string dur_str(utilities::extract(
                             out, "duration", 1).at(0));
     try {

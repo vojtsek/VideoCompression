@@ -206,7 +206,6 @@ int64_t OSHelper::runExternal(
             return -1;
         }
         // reads the output from the pipe to the buffer
-        // TODO: should not go output to the file?
         while(read(pd_o[0], bo, 1) == 1){
             bo++;
             //always positive anyway
@@ -227,6 +226,17 @@ int64_t OSHelper::runExternal(
         }
         stdo += std::string(buf_o);
         stde += std::string(buf_e);
+
+
+        std::ofstream ffofs;
+        ffofs.open(LOG_PATH + PATH_SEPARATOR + "cmds.out", std::ios_base::app);
+        ffofs << "-----------------------------------------------------------------" << std::endl;
+        ffofs << whole_command << std::endl << std::endl;
+        ffofs << "STDOUT:" << std::endl;
+        ffofs << stdo << std::endl << std::endl;
+        ffofs << "STDERR:" << std::endl;
+        ffofs << stde << std::endl;
+        ffofs << "-----------------------------------------------------------------" << std::endl;
         close(pd_o[0]);
         close(pd_e[0]);
         break;
