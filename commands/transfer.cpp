@@ -88,7 +88,6 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
-        DATA->neighbors.assignChunk(address, true, ti);
     // too many failed send attempts -> invalid file
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
@@ -102,6 +101,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
                 DATA->neighbors.setNeighborFree(
                             ti->address, false);
                 ti->tries_sent = 0;
+                DATA->neighbors.assignChunk(ti->address, false, ti);
                 chunkhelper::pushChunkSend(ti);
             }
             return false;
@@ -117,6 +117,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         if (resp == RESPONSE_T::ACK_BUSY) {
             reportDebug("Peer is busy. " + MyAddr(address).get(), 2);
             DATA->neighbors.setNeighborFree(address, false);
+            DATA->neighbors.assignChunk(address, false, ti);
             chunkhelper::pushChunkSend(ti);
             return true;
         }

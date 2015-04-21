@@ -51,11 +51,12 @@ int64_t NeighborStorage::removeNeighbor(
         reportError("Removed neighbor: " + MyAddr(addr).get());
         trashNeighborChunks(addr);
     for (const auto &ti : ngh->chunks_assigned) {
-        //DATA->periodic_listeners.remove((Listener *) ti);
+        DATA->periodic_listeners.remove((Listener *) ti);
+        ti->assigned = false;
         reportError("Repushing " + ti->toString());
         chunkhelper::pushChunkSend(ti);
     }
-    // delete ngh;
+    delete ngh;
     n_mtx.unlock();
         printNeighborsInfo();
     return 0;
@@ -216,7 +217,7 @@ void NeighborStorage::trashNeighborChunks(
     // removes if there are some chunks addressed to this neighbor
             DATA->chunks_to_send.removeIf(
                         [&](TransferInfo *ti) -> bool {
-                return ((networkHelper::cmpStorages(ti->address, addr)) ||
+                return ((ti->addressed && networkHelper::cmpStorages(ti->address, addr)) ||
                          (networkHelper::cmpStorages(ti->src_address, addr)));
             });
 
@@ -235,6 +236,16 @@ void NeighborStorage::trashNeighborChunks(
     }
 }
 
+void NeighborStorage::removeNeighborChunk(NeighborInfo *ngh,
+                                          TransferInfo *ti) {
+
+    ngh->chunks_assigned.erase(
+        std::remove_if (ngh->chunks_assigned.begin(), ngh->chunks_assigned.end(),
+           [&](TransferInfo *that) {
+        return (that->toString() == ti->toString());
+    }), ngh->chunks_assigned.end());
+}
+
 void NeighborStorage::assignChunk(const sockaddr_storage &addr,
                                   bool assign, TransferInfo *ti) {
     n_mtx.lock();
@@ -243,13 +254,13 @@ void NeighborStorage::assignChunk(const sockaddr_storage &addr,
         return;
     }
     if (assign) {
+        ti->assigned = true;
         ngh->chunks_assigned.push_back(ti);
+        reportError(MyAddr(ngh->address).get() + ": Assigning " + ti->toString());
     } else {
-        ngh->chunks_assigned.erase(
-            std::remove_if (ngh->chunks_assigned.begin(), ngh->chunks_assigned.end(),
-               [&](TransferInfo *that) {
-            return (that->toString() == ti->toString());
-        }), ngh->chunks_assigned.end());
+        reportError("Unassigning " + ti->toString());
+        ti->assigned = false;
+        removeNeighborChunk(ngh, ti);
     }
     n_mtx.unlock();
 }

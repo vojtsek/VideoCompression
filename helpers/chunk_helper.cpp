@@ -62,6 +62,13 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             }
             // checks the neighbor and addresses the chunk
             int64_t sock = net_handler->checkNeighbor(free_address);
+            if (sock == -1) {
+                reportDebug("Failed to connect to neighbor", 2);
+                chunkhelper::pushChunkSend(ti);
+                sleep(2);
+                continue;
+            }
+            DATA->neighbors.assignChunk(free_address, true, ti);
             ti->address = free_address;
             // get host address which is being used for communication
             // on this address the chunk should be returned.
@@ -313,7 +320,13 @@ void chunkhelper::trashChunk(TransferInfo *ti, bool del) {
     DATA->chunks_received.remove(ti);
     DATA->chunks_to_encode.remove(ti);
     DATA->chunks_to_send.remove(ti);
+    if (ti->assigned) {
+        DATA->neighbors.applyToNeighbors([&](
+                                         std::pair<std::string, NeighborInfo *> entry) {
+            DATA->neighbors.removeNeighborChunk(entry.second, ti);
+        });
+    }
     if (del) {
-       // delete ti;
+        delete ti;
     }
 }

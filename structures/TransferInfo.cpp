@@ -246,6 +246,7 @@ void TransferInfo::init(int64_t size,
     path = p;
     output_codec = oc;
     timestamp = utilities::getTimestamp();
+    assigned = false;
 }
 
 std::string TransferInfo::getInfo() {

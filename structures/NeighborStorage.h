@@ -152,6 +152,12 @@ public:
                      bool assign, TransferInfo *ti);
 
     /*!
+     * \brief removeNeighborChunk unassigns chunk from the given neighbor
+     * \param ngh neighbor to unassign from
+     * \param ti chunk to be unassigned
+     */
+    void removeNeighborChunk(NeighborInfo *ngh, TransferInfo *ti);
+    /*!
      * \brief applyToNeighbors traverses the list of neighbors
      * and applies given function to each
      * \param func function to apply

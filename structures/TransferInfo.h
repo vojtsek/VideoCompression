@@ -13,6 +13,8 @@
 struct TransferInfo : public Listener, Sendable {
     //! whether the chunk has source address assigned
     bool addressed;
+    //! indicates, if currently assigned
+    bool assigned;
     //! file size in bytes
     int64_t chunk_size;
     //! how many ticks before the checking interval ends

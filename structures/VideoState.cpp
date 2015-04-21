@@ -154,6 +154,7 @@ void VideoState::abort() {
             return (l->toString().find("TI") !=
                     std::string::npos);
         });
+        // TODO: trashing?
         DATA->chunks_to_send.remove(ti);
         delete ti;
     }
