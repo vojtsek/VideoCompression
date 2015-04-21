@@ -314,6 +314,6 @@ void chunkhelper::trashChunk(TransferInfo *ti, bool del) {
     DATA->chunks_to_encode.remove(ti);
     DATA->chunks_to_send.remove(ti);
     if (del) {
-        delete ti;
+       // delete ti;
     }
 }

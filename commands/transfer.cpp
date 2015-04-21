@@ -88,6 +88,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
     RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
+        DATA->neighbors.assignChunk(address, true, ti);
     // too many failed send attempts -> invalid file
         if (ti->tries_sent > CHUNK_RESENDS) {
             // it's "local" chunk, so it's essential
@@ -162,7 +163,6 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
-        DATA->neighbors.assignChunk(address, true, ti);
                 DATA->periodic_listeners.push(ti);
         ti->sent_times++;
                 reportDebug(ti->name + " was sent. " +
@@ -268,8 +268,6 @@ bool CmdReturnPeer::execute(
         // update times
         ti->encoding_time = helper_ti.encoding_time;
         ti->sending_time = helper_ti.sending_time;
-        // remove chunk association
-        DATA->neighbors.assignChunk(address, false, ti);
         // neighbor is treated as free
                 DATA->neighbors.setNeighborFree(address, true);
         if (DATA->chunks_returned.contains(ti->toString())) {
@@ -291,6 +289,8 @@ bool CmdReturnPeer::execute(
 
         // this is first time the chunk returned
                 chunkhelper::processReturnedChunk(ti, handler, state);
+        // remove chunk association
+        DATA->neighbors.assignChunk(address, false, ti);
                 // all chunks has returned
                 if ((state->processed_chunks == state->chunk_count) &&
                     (state->chunk_count != 0)) {

@@ -72,7 +72,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
     int64_t port;
     std::string addr_port, address;
     // use of getopt
-    while ((opt = getopt(argc, argv, "tsc:p:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "tsi:c:p:d:")) != -1) {
         switch (opt) {
         // listening port set
         case 'p':
@@ -90,11 +90,20 @@ int64_t parseOptions(int64_t argc, char **argv) {
         case 'c':
             addr_port = std::string(optarg);
             address = addr_port.substr(
-                        0, addr_port.find('-'));
+                        0, addr_port.find('~'));
             port = atoi(
-                        addr_port.substr(addr_port.find('-') + 1).c_str());
+                        addr_port.substr(addr_port.find('~') + 1).c_str());
             DATA->config.strValues.emplace("SUPERPEER_ADDR", address);
             DATA->config.intValues.emplace("SUPERPEER_PORT", port);
+            break;
+        case 'i':
+            addr_port = std::string(optarg);
+            address = addr_port.substr(
+                        0, addr_port.find('~'));
+            port = atoi(
+                        addr_port.substr(addr_port.find('~') + 1).c_str());
+            DATA->config.strValues.emplace("MY_IP", address);
+            DATA->config.intValues.emplace("LISTENING_PORT", port);
             break;
         case 't':
             DATA->config.encode_first = true;
