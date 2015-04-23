@@ -66,6 +66,13 @@ namespace OSHelper {
             std::string &o, std::string &e, int64_t limit,
             const char *cmd, int64_t numargs, ...);
 
+    /*!
+         * \brief loadFile loads the given file into VideoState
+         * \param fpath path to the file to load
+         * \param state pointer to the VideoState structure
+         * \return zero on success
+         */
+        int64_t loadFile(const std::string fpath, VideoState *state);
  /*!
  * \brief OSHelper::getFileSize
  * \param file path to the file
@@ -93,6 +100,6 @@ namespace OSHelper {
  * \return true if the file is ok
  */
     bool isFileOk(const std::string &fp);
-}
 
+}
 #endif // OSHelper_HELPER_H

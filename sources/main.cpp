@@ -62,7 +62,9 @@ bool argsContains(char **argv, const char *str) {
 int64_t parseOptions(int64_t argc, char **argv) {
 /*
  * -s ...run as superpeer
- * -c address:port_number ...node to contact if no neighbors
+ * -n address:port_number ...node to contact if no neighbors
+ * -c file ...configuration file
+ * -i file file to encode
  * -p port ...listenning port
  * -d level ...debug level
  * -t ...test, i.e. encode the loaded file first and measure the time
@@ -72,12 +74,8 @@ int64_t parseOptions(int64_t argc, char **argv) {
     int64_t port;
     std::string addr_port, address;
     // use of getopt
-    while ((opt = getopt(argc, argv, "tsi:c:p:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "sa:c:i:d:n:")) != -1) {
         switch (opt) {
-        // listening port set
-        case 'p':
-            DATA->config.intValues.emplace("LISTENING_PORT", atoi(optarg));
-            break;
         // superpeer mode
         case 's':
             DATA->config.is_superpeer = true;
@@ -87,7 +85,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
             DATA->config.debug_level = atoi(optarg);
             break;
         // port to listen superpeer
-        case 'c':
+        case 'n':
             addr_port = std::string(optarg);
             address = addr_port.substr(
                         0, addr_port.find('~'));
@@ -96,7 +94,8 @@ int64_t parseOptions(int64_t argc, char **argv) {
             DATA->config.strValues.emplace("SUPERPEER_ADDR", address);
             DATA->config.intValues.emplace("SUPERPEER_PORT", port);
             break;
-        case 'i':
+            // host address
+        case 'a':
             addr_port = std::string(optarg);
             address = addr_port.substr(
                         0, addr_port.find('~'));
@@ -105,9 +104,13 @@ int64_t parseOptions(int64_t argc, char **argv) {
             DATA->config.strValues.emplace("MY_IP", address);
             DATA->config.intValues.emplace("LISTENING_PORT", port);
             break;
-        case 't':
-            DATA->config.encode_first = true;
+        // configuration file location
+        case 'c':
+            DATA->config.location = std::string(optarg);
             break;
+                // file to load
+        case 'i':
+            DATA->state.file_path = std::string(optarg);
         // unknown option
         case '?':
             usage();
@@ -278,10 +281,14 @@ void periodicActions(NetworkHandler &net_handler, VideoState *state) {
 
 int main(int argc, char **argv) {
     // handle the options
+    DATA->config.location = "CONF";
     parseOptions(argc, argv);
+    if (argsContains(argv, "nostdin")) {
+        DATA->state.interact = false;
+    }
     // inits the curses variables
     initCurses();
-    if (readConfiguration("CONF") == -1) {
+    if (readConfiguration(DATA->config.location) == -1) {
         exitProgram("Failed to read configuration.", 1);
     }
 
@@ -345,11 +352,28 @@ int main(int argc, char **argv) {
     }
     // loop and tries read command keys
     // acceptCmd fails on F12
-    try {
+    if (!DATA->state.interact) {
+        try {
+            std::unique_lock<std::mutex> lck(DATA->m_data.interact_mtx, std::defer_lock);
+            if (OSHelper::loadFile(
+                        DATA->state.file_path, &state) == -1) {
+                reportError("Failed to load file!");
+            } else {
+                lck.lock();
+                state.split();
+                while (DATA->state.working) {
+                    DATA->m_data.interact_cond.wait(lck);
+                }
+                lck.unlock();
+            }
+        } catch (std::exception) {}
+    } else {
+        try {
         do{
         } while (!acceptCmd(DATA->cmds));
-    } catch (exception e) {
+        } catch (exception e) {
        printw(e.what());
+        }
     }
     exitProgram("", 0);
 }

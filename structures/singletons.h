@@ -22,6 +22,10 @@ struct State {
     bool enough_neighbors = false;
     //! if is processing file currently
     bool working = false;
+    //! indicates interactivity
+    bool interact = true;
+    //! file to load when don't run interactively
+    std::string file_path;
 };
 
 /*!
@@ -66,8 +70,12 @@ struct Mutexes_Data {
     std::mutex O_mtx;
     //! mutex to synchronize reporting
     std::mutex report_mtx;
+    //! mutex to synchronize non interactivity
+    std::mutex interact_mtx;
     //! condition variable to handle IO
     std::condition_variable IO_cond;
+    //! condition_variable to maintain non-interactive splitting
+    std::condition_variable interact_cond;
     //! boolean to help control using input
     bool using_I = false;
     //! boolean to help control using output
@@ -96,6 +104,8 @@ struct Configuration {
     std::map<std::string, std::string> strValues;
     //! IP address of the interface host is communicating on
     MyAddr my_IP;
+    //! path to the config file
+    std::string location;
 
     /*!
      * \brief getIntValue returns the integer value

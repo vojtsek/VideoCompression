@@ -217,8 +217,10 @@ int64_t VideoState::join() {
         return -1;
     }
     // wait for end of the process
-    thr.join();
-    endProcess(duration);
+    if (!DATA->state.interact) {
+            thr.join();
+            endProcess(duration);
+    }
     return 0;
 }
 
@@ -274,7 +276,11 @@ void VideoState::reset() {
     processed_chunks = 0;
     dir_location = "";
     changeChunkSize(DATA->config.getIntValue("CHUNK_SIZE") * 1024);
-
+    std::unique_lock<std::mutex> lck(DATA->m_data.interact_mtx, std::defer_lock);
+    // notify in non-interactive mode
+    lck.lock();
+    lck.unlock();
+    DATA->m_data.interact_cond.notify_all();
 }
 
 void VideoState::printVideoState() {

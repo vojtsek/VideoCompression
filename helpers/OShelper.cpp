@@ -1,4 +1,9 @@
 #include "headers/include_list.h"
+#include "structures/singletons.h"
+#include "headers/defines.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/filestream.h"
 
 #include <sys/stat.h>
 #include <wait.h>
@@ -287,4 +292,107 @@ std::string OSHelper::getBasename(const std::string &str) {
     }
     basename = basename.substr(0, pos);
     return basename;
+}
+
+int64_t OSHelper::loadFile(
+        const std::string fpath, VideoState *state) {
+    FileInfo &finfo = state->finfo;
+    std::string path(fpath), out, err, err_msg("Error loading the file: ");
+    rapidjson::Document document;
+    std::stringstream ssd;
+        // is file ok?
+    try {
+    if (OSHelper::checkFile(path) == -1){
+        reportError("Loading the file " + path + " failed");
+        throw 1;
+    }
+    // saves information in the FileInfo structure
+    finfo.fpath = path;
+    finfo.extension = "." + OSHelper::getExtension(path);
+    finfo.basename = OSHelper::getBasename(path);
+    // gain some info about the video
+    if (OSHelper::runExternal(out, err, 510,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
+                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
+                               finfo.fpath.c_str(), "-show_streams", "-show_format",
+                              "-print_format", "json") < 0) {
+        reportError("Error while getting video information.");
+        throw 1;
+    }
+    if (err.find("Invalid data") != std::string::npos) {
+        reportError("Invalid video file");
+        state->resetFileInfo();
+        throw 1;
+    }
+
+    // parse the JSON output and save
+    if(document.Parse(out.c_str()).HasParseError()) {
+        reportError(err_msg + "Parse error");
+        throw 1;
+    }
+    if (!document.HasMember("format")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    if(!document["format"].HasMember("bit_rate")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["bit_rate"].GetString());
+    ssd >> finfo.bitrate;
+    finfo.bitrate /= 8;
+
+    if(!document["format"].HasMember("duration")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["duration"].GetString());
+    ssd >> finfo.duration;
+
+    if(!document["format"].HasMember("size")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    ssd.clear();
+    ssd.str(document["format"]["size"].GetString());
+    ssd >> finfo.fsize;
+
+    if(!document["format"].HasMember("format_name")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    finfo.format = document["format"]["format_name"].GetString();
+
+    if(!document.HasMember("streams")) {
+        reportError(err_msg);
+        throw 1;
+    }
+    const rapidjson::Value &streams = document["streams"];
+    bool found = false;
+    if (!streams.IsArray()) {
+        reportError("Invalid video file");
+        throw 1;
+    }
+    // codec information
+    for(rapidjson::SizeType i = 0; i < streams.Size(); ++i) {
+        if (streams[i].HasMember("codec_type") && (streams[i]["codec_type"].GetString() == std::string("video"))) {
+            finfo.codec = streams[i]["codec_name"].GetString();
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        reportError("Invalid video file");
+        throw 1;
+    }
+        } catch (int) {
+        return -1;
+        }
+    // loads the file to the VideoState
+    state->loadFileInfo(finfo);
+    reportSuccess(finfo.fpath + " loaded.");
+    state->printVideoState();
+    return 0;
 }

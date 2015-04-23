@@ -168,106 +168,11 @@ void CmdSet::execute() {
 }
 
 void CmdLoad::execute(){
-    std::string path, out, err, err_msg("Error loading the file: ");
-    Document document;
-    std::stringstream ssd;
-    struct FileInfo finfo;
-
     // reads the file path
-    path = loadInput("paths.history", "Enter a file path:", true, true);
+    std::string path(loadInput("paths.history", "Enter a file path:", true, true));
     if (path.empty()) {
         reportError("File path not provided.");
         return;
     }
-
-    // is file ok?
-    if (OSHelper::checkFile(path) == -1){
-        reportError("Loading the file " + path + " failed");
-        return;
-    }
-    // svaes information in the FileInfo structure
-    finfo.fpath = path;
-    finfo.extension = "." + OSHelper::getExtension(path);
-    finfo.basename = OSHelper::getBasename(path);
-    // gain some info about the video
-    if (OSHelper::runExternal(out, err, 510,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               finfo.fpath.c_str(), "-show_streams", "-show_format",
-                              "-print_format", "json") < 0) {
-        reportError("Error while getting video information.");
-        return;
-    }
-    if (err.find("Invalid data") != std::string::npos) {
-        reportError("Invalid video file");
-        state->resetFileInfo();
-        return;
-    }
-
-    // parse the JSON output and save
-    if(document.Parse(out.c_str()).HasParseError()) {
-        reportError(err_msg + "Parse error");
-        return;
-    }
-    if (!document.HasMember("format")) {
-        reportError(err_msg);
-        return;
-    }
-    if(!document["format"].HasMember("bit_rate")) {
-        reportError(err_msg);
-        return;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["bit_rate"].GetString());
-    ssd >> finfo.bitrate;
-    finfo.bitrate /= 8;
-
-    if(!document["format"].HasMember("duration")) {
-        reportError(err_msg);
-        return;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["duration"].GetString());
-    ssd >> finfo.duration;
-
-    if(!document["format"].HasMember("size")) {
-        reportError(err_msg);
-        return;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["size"].GetString());
-    ssd >> finfo.fsize;
-
-    if(!document["format"].HasMember("format_name")) {
-        reportError(err_msg);
-        return;
-    }
-    finfo.format = document["format"]["format_name"].GetString();
-
-    if(!document.HasMember("streams")) {
-        reportError(err_msg);
-        return;
-    }
-    const Value &streams = document["streams"];
-    bool found = false;
-    if (!streams.IsArray()) {
-        reportError("Invalid video file");
-        return;
-    }
-    // codec information
-    for(SizeType i = 0; i < streams.Size(); ++i) {
-        if (streams[i].HasMember("codec_type") && (streams[i]["codec_type"].GetString() == std::string("video"))) {
-            finfo.codec = streams[i]["codec_name"].GetString();
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        reportError("Invalid video file");
-        return;
-    }
-    // loads the file to the VideoState
-    state->loadFileInfo(finfo);
-    reportSuccess(finfo.fpath + " loaded.");
-    state->printVideoState();
+    OSHelper::loadFile(path, this->state);
 }
