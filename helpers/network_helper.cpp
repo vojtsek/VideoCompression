@@ -155,18 +155,22 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         family = AF_INET6;
     }
     try {
-    // connect to it
-    if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        throw 1;
-    }
+        // superpeer should not connect to itself
+        if (DATA->config.is_superpeer) {
+            throw 1;
+        }
+            // connect to it
+            if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
+                    reportDebug("Error getting host address.", 2);
+                    throw 1;
+            }
 
-    // dig the addres from the file descriptor
-    if ((networkHelper::getHostAddr(addr, sock)) == -1) {
-        reportDebug("Error getting host address.", 2);
-        close(sock);
-        throw 1;
-    }
+            // dig the addres from the file descriptor
+            if ((networkHelper::getHostAddr(addr, sock)) == -1) {
+                    reportDebug("Error getting host address.", 2);
+                    close(sock);
+                    throw 1;
+            }
     } catch (int) {
         // in case of failure fallback to address from the configuration
         addr = networkHelper::addrstr2storage(

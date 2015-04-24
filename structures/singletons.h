@@ -24,6 +24,8 @@ struct State {
     bool working = false;
     //! indicates interactivity
     bool interact = true;
+    //! whether provided home directory explicitly
+    bool wd_provided = false;
     //! file to load when don't run interactively
     std::string file_path;
 };
@@ -122,6 +124,24 @@ struct Configuration {
      * If nonexisting field, returns empty string.
      */
     std::string getStringValue(std::string key);
+
+    /*!
+     * \brief setValue sets the configuration value
+     * \param key nameof the value
+     * \param val new value
+     * \param force whether remove old value, if any
+     * \return true if successfully inserted
+     */
+    bool setValue(std::string key, int64_t val, bool force);
+
+    /*!
+     * \brief setValue sets the configuration value
+     * \param key nameof the value
+     * \param val new value
+     * \param force whether remove old value, if any
+     * \return true if successfully inserted
+     */
+    bool setValue(std::string key, std::string val, bool force);
 };
 
 /*!

@@ -259,3 +259,29 @@ std::string Configuration::getStringValue(std::string key) {
     }
     return res;
 }
+
+bool Configuration::setValue(std::string key, int64_t val, bool force) {
+    auto it = intValues.find(key);
+    if (it != intValues.end()) {
+        if (!force) {
+                    return false;
+        } else {
+          intValues.erase(it);
+        }
+    }
+    intValues.emplace(key, val);
+    return true;
+}
+
+bool Configuration::setValue(std::string key, std::string val, bool force) {
+    auto it = strValues.find(key);
+    if (it != strValues.end()) {
+        if (!force) {
+                    return false;
+        } else {
+          strValues.erase(it);
+        }
+    }
+    strValues.emplace(key, val);
+    return true;
+}

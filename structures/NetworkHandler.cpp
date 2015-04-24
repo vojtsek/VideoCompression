@@ -320,17 +320,20 @@ void NetworkHandler::confirmNeighbor(struct sockaddr_storage addr) {
 }
 
 void NetworkHandler::addNewNeighbor(
-        bool potential,const struct sockaddr_storage &addr) {
+        bool potential, const struct sockaddr_storage &addr) {
         if (DATA->neighbors.contains(addr)) {
             reportDebug("Already confirmed neighbor", 3);
             return;
         }
 
-    if (networkHelper::cmpStorages(
-             DATA->config.my_IP.getAddress(), addr)) {
-        reportDebug("I don't want myself", 2);
-        return;
-    }
+        MyAddr mad(addr);
+        if (mad.port == DATA->config.getIntValue("LISTENING_PORT")) {
+            if ((mad.addr == DATA->config.my_IP.addr) ||
+                    (mad.addr == "127.0.0.1")) {
+                                reportDebug("I don't want myself", 2);
+                                return;
+            }
+        }
     // handles potential
     if (potential) {
         potential_mtx.lock();

@@ -63,7 +63,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
 /*
  * -s ...run as superpeer
  * -n address:port_number ...node to contact if no neighbors
- * -c file ...configuration file
+ * -h directory ...path to the home directory
  * -i file file to encode
  * -p port ...listenning port
  * -d level ...debug level
@@ -91,8 +91,8 @@ int64_t parseOptions(int64_t argc, char **argv) {
                         0, addr_port.find('~'));
             port = atoi(
                         addr_port.substr(addr_port.find('~') + 1).c_str());
-            DATA->config.strValues.emplace("SUPERPEER_ADDR", address);
-            DATA->config.intValues.emplace("SUPERPEER_PORT", port);
+            DATA->config.setValue("SUPERPEER_ADDR", address, false);
+            DATA->config.setValue("SUPERPEER_PORT", port, false);
             break;
             // host address
         case 'a':
@@ -101,13 +101,13 @@ int64_t parseOptions(int64_t argc, char **argv) {
                         0, addr_port.find('~'));
             port = atoi(
                         addr_port.substr(addr_port.find('~') + 1).c_str());
-            DATA->config.strValues.emplace("MY_IP", address);
-            DATA->config.intValues.emplace("LISTENING_PORT", port);
+            DATA->config.setValue("MY_IP", address, false);
+            DATA->config.setValue("LISTENING_PORT", port, false);
             break;
         // configuration file location
-        case 'c':
-            DATA->config.location = std::string(optarg);
-            break;
+        case 'h':
+            DATA->config.setValue("WD", std::string(optarg), true);
+            DATA->state.wd_provided = true;
                 // file to load
         case 'i':
             DATA->state.file_path = std::string(optarg);
@@ -148,16 +148,16 @@ int64_t readConfiguration(const std::string &cf) {
             intvalue = std::stoi(value);
             try {
                 // if integer was parsed, add to mapping
-                DATA->config.intValues.insert(
-                            std::make_pair(param_name, intvalue));
+                DATA->config.setValue(
+                            param_name, intvalue, false);
             } catch (...) {
                 reportError("Failed to read parameter " + param_name);
             }
         } catch (std::invalid_argument) {
             // otherwise handles the value as string
             try {
-                DATA->config.strValues.insert(
-                            std::make_pair(param_name, value));
+                DATA->config.setValue(
+                            param_name, value, false);
             } catch (...) {
                 reportError("Failed to read parameter " + param_name);
             }
@@ -166,16 +166,16 @@ int64_t readConfiguration(const std::string &cf) {
    return 0;
 }
 
-void superPeerRoutine(NetworkHandler &net_handler) {
-    // spawns listening routine
-    net_handler.start_listening(DATA->config.intValues.at("SUPERPEER_PORT"));
-}
-
 void initConfiguration(NetworkHandler &handler) {
     // TODO: essential values check
     // data initialized with default values
     // called after the config file was read
     // from config file
+
+    if (readConfiguration(DATA->config.location) == -1) {
+        exitProgram("Failed to read configuration.", 1);
+    }
+
     std::string wdir = DATA->config.getStringValue("WD");
     if (wdir == "") {
         // if the WD is not determined, use current working dir
@@ -197,15 +197,12 @@ void initConfiguration(NetworkHandler &handler) {
                 wdir + PATH_SEPARATOR + "logs", false) == -1) {
         exitProgram("Failed to prepare working directory.", 1);
     }
-
-    try {
-            DATA->config.strValues.at("WD") = wdir;
-    } catch (std::out_of_range) {
-        DATA->config.strValues.emplace("WD", wdir);
-    }
+    // sets the WDIR if not provided by option
+    DATA->config.setValue("WD", wdir,
+                          !DATA->state.wd_provided);
 
     // how many neighbors contact when gathering
-    DATA->config.intValues.emplace("UPP_LIMIT", 8);
+    DATA->config.setValue("UPP_LIMIT", 8, false);
     DATA->config.IPv4_ONLY = false;
     int64_t x,y, y_space;
     // dimensions of the window
@@ -267,8 +264,9 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
 
 void periodicActions(NetworkHandler &net_handler, VideoState *state) {
     // check whether should gain some neighbors
-    if (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
-                "MAX_NEIGHBOR_COUNT")) {
+    if ((!DATA->config.is_superpeer) &&
+            (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
+                "MAX_NEIGHBOR_COUNT"))) {
         net_handler.obtainNeighbors();
     }
     // invoke the listeners
@@ -276,7 +274,20 @@ void periodicActions(NetworkHandler &net_handler, VideoState *state) {
                 [&](Listener *l) { l->invoke(net_handler);  });
     // in case that some neighbors were not able to check
     DATA->neighbors.removeDirty();
-    utilities::printOverallState(state);
+    //utilities::printOverallState(state);
+}
+
+void drawCurses() {
+    // initialize the main window
+    WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
+    wmove(win, 0,0);
+    wprintw(win, "Distributed video compression tool.");
+    wmove(win, 1, 0);
+    wprintw(win, "Commands: %10s%10s%10s%10s%10s%10s", "F6 show",
+            "F7 start", "F8 load", "F9 set",
+            "F10 Abort", "F12 quit");
+    curs_set(0);
+    wrefresh(win);
 }
 
 int main(int argc, char **argv) {
@@ -288,15 +299,14 @@ int main(int argc, char **argv) {
     }
     // inits the curses variables
     initCurses();
-    if (readConfiguration(DATA->config.location) == -1) {
-        exitProgram("Failed to read configuration.", 1);
-    }
+    drawCurses();
 
     NetworkHandler net_handler;
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
     VideoState state(&net_handler);
+
 
     // sets handler of SIGPIPE
     struct sigaction sa;
@@ -306,30 +316,13 @@ int main(int argc, char **argv) {
 
     // creates the commands structures
     initCommands(state, net_handler);
-    // initialize the main window
-    WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
-    wmove(win, 0,0);
-    wprintw(win, "Distributed video compression tool.");
-    wmove(win, 1, 0);
-    wprintw(win, "Commands: %10s%10s%10s%10s%10s%10s", "F6 show",
-            "F7 start", "F8 load", "F9 set",
-            "F10 Abort", "F12 quit");
-    curs_set(0);
-    wrefresh(win);
-    refresh();
-    if (DATA->config.is_superpeer) {
-        // starts listening at the super peer port
-        std::thread thr ([&]() {
-            superPeerRoutine(net_handler);
-        });
-        thr.detach();
-    } else {
+    if (!DATA->config.is_superpeer) {
         std::thread thr ([&]() {
                     // ping the super peer
                     net_handler.contactSuperPeer();
                     // creates the socket, binds and starts listening
                     net_handler.start_listening(
-                                                DATA->config.intValues.at("LISTENING_PORT"));
+                                                DATA->config.getIntValue("LISTENING_PORT"));
                     exitProgram("Failed to bind.", 2);
         });
         thr.detach();
