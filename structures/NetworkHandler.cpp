@@ -329,7 +329,7 @@ void NetworkHandler::addNewNeighbor(
         MyAddr mad(addr);
         if (mad.port == DATA->config.getIntValue("LISTENING_PORT")) {
             if ((mad.addr == DATA->config.my_IP.addr) ||
-                    (mad.addr == "127.0.0.1")) {
+                    (mad.addr == "::ffff:127.0.0.1")) {
                                 reportDebug("I don't want myself", 2);
                                 return;
             }

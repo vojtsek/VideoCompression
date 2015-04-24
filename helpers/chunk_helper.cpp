@@ -76,6 +76,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
             // send the chunk to process
             net_handler->spawnOutgoingConnection(free_address, sock,
             { CMDS::PING_PEER, CMDS::DISTRIBUTE_PEER }, true, (void *) ti);
+            // prevents to send more chunks to one neighbor in parallel, it becomes free after the transfer
                             DATA->neighbors.setNeighborFree(free_address, false);
         } else {
             // in case of returning chunk

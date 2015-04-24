@@ -173,6 +173,10 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
             }
     } catch (int) {
         // in case of failure fallback to address from the configuration
+        if ((DATA->config.getIntValue("LISTENING_PORT")) == 0 ||
+                DATA->config.getStringValue("MY_IP") == "") {
+            return -1;
+        }
         addr = networkHelper::addrstr2storage(
                     DATA->config.getStringValue("MY_IP").c_str(),
                     DATA->config.getIntValue("LISTENING_PORT"), family);

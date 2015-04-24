@@ -39,7 +39,9 @@ void exitProgram(const std::string &msg, int64_t retval) {
     //TODO: segfault
     //cleanCommands();
     // handles curses end
-    endwin();
+    if (DATA->state.interact) {
+            endwin();
+    }
     printf("%s\n", msg.c_str());
     exit(retval);
 }
@@ -74,7 +76,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
     int64_t port;
     std::string addr_port, address;
     // use of getopt
-    while ((opt = getopt(argc, argv, "sa:c:i:d:n:")) != -1) {
+    while ((opt = getopt(argc, argv, "sa:h:i:d:n:")) != -1) {
         switch (opt) {
         // superpeer mode
         case 's':
@@ -109,6 +111,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
             DATA->config.setValue("WD", std::string(optarg), true);
             DATA->state.wd_provided = true;
                 // file to load
+            break;
         case 'i':
             DATA->state.file_path = std::string(optarg);
         // unknown option
@@ -262,7 +265,7 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
     DATA->net_cmds.emplace(CMDS::SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
 }
 
-void periodicActions(NetworkHandler &net_handler, VideoState *state) {
+void periodicActions(NetworkHandler &net_handler) {
     // check whether should gain some neighbors
     if ((!DATA->config.is_superpeer) &&
             (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
@@ -274,7 +277,6 @@ void periodicActions(NetworkHandler &net_handler, VideoState *state) {
                 [&](Listener *l) { l->invoke(net_handler);  });
     // in case that some neighbors were not able to check
     DATA->neighbors.removeDirty();
-    //utilities::printOverallState(state);
 }
 
 void drawCurses() {
@@ -296,10 +298,11 @@ int main(int argc, char **argv) {
     parseOptions(argc, argv);
     if (argsContains(argv, "nostdin")) {
         DATA->state.interact = false;
+    } else {
+            // inits the curses variables
+            initCurses();
+            drawCurses();
     }
-    // inits the curses variables
-    initCurses();
-    drawCurses();
 
     NetworkHandler net_handler;
     // inits the configuration
@@ -329,7 +332,7 @@ int main(int argc, char **argv) {
         std::thread thr2 ([&]() {
             // invokes some action periodically
             while (1) {
-                periodicActions(net_handler, &state);
+                periodicActions(net_handler);
                 sleep(TICK_DURATION);
             }
         });
@@ -343,30 +346,37 @@ int main(int argc, char **argv) {
         });
         split_thr.detach();
     }
-    // loop and tries read command keys
-    // acceptCmd fails on F12
-    if (!DATA->state.interact) {
-        try {
-            std::unique_lock<std::mutex> lck(DATA->m_data.interact_mtx, std::defer_lock);
+    if (DATA->state.file_path != "") {
             if (OSHelper::loadFile(
-                        DATA->state.file_path, &state) == -1) {
-                reportError("Failed to load file!");
-            } else {
-                lck.lock();
-                state.split();
-                while (DATA->state.working) {
-                    DATA->m_data.interact_cond.wait(lck);
-                }
-                lck.unlock();
+                                    DATA->state.file_path, &state) == -1) {
+                    reportError("Failed to load file!");
             }
-        } catch (std::exception) {}
+    }
+    if (!DATA->state.interact) {
+        // no interaction -> begin process
+            std::unique_lock<std::mutex> lck(DATA->m_data.interact_mtx, std::defer_lock);
+            lck.lock();
+            if (DATA->state.file_path != "") {
+                            if (state.split() == -1) {
+                exitProgram("Failed to split", 1);
+                            }
+            } else {
+                // hack to "get stuck" when should only listen
+                DATA->state.working = true;
+                DATA->config.serve_while_working = true;
+            }
+            while (DATA->state.working) {
+                    DATA->m_data.interact_cond.wait(lck);
+            }
+            lck.unlock();
     } else {
+    // loops and tries read command keys
+    // acceptCmd fails on F12
         try {
-        do{
-        } while (!acceptCmd(DATA->cmds));
+                    do{ ; } while (!acceptCmd(DATA->cmds));
         } catch (exception e) {
-       printw(e.what());
-        }
+                    printw(e.what());
+                }
     }
     exitProgram("", 0);
 }

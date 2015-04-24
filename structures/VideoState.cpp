@@ -217,10 +217,8 @@ int64_t VideoState::join() {
         return -1;
     }
     // wait for end of the process
-    if (!DATA->state.interact) {
-            thr.join();
-            endProcess(duration);
-    }
+        thr.join();
+        endProcess(duration);
     return 0;
 }
 
@@ -236,11 +234,13 @@ void VideoState::endProcess(int64_t duration) {
     std::ofstream csv_stream(LOG_PATH + PATH_SEPARATOR +
                              job_id + "_data.csv");
     // 100%
-    printProgress(1);
+    if (DATA->state.interact) {
+            printProgress(1);
+            clearProgress();
+    }
     reportSuccess("Succesfully joined.");
     reportTime("Joining: ", duration / 1000);
     // removes the progress bar
-    clearProgress();
     // received chunks no longer needed
     OSHelper::rmrDir(RECEIVED_PATH, true);
     // is ready

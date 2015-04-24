@@ -159,7 +159,6 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             return true;
         }
 
-                DATA->neighbors.setNeighborFree(address, false);
         if (sendFile(fd, ti->path) == -1) {
             reportError(ti->name + ": Failed to send.");
             throw 1;
@@ -169,6 +168,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
                 reportDebug(ti->name + " was sent. " +
                                         MyAddr(address).get() +
                                         "; timeout: " + utilities::m_itoa((int) ti->time_left), 2);
+                DATA->neighbors.setNeighborFree(address, true);
 
     } catch (int) {
         // resend chunk in case of failure
@@ -178,6 +178,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
 
     reportDebug(ti->name + ": Chunk transferred. " + m_itoa(
                     DATA->chunks_to_send.getSize()) + " remaining.", 2);
+    utilities::printOverallState(state);
     return true;
 }
 

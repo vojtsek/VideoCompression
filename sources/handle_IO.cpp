@@ -105,7 +105,9 @@ int64_t reportFileProgress(const std::string &file, long desired) {
         old = fs;
         // shows the progress bar
         percent = (double) fs / (double) desired;
-        printProgress(percent);
+        if (DATA->state.interact) {
+                    printProgress(percent);
+        }
         // wait for 10 ms
         usleep(10000);
     }

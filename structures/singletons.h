@@ -27,7 +27,7 @@ struct State {
     //! whether provided home directory explicitly
     bool wd_provided = false;
     //! file to load when don't run interactively
-    std::string file_path;
+    std::string file_path = "";
 };
 
 /*!

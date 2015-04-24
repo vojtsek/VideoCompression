@@ -14,6 +14,9 @@ int64_t WindowPrinter::add(const std::string &str, MSG_T type) {
     DATA->m_data.report_mtx.lock();
     ofs << str << std::endl;
     ofs.flush();
+     if (!DATA->state.interact) {
+         printf("%s\n", str.c_str());
+     }
     // determines, where to add the message
     if ((direction == DOWN) || (direction == STATIC)) {
         q.push_back(make_pair(str, type));
@@ -64,6 +67,9 @@ void WindowPrinter::changeLogLocation(std::string log_location) {
 }
 
 void WindowPrinter::print() {
+    if (!DATA->state.interact) {
+        return;
+    }
     std::unique_lock<std::mutex> lck(DATA->m_data.O_mtx, std::defer_lock);
 
     lck.lock();
