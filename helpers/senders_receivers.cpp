@@ -1,6 +1,7 @@
 #include "headers/include_list.h"
 #include "headers/enums_types.h"
 #include <fcntl.h>
+#include <stdio.h>
 
 int64_t sendInt64(int64_t fd, int64_t i) {
     // to network byte order
@@ -126,6 +127,7 @@ std::string receiveString(int64_t fd) {
 int64_t receiveFile(int64_t fd, std::string fn) {
     int64_t fsize, read_bytes = 0, r, w;
     int64_t o_file;
+    std::string tmp_fn = fn + ".tmp";
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
         if (OSHelper::isFileOk(fn)) {
@@ -133,7 +135,7 @@ int64_t receiveFile(int64_t fd, std::string fn) {
             return -1;
         }
         // opens resulting file destructively
-        if ((o_file = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
+        if ((o_file = open(tmp_fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1) {
             reportDebug(fn + ": Failed to open the output file. ", 2);
             throw 1;
         }
@@ -162,14 +164,19 @@ int64_t receiveFile(int64_t fd, std::string fn) {
             throw 1;
         }
     } catch (int) {
-        reportError("Bad transfer");
+        reportError(fn + ": Bad transfer");
         // removes the output
         close(o_file);
-        OSHelper::rmFile(fn);
+        OSHelper::rmFile(tmp_fn);
         return -1;
     }
     reportDebug("received " + utilities::m_itoa(read_bytes), 2);
     close(o_file);
+    if (rename(tmp_fn.c_str(), fn.c_str()) == -1) {
+        reportError(fn + ": Failed to save.");
+        OSHelper::rmFile(tmp_fn);
+        return -1;
+    }
     return 0;
 }
 

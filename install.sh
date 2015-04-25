@@ -129,6 +129,7 @@ echo "Configuration successfuly created"
 
 mkdir -p $BUILD_DIR || exit_config "Failed to create build dir."
 cp "$CONFIG_FILE" "${BUILD_DIR}/CONF"
+cp "run_tests.sh" "${BUILD_DIR}/run_tests.sh"
 cp -r "${WORKING_DIR}/lists" "$BUILD_DIR"
 arch=32
 uname -a | grep "x86_64"
