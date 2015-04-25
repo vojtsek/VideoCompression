@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# transformConfig filename chukn_size buffer_size
+# transformConfig filename chunk_size buffer_size
 function transformConfig {
 	cat $1 | sed 's/CHUNK_SIZE \([0-9]*\)/CHUNK_SIZE '$2'/' > NEWCONF
 	mv NEWCONF $1
@@ -17,6 +17,10 @@ function lookupIPv4 {
   nslookup $1 | sed -n 's/Address: \([0-9.]*\)*$/\1/p'
 }
 
+# readLine file line_number
+function readLine {
+	head -n$2 $1 | tail -n1
+}
 # spawnClient hostname port
 function spawnClient {
   #addr="::ffff:"`lookupIPv4 $1`
@@ -66,15 +70,21 @@ function runTest {
 }
 
 export test_file=$1
-eval "version=\$(head -n1 $test_file)"
-eval "file=\$(head -n2 $test_file | tail -n1)"
-eval "runs=\$(head -n3 $test_file | tail -n1)"
+eval "version=\$(readLine 1 $test_file)"
+eval "file=\$(readLine 2 $test_file)"
+eval "runs=\$(readLine 3 $test_file)"
+eval "export quality=\$(readLine 4 $test_file)"
+eval "chsize=\$(readLine 5 $test_file)"
+eval "bsize=\$(readLine 6 $test_file)"
 
 cat <<END
 version: $version
 file: $file
 number of runs: $runs
 END
+
+transformConfig CONF $chsize $bsize
+
 export contact_addr="::ffff:"$(digIPv4)
 [[ $version == "v6" ]] && export contact_addr=$(digIPv6)
 export contact_port="6666"
@@ -91,12 +101,13 @@ for i in `seq 1 $runs`; do
   mkdir -p $HD
   start_t=$(date +%s)
   runTest $i &
-  cd ~/VideoCompression/bin && ./VideoCompression -a ${contact_addr}~${contact_port} -i $file -h "${HD}/${contact_port}" nostdin
+  cd ~/VideoCompression/bin && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}/${contact_port}" nostdin >/dev/null
   end_t=$(date +%s)
   exec_t=$(( $end_t - $start_t ))
   killAll VideoCompression
   sum_t=$(( sum_t + exec_t ))
   echo "took $exec_t secs"
+	printf "%d,%d,%d,%d,%s\n" $nodes_count $exec_t $bsize $chsize $quality
 done
 
 
@@ -106,6 +117,3 @@ time: $sum_t
 average: $avg_t
 number of participants: $nodes_count
 END
-                                                                                               105,3         Bot
-
-
