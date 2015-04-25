@@ -45,6 +45,7 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
 
     do {
         lck.lock();
+
         while (DATA->m_data.using_I)
             DATA->m_data.IO_cond.wait(lck);
         DATA->m_data.using_I = true;
@@ -71,6 +72,22 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
     thr.detach();
     usleep(10000);
     return(0);
+}
+
+void utilities::exitProgram(const std::string &msg, int64_t retval) {
+    try {
+            // notify neighbors
+            DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
+    } catch (std::out_of_range) {}
+    // clear memory
+    //TODO: segfault
+    //cleanCommands();
+    // handles curses end
+    if (DATA->state.interact) {
+            endwin();
+    }
+    printf("%s\n", msg.c_str());
+    exit(retval);
 }
 
 void utilities::listCmds() {
@@ -284,4 +301,8 @@ bool Configuration::setValue(std::string key, std::string val, bool force) {
     }
     strValues.emplace(key, val);
     return true;
+}
+
+void utilities::sigQuitHandler(int) {
+    utilities::exitProgram("Signaled!", 0);
 }

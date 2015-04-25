@@ -30,22 +30,6 @@ void cleanCommands() {
     }
 }
 
-void exitProgram(const std::string &msg, int64_t retval) {
-    try {
-            // notify neighbors
-            DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
-    } catch (std::out_of_range) {}
-    // clear memory
-    //TODO: segfault
-    //cleanCommands();
-    // handles curses end
-    if (DATA->state.interact) {
-            endwin();
-    }
-    printf("%s\n", msg.c_str());
-    exit(retval);
-}
-
 void usage() {
     return;
 }
@@ -176,7 +160,7 @@ void initConfiguration(NetworkHandler &handler) {
     // from config file
 
     if (readConfiguration(DATA->config.location) == -1) {
-        exitProgram("Failed to read configuration.", 1);
+        utilities::exitProgram("Failed to read configuration.", 1);
     }
 
     std::string wdir = DATA->config.getStringValue("WD");
@@ -312,21 +296,27 @@ int main(int argc, char **argv) {
 
 
     // sets handler of SIGPIPE
-    struct sigaction sa;
+    struct sigaction sa, sa2;
         memset(&sa, 0, sizeof(struct sigaction));
+        memset(&sa2, 0, sizeof(struct sigaction));
+
         sa.sa_handler = &networkHelper::sigPipeHandler;
         sigaction(SIGPIPE, &sa, NULL);
 
+        sa2.sa_handler = &utilities::sigQuitHandler;
+        sigaction(SIGINT, &sa2, NULL);
+
     // creates the commands structures
     initCommands(state, net_handler);
-    if (!DATA->config.is_superpeer) {
         std::thread thr ([&]() {
+                                    if (!DATA->config.is_superpeer) {
                     // ping the super peer
                     net_handler.contactSuperPeer();
+                                    }
                     // creates the socket, binds and starts listening
                     net_handler.start_listening(
                                                 DATA->config.getIntValue("LISTENING_PORT"));
-                    exitProgram("Failed to bind.", 2);
+                    utilities::exitProgram("Failed to bind.", 2);
         });
         thr.detach();
         std::thread thr2 ([&]() {
@@ -345,7 +335,6 @@ int main(int argc, char **argv) {
             chunkhelper::chunkSendRoutine(&net_handler);
         });
         split_thr.detach();
-    }
     if (DATA->state.file_path != "") {
             if (OSHelper::loadFile(
                                     DATA->state.file_path, &state) == -1) {
@@ -373,10 +362,10 @@ int main(int argc, char **argv) {
     // loops and tries read command keys
     // acceptCmd fails on F12
         try {
-                    do{ ; } while (!acceptCmd(DATA->cmds));
+                    do{ } while (!acceptCmd(DATA->cmds));
         } catch (exception e) {
                     printw(e.what());
                 }
     }
-    exitProgram("", 0);
+    utilities::exitProgram("", 0);
 }

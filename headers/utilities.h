@@ -97,6 +97,18 @@ namespace utilities
     void printOverallState(VideoState *state);
 
     /*!
+     * \brief exitProgram terminates the program execution
+     * \param msg msg to print to stdout
+     * \param retval value to exit with
+     */
+    void exitProgram(const std::string &msg, int64_t retval);
+
+    /*!
+     * \brief SigQuitHandler handles signals
+     */
+    void sigQuitHandler(int);
+
+    /*!
      * \brief isKnown checks, whether the string is allowed
      * \param cod string to explore
      * \return true if the string is known
@@ -110,5 +122,6 @@ namespace utilities
      * \return true if the character is acceptable
      */
     bool isAcceptable(char c);
+
 }
 #endif
