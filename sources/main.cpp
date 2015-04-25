@@ -60,7 +60,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
     int64_t port;
     std::string addr_port, address;
     // use of getopt
-    while ((opt = getopt(argc, argv, "sa:h:i:d:n:")) != -1) {
+    while ((opt = getopt(argc, argv, "sq:a:h:i:d:n:")) != -1) {
         switch (opt) {
         // superpeer mode
         case 's':
@@ -94,10 +94,14 @@ int64_t parseOptions(int64_t argc, char **argv) {
         case 'h':
             DATA->config.setValue("WD", std::string(optarg), true);
             DATA->state.wd_provided = true;
-                // file to load
             break;
+                // file to load
         case 'i':
             DATA->state.file_path = std::string(optarg);
+            break;
+        case 'q':
+            DATA->config.setValue("QUALITY", std::string(optarg), true);
+            break;
         // unknown option
         case '?':
             usage();
@@ -175,6 +179,11 @@ void initConfiguration(NetworkHandler &handler) {
     }
     wdir += PATH_SEPARATOR + utilities::m_itoa(
                 DATA->config.getIntValue("LISTENING_PORT"));
+    // sets the WDIR if not provided by option
+    DATA->config.setValue("WD", wdir,
+                          !DATA->state.wd_provided);
+    // really used one
+    wdir = DATA->config.getStringValue("WD");
     if (OSHelper::prepareDir(
                 wdir, false) == -1) {
         exitProgram("Failed to prepare working directory.", 1);
@@ -184,9 +193,6 @@ void initConfiguration(NetworkHandler &handler) {
                 wdir + PATH_SEPARATOR + "logs", false) == -1) {
         exitProgram("Failed to prepare working directory.", 1);
     }
-    // sets the WDIR if not provided by option
-    DATA->config.setValue("WD", wdir,
-                          !DATA->state.wd_provided);
 
     // how many neighbors contact when gathering
     DATA->config.setValue("UPP_LIMIT", 8, false);
