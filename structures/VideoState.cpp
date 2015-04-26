@@ -154,9 +154,7 @@ void VideoState::abort() {
             return (l->toString().find("TI") !=
                     std::string::npos);
         });
-        // TODO: trashing?
-        DATA->chunks_to_send.remove(ti);
-        delete ti;
+        chunkhelper::trashChunk(ti, true);
     }
     clearProgress();
     // adjusts the state variable
@@ -208,12 +206,13 @@ int64_t VideoState::join() {
                     "-c", "copy",
                     "-nostdin",
                     output.c_str());
-    if ((err.find("failed") != std::string::npos) ||
-            (duration < 0)) {
+    // (err.find("failed") != std::string::npos) <- does not have to be always true
+    if (duration < 0) {
         thr.detach();
         reportError(output + ": Error while joining file.");
         reportError(err);
         clearProgress();
+        reset();
         return -1;
     }
     // wait for end of the process
@@ -252,14 +251,24 @@ void VideoState::endProcess(int64_t duration) {
               TransferInfo *t1, TransferInfo *t2) {
         return (t1->time_per_kb < t2->time_per_kb);
     });
+
+    int64_t sending_sum(0), receiving_sum(0), encoding_sum(0);
     // traverses chunks and reports
     for (auto &ti : tis) {
+        sending_sum += ti->sending_time;
+        receiving_sum += ti->receiving_time;
+        encoding_sum += ti->encoding_time;
         ofs << ti->getInfo();
         csv_stream << ti->getCSV();
         chunkhelper::trashChunk(ti, true);
     }
     ofs << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>
                                         (std::chrono::system_clock::now() - start_time)).count() << std::endl;
+    sending_sum /= 1000;
+    receiving_sum /= 1000;
+    encoding_sum /= 1000;
+    ofs << sending_sum / chunk_count << " " << receiving_sum / chunk_count << " "
+        << encoding_sum / chunk_count << " " << chunk_count;
     ofs.flush();
     ofs.close();
     csv_stream.flush();

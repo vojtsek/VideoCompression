@@ -53,7 +53,7 @@ int64_t NeighborStorage::removeNeighbor(
     for (const auto &ti : ngh->chunks_assigned) {
         DATA->periodic_listeners.remove((Listener *) ti);
         ti->assigned = false;
-        reportError("Repushing " + ti->toString());
+        reportDebug("Repushing " + ti->toString(), 2);
         chunkhelper::pushChunkSend(ti);
     }
     delete ngh;
@@ -256,9 +256,9 @@ void NeighborStorage::assignChunk(const sockaddr_storage &addr,
     if (assign) {
         ti->assigned = true;
         ngh->chunks_assigned.push_back(ti);
-        reportError(MyAddr(ngh->address).get() + ": Assigning " + ti->toString());
+        reportDebug(MyAddr(ngh->address).get() + ": Assigning " + ti->toString(), 2);
     } else {
-        reportError("Unassigning " + ti->toString());
+        reportDebug("Unassigning " + ti->toString(), 2);
         ti->assigned = false;
         removeNeighborChunk(ngh, ti);
     }
@@ -315,6 +315,11 @@ void NeighborStorage::addNewNeighbor(const struct sockaddr_storage &addr) {
     printNeighborsInfo();
 }
 
+void NeighborStorage::clear() {
+    for (const auto &n : neighbors) {
+        removeNeighbor(n.second->address);
+    }
+}
 
 
 bool NeighborStorage::_contains(const sockaddr_storage &addr) {

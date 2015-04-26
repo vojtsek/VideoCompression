@@ -138,7 +138,6 @@ void reportDebug(const std::string &msg, int64_t lvl) {
 }
 
 void resizeHandler(int) {
-    // TODO: handle resizing
     refresh();
 }
 

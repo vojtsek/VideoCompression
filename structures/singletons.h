@@ -26,6 +26,8 @@ struct State {
     bool interact = true;
     //! whether provided home directory explicitly
     bool wd_provided = false;
+    //! indicates end of execution, so prevents further actions i.e. making connection, accept commands
+    bool quitting = false;
     //! file to load when don't run interactively
     std::string file_path = "";
 };

@@ -165,6 +165,11 @@ public:
     void applyToNeighbors(
             std::function<void (std::pair<std::string, NeighborInfo *>)> func);
 
+    /*!
+     * \brief clear clears the storage
+     */
+    void clear();
+
         /*!
      * \brief contains determines whether neighbors list contains given address
      * \param addr address to match

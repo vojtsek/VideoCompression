@@ -221,8 +221,13 @@ int64_t NetworkHandler::start_listening(int64_t port) {
             reportDebug("Failed to accept connection." + std::string(strerror(errno)), 1);
             continue;
         }
-        spawnIncomingConnection(peer_addr, accepted, true);
+        if (!DATA->state.quitting) {
+                    spawnIncomingConnection(peer_addr, accepted, true);
+        } else {
+            break;
+        }
     }
+    return 0;
 }
 
 void NetworkHandler::contactSuperPeer() {

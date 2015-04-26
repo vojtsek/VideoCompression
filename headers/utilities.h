@@ -109,6 +109,11 @@ namespace utilities
     void sigQuitHandler(int);
 
     /*!
+     * \brief cleanCommands memory cleanup
+     */
+    void cleanCommands();
+
+    /*!
      * \brief isKnown checks, whether the string is allowed
      * \param cod string to explore
      * \return true if the string is known

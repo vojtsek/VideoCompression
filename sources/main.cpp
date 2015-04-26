@@ -20,16 +20,6 @@
 using namespace std;
 using namespace utilities;
 
-void cleanCommands() {
-    // free the memory
-    for (auto &c : DATA->cmds) {
-        delete c.second;
-    }
-    for (auto &c : DATA->net_cmds) {
-        delete c.second;
-    }
-}
-
 void usage() {
     return;
 }
@@ -135,7 +125,7 @@ int64_t readConfiguration(const std::string &cf) {
         }
         ss >> value;
         try {
-            // tries to read the integer
+            // tries to read the inteodoger
             intvalue = std::stoi(value);
             try {
                 // if integer was parsed, add to mapping
@@ -158,7 +148,6 @@ int64_t readConfiguration(const std::string &cf) {
 }
 
 void initConfiguration(NetworkHandler &handler) {
-    // TODO: essential values check
     // data initialized with default values
     // called after the config file was read
     // from config file
@@ -186,12 +175,12 @@ void initConfiguration(NetworkHandler &handler) {
     wdir = DATA->config.getStringValue("WD");
     if (OSHelper::prepareDir(
                 wdir, false) == -1) {
-        exitProgram("Failed to prepare working directory.", 1);
+        utilities::exitProgram("Failed to prepare working directory.", 1);
     }
 
     if (OSHelper::prepareDir(
                 wdir + PATH_SEPARATOR + "logs", false) == -1) {
-        exitProgram("Failed to prepare working directory.", 1);
+        utilities::exitProgram("Failed to prepare working directory.", 1);
     }
 
     // how many neighbors contact when gathering
@@ -328,6 +317,9 @@ int main(int argc, char **argv) {
         std::thread thr2 ([&]() {
             // invokes some action periodically
             while (1) {
+                if (DATA->state.quitting) {
+                    break;
+                }
                 periodicActions(net_handler);
                 sleep(TICK_DURATION);
             }

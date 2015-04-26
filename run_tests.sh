@@ -8,6 +8,10 @@ function transformConfig {
 	mv NEWCONF $1
 }
 
+function digIPv4 {
+	ifconfig | sed -n 's/.*inet \([0-9.]*\) .*$/\1/p' | grep -v 127.0.0.1
+}
+
 function digIPv6 {
   ifconfig | grep global | sed -n 's/.*inet6 \([0-9a-f:]*\) .*$/\1/p'
 }
@@ -24,7 +28,7 @@ function readLine {
 # spawnClient hostname port
 function spawnClient {
   #addr="::ffff:"`lookupIPv4 $1`
-  command="cd ~/VideoCompression/bin && ./VideoCompression -a ~$2 -n ${contact_addr}~${contact_port} -h ${root_dir}/run${run} nostdin"
+  command="cd ~/VideoCompression/bin && ./VideoCompression -a ~$2 -n ${contact_addr}~${contact_port} -h ${root_dir}/run${run} nostdin >/dev/null"
   ssh -tt "$1" "$command" &
 }
 
@@ -107,7 +111,7 @@ for i in `seq 1 $runs`; do
   killAll VideoCompression
   sum_t=$(( sum_t + exec_t ))
   echo "took $exec_t secs"
-	printf "%d,%d,%d,%d,%s\n" $nodes_count $exec_t $bsize $chsize $quality
+	printf "%d,%d,%d,%d,%s,%s\n" $nodes_count $exec_t $bsize $chsize $quality $version >> report
 done
 
 

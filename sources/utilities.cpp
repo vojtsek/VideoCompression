@@ -59,7 +59,10 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
     } while(c == ERR);
     // F12 terminates
     if (c == KEY_F(12)) {
-        return (1);
+        return 1;
+    }
+    if (DATA->state.quitting) {
+        return 1;
     }
     // spawns the command
     thread thr ([&]() {
@@ -74,14 +77,25 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
     return(0);
 }
 
+void utilities::cleanCommands() {
+        // free the memory
+        for (auto &c : DATA->cmds) {
+                delete c.second;
+        }
+        for (auto &c : DATA->net_cmds) {
+                delete c.second;
+        }
+}
+
 void utilities::exitProgram(const std::string &msg, int64_t retval) {
+    DATA->state.quitting = true;
     try {
             // notify neighbors
             DATA->net_cmds.at(CMDS::SAY_GOODBYE)->execute();
     } catch (std::out_of_range) {}
     // clear memory
-    //TODO: segfault
-    //cleanCommands();
+    utilities::cleanCommands();
+    DATA->neighbors.clear();
     // handles curses end
     if (DATA->state.interact) {
             endwin();

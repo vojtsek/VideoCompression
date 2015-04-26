@@ -52,6 +52,7 @@ HEADERS += \
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \
+                -g \
 -fpermissive
 
 QMAKE_CFLAGS += -pthread
