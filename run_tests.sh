@@ -74,12 +74,12 @@ function runTest {
 }
 
 export test_file=$1
-eval "version=\$(readLine 1 $test_file)"
-eval "file=\$(readLine 2 $test_file)"
-eval "runs=\$(readLine 3 $test_file)"
-eval "export quality=\$(readLine 4 $test_file)"
-eval "chsize=\$(readLine 5 $test_file)"
-eval "bsize=\$(readLine 6 $test_file)"
+eval "version=\$(readLine $test_file 1 )"
+eval "file=\$(readLine $test_file 2 )"
+eval "runs=\$(readLine $test_file 3 )"
+eval "quality=\$(readLine $test_file 4 )"
+eval "chsize=\$(readLine $test_file 5 )"
+eval "bsize=\$(readLine $test_file 6 )"
 
 cat <<END
 version: $version
@@ -101,17 +101,18 @@ eval "nodes_count=\$(grep spawn $test_file | wc -l)"
 
 for i in `seq 1 $runs`; do
   echo "running iteration $i"
-  HD=$root_dir'/run'$i
+  HD="${root_dir}/run${i}/${contact_port}"
   mkdir -p $HD
   start_t=$(date +%s)
   runTest $i &
-  cd ~/VideoCompression/bin && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}/${contact_port}" nostdin >/dev/null
+  cd ~/VideoCompression/bin && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}" nostdin > /dev/null
   end_t=$(date +%s)
   exec_t=$(( $end_t - $start_t ))
   killAll VideoCompression
   sum_t=$(( sum_t + exec_t ))
-  echo "took $exec_t secs"
-	printf "%d,%d,%d,%d,%s,%s\n" $nodes_count $exec_t $bsize $chsize $quality $version >> report
+	add=$(tail -n1 $HD/logs/job_*.out)
+	printf "%d,%d,%d,%d,%s,%s,%s\n" $nodes_count $exec_t $bsize $chsize $add $quality $version >> ~/VideoCompression/bin/report
+	rm -rf ${HD}/*.mkv
 done
 
 

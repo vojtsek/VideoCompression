@@ -146,7 +146,7 @@ void utilities::printOverallState(VideoState *state) {
                                        MyAddr(c->src_address).get(), PLAIN);
     }
     }
-    if (DATA->chunks_to_send.getSize() > 0) {
+    if ((DATA->chunks_to_send.getSize() > 0) && (DATA->state.interact)) {
     DATA->io_data.info_handler.add("Chunks to send: ", DEBUG);
     for (const auto &ti : DATA->chunks_to_send.getValues()) {
         DATA->io_data.info_handler.add(ti->name, PLAIN);

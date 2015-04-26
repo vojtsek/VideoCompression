@@ -212,7 +212,7 @@ int64_t VideoState::join() {
         reportError(output + ": Error while joining file.");
         reportError(err);
         clearProgress();
-        reset();
+        abort();
         return -1;
     }
     // wait for end of the process
@@ -252,7 +252,7 @@ void VideoState::endProcess(int64_t duration) {
         return (t1->time_per_kb < t2->time_per_kb);
     });
 
-    int64_t sending_sum(0), receiving_sum(0), encoding_sum(0);
+    double sending_sum(0), receiving_sum(0), encoding_sum(0);
     // traverses chunks and reports
     for (auto &ti : tis) {
         sending_sum += ti->sending_time;
@@ -267,8 +267,8 @@ void VideoState::endProcess(int64_t duration) {
     sending_sum /= 1000;
     receiving_sum /= 1000;
     encoding_sum /= 1000;
-    ofs << sending_sum / chunk_count << " " << receiving_sum / chunk_count << " "
-        << encoding_sum / chunk_count << " " << chunk_count;
+    ofs << sending_sum / chunk_count << "," << receiving_sum / chunk_count << ","
+        << encoding_sum / chunk_count << "," << chunk_count;
     ofs.flush();
     ofs.close();
     csv_stream.flush();
