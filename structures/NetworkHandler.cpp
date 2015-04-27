@@ -12,7 +12,6 @@
 #include <sys/fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <err.h>
 #include <string.h>
 
 using namespace std;

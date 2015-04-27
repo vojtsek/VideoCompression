@@ -4,8 +4,6 @@
 #include "structures/NetworkHandler.h"
 #include <errno.h>
 #include <string>
-#include <error.h>
-#include <err.h>
 
 /*!
  * functions to help handle networking, manipulating address structures etc.

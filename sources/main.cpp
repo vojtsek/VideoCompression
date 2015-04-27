@@ -112,7 +112,7 @@ int64_t readConfiguration(const std::string &cf) {
         return -1;
     }
     std::string param_name, value, line;
-    int64_t intvalue;
+    int64_t int_value;
     while(ifs.good()) {
         // reads line from the file
         getline(ifs, line);
@@ -120,28 +120,30 @@ int64_t readConfiguration(const std::string &cf) {
         // reads the line splitted
         ss >> param_name;
         // ignore comments
-        if (*param_name.begin() == '#') {
+        if ((param_name.size() > 0) &&
+                (param_name.at(0) == '#')) {
             continue;
         }
         ss >> value;
+                // handles the value as string and saves
+                try {
+                        DATA->config.setValue(
+                                                param_name, value, false);
+                } catch (...) {
+                        reportError("Failed to read parameter " + param_name);
+                }
         try {
-            // tries to read the inteodoger
-            intvalue = std::stoi(value);
+            // tries to read the integer
+            int_value = std::stoi(value);
             try {
                 // if integer was parsed, add to mapping
                 DATA->config.setValue(
-                            param_name, intvalue, false);
+                            param_name, int_value, false);
             } catch (...) {
                 reportError("Failed to read parameter " + param_name);
             }
         } catch (std::invalid_argument) {
-            // otherwise handles the value as string
-            try {
-                DATA->config.setValue(
-                            param_name, value, false);
-            } catch (...) {
-                reportError("Failed to read parameter " + param_name);
-            }
+
         }
     }
    return 0;
@@ -317,9 +319,6 @@ int main(int argc, char **argv) {
         std::thread thr2 ([&]() {
             // invokes some action periodically
             while (1) {
-                if (DATA->state.quitting) {
-                    break;
-                }
                 periodicActions(net_handler);
                 sleep(TICK_DURATION);
             }

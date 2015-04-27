@@ -32,7 +32,6 @@
 #include <thread>
 #include <string.h>
 #include <sys/stat.h>
-#include <err.h>
 #include <fcntl.h>
 #include "helpers/network_helper.h"
 
