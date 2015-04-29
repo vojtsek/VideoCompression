@@ -126,7 +126,7 @@ std::string receiveString(int64_t fd) {
 
 int64_t receiveFile(int64_t fd, std::string fn) {
     int64_t fsize, read_bytes = 0, r, w;
-    int64_t o_file;
+    int64_t o_file, to_receive;
     std::string tmp_fn = fn + ".tmp";
     char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
@@ -145,10 +145,14 @@ int64_t receiveFile(int64_t fd, std::string fn) {
             reportDebug(fn + ": Failed to get file size. ", 2);
             throw 1;
         }
+
+        to_receive = (fsize > DATA->config.getIntValue("TRANSFER_BUF_LENGTH")) ?
+                    DATA->config.getIntValue("TRANSFER_BUF_LENGTH") : fsize;
         // reads into the buffer and counts the received bytes
-        while ((r = read(fd, buf,
-                         DATA->config.getIntValue("TRANSFER_BUF_LENGTH"))) > 0) {
+        while ((r = read(fd, buf, to_receive)) > 0) {
             read_bytes += r;
+                        to_receive = (fsize - read_bytes > DATA->config.getIntValue("TRANSFER_BUF_LENGTH")) ?
+                    DATA->config.getIntValue("TRANSFER_BUF_LENGTH") : fsize -read_bytes;
             // writes read bytes
             if ((w = write(o_file, buf, r)) == -1) {
                 reportDebug("Error; received " +

@@ -163,6 +163,13 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
             reportError(ti->name + ": Failed to send.");
             throw 1;
         }
+
+        /*
+        int64_t fsize;
+        if (receiveInt64(fd, fsize) == -1) {
+            reportError("EEE");
+        }
+        */
                 DATA->periodic_listeners.push(ti);
         ti->sent_times++;
                 reportDebug(ti->name + " was sent. " +

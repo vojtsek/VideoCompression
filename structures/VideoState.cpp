@@ -252,23 +252,27 @@ void VideoState::endProcess(int64_t duration) {
         return (t1->time_per_kb < t2->time_per_kb);
     });
 
-    double sending_sum(0), receiving_sum(0), encoding_sum(0);
+    double sending_sum(0), receiving_sum(0), encoding_sum(0),
+            sent_times(0);
     // traverses chunks and reports
     for (auto &ti : tis) {
         sending_sum += ti->sending_time;
         receiving_sum += ti->receiving_time;
         encoding_sum += ti->encoding_time;
+        sent_times += ti->sent_times;
         ofs << ti->getInfo();
         csv_stream << ti->getCSV();
         chunkhelper::trashChunk(ti, true);
     }
     ofs << "Time: " << (std::chrono::duration_cast<std::chrono::milliseconds>
                                         (std::chrono::system_clock::now() - start_time)).count() << std::endl;
-    sending_sum /= 1000;
-    receiving_sum /= 1000;
-    encoding_sum /= 1000;
-    ofs << sending_sum / chunk_count << "," << receiving_sum / chunk_count << ","
-        << encoding_sum / chunk_count << "," << chunk_count;
+    sending_sum /= 1000 * chunk_count;
+    receiving_sum /= 1000 * chunk_count;
+    encoding_sum /= 1000 * chunk_count;
+    sent_times /= chunk_count;
+    ofs << sending_sum << "," << receiving_sum << ","
+        << encoding_sum << "," << sent_times << ", "
+        << DATA->neighbors.getBiggestDifference() << ", " << chunk_count;
     ofs.flush();
     ofs.close();
     csv_stream.flush();

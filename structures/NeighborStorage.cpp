@@ -17,6 +17,22 @@ int64_t NeighborStorage::getNeighborCount() {
     return size;
 }
 
+int64_t NeighborStorage::getBiggestDifference() {
+    int64_t max = 0, min = DATA->chunks_returned.getSize();
+    n_mtx.lock();
+    for (const auto &n : neighbors) {
+        int64_t count = n.second->processed_chunks;
+        if (count > max) {
+            max = count;
+        }
+        if (count < min) {
+            min = count;
+        }
+    }
+    n_mtx.unlock();
+    return (max - min);
+}
+
 int64_t NeighborStorage::removeNeighbor(
         const struct sockaddr_storage &addr) {
     // exists the neighbor?

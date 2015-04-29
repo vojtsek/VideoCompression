@@ -62,6 +62,12 @@ public:
     int64_t getNeighborCount();
 
     /*!
+     * \brief getBiggestDifference computes biggest difference between processed chunks
+     * \return the biggest difference
+     */
+    int64_t getBiggestDifference();
+
+    /*!
      * \brief getNeighborInfo returns NeighborInfo of neighbor
      * with corresponding address
      * \param addr address to match
