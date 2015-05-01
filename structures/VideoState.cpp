@@ -271,8 +271,8 @@ void VideoState::endProcess(int64_t duration) {
     encoding_sum /= 1000 * chunk_count;
     sent_times /= chunk_count;
     ofs << sending_sum << "," << receiving_sum << ","
-        << encoding_sum << "," << sent_times << ", "
-        << DATA->neighbors.getBiggestDifference() << ", " << chunk_count;
+        << encoding_sum << "," << sent_times << ","
+        << DATA->neighbors.getBiggestDifference() << "," << chunk_count;
     ofs.flush();
     ofs.close();
     csv_stream.flush();

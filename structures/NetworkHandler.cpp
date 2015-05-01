@@ -164,27 +164,44 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
 int64_t NetworkHandler::start_listening(int64_t port) {
     int64_t sock, accepted, ip6_only = 0, reuse = 1;
     struct sockaddr_in6 in6;
+    struct sockaddr_in in4;
     // initialize the storage structure
-    socklen_t in6_size = sizeof (in6), psize = sizeof (struct sockaddr_storage);
+    socklen_t in6_size = sizeof (in6), in4_size = sizeof (in4),
+            psize = sizeof (struct sockaddr_storage);
     struct sockaddr_storage peer_addr;
-    bzero(&in6, sizeof (in6));
-    bzero(&peer_addr, in6_size);
-    bzero(&in6.sin6_addr.s6_addr, 16);
-    in6.sin6_family = AF_INET6;
-    in6.sin6_port = htons(port);
-    in6.sin6_addr.s6_addr[0] = 0;
+    if (DATA->config.IPv4_ONLY) {
+      bzero(&in4, sizeof (in4));
+            bzero(&peer_addr, in4_size);
+            bzero(&in4.sin_addr, in4_size);
+            in4.sin_family = AF_INET;
+            in4.sin_port = htons(port);
 
-    // open the socket
-    if ((sock = socket(AF_INET6, SOCK_STREAM, 6)) == -1) {
-        reportDebug("Failed to create listening socket." + std::string(strerror(errno)), 1);
-        return (-1);
-    }
+            // open the socket
+            if ((sock = socket(AF_INET, SOCK_STREAM, 6)) == -1) {
+                    reportDebug("Failed to create listening socket." + std::string(strerror(errno)), 1);
+                    return (-1);
+            }
+
+    } else {
+            bzero(&in6, sizeof (in6));
+            bzero(&peer_addr, in6_size);
+            bzero(&in6.sin6_addr.s6_addr, 16);
+            in6.sin6_family = AF_INET6;
+            in6.sin6_port = htons(port);
+            in6.sin6_addr.s6_addr[0] = 0;
+
+            // open the socket
+            if ((sock = socket(AF_INET6, SOCK_STREAM, 6)) == -1) {
+                    reportDebug("Failed to create listening socket." + std::string(strerror(errno)), 1);
+                    return (-1);
+            }
 
     // set options
     if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
                     &ip6_only, sizeof(ip6_only)) == -1) {
         reportDebug("Failed to set option to listening socket." + std::string(strerror(errno)), 1);
         return (-1);
+    }
     }
 
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
@@ -203,9 +220,16 @@ int64_t NetworkHandler::start_listening(int64_t port) {
    }
 
     // bind to desired address:port
-    if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
-        reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
-        return -1;
+    if (DATA->config.IPv4_ONLY) {
+            if (bind(sock, (struct sockaddr *) &in4, in4_size) == -1) {
+                    reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
+                    return -1;
+            }
+    } else {
+            if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
+                    reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
+                    return -1;
+            }
     }
 
     // start listening

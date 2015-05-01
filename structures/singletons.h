@@ -95,7 +95,7 @@ struct Configuration {
     //! whether the node should act like superpeer
     bool is_superpeer = false;
     //! whether using only IPv4 addresses
-    bool IPv4_ONLY;
+    bool IPv4_ONLY = false;
     //! determines if accept chunks to encode while working
     bool serve_while_working = false;
     //! if encode video as a whole

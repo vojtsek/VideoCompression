@@ -187,7 +187,6 @@ void initConfiguration(NetworkHandler &handler) {
 
     // how many neighbors contact when gathering
     DATA->config.setValue("UPP_LIMIT", 8, false);
-    DATA->config.IPv4_ONLY = false;
     int64_t x,y, y_space;
     // dimensions of the window
     getmaxyx(stdscr, y, x);
@@ -277,6 +276,10 @@ int main(int argc, char **argv) {
     // handle the options
     DATA->config.location = "CONF";
     parseOptions(argc, argv);
+    if (argsContains(argv, "ipv4")) {
+        DATA->config.IPv4_ONLY = true;
+
+    }
     if (argsContains(argv, "nostdin")) {
         DATA->state.interact = false;
     } else {
