@@ -88,7 +88,10 @@ void utilities::cleanCommands() {
 }
 
 void utilities::exitProgram(const std::string &msg, int64_t retval) {
-    // TODO: still segfault
+    // exit called already
+    if (DATA->state.quitting) {
+        return;
+    }
     DATA->state.quitting = true;
     try {
             // notify neighbors

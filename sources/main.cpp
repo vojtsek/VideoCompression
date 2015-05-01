@@ -18,7 +18,6 @@
 #include <signal.h>
 
 using namespace std;
-using namespace utilities;
 
 void usage() {
     return;
@@ -209,7 +208,7 @@ void initConfiguration(NetworkHandler &handler) {
                 addr, &handler) != -1) {
         DATA->config.my_IP = MyAddr(addr);
     } else {
-        exitProgram("Failed to obtain IP address.", 1);
+        utilities::exitProgram("Failed to obtain IP address.", 1);
     }
      DATA->config.my_IP.port =
              DATA->config.getIntValue("LISTENING_PORT");
@@ -314,9 +313,10 @@ int main(int argc, char **argv) {
                     net_handler.contactSuperPeer();
                                     }
                     // creates the socket, binds and starts listening
-                    net_handler.start_listening(
-                                                DATA->config.getIntValue("LISTENING_PORT"));
-                    utilities::exitProgram("Failed to bind.", 2);
+                    if (net_handler.start_listening(
+                                                DATA->config.getIntValue("LISTENING_PORT")) == -1) {
+                                            utilities::exitProgram("Failed to bind.", 2);
+                    }
         });
         thr.detach();
         std::thread thr2 ([&]() {
@@ -347,7 +347,7 @@ int main(int argc, char **argv) {
             lck.lock();
             if (DATA->state.file_path != "") {
                             if (state.split() == -1) {
-                exitProgram("Failed to split", 1);
+                utilities::exitProgram("Failed to split", 1);
                             }
             } else {
                 // hack to "get stuck" when should only listen
@@ -362,7 +362,7 @@ int main(int argc, char **argv) {
     // loops and tries read command keys
     // acceptCmd fails on F12
         try {
-                    do{ } while (!acceptCmd(DATA->cmds));
+                    do{ } while (!utilities::acceptCmd(DATA->cmds));
         } catch (exception e) {
                     printw(e.what());
                 }
