@@ -28,6 +28,8 @@ struct State {
     bool wd_provided = false;
     //! indicates end of execution, so prevents further actions i.e. making connection, accept commands
     bool quitting = false;
+    //! counts number of neighbors lost during the run
+    int removed_neighbors = 0;
     //! file to load when don't run interactively
     std::string file_path = "";
 };

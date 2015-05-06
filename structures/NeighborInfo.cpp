@@ -23,7 +23,7 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
     if (intervals <= 0) {
         // if time is up, tries to connect
         sock = net_handler.checkNeighbor(address);
-        // failed to connect, going to be remove
+        // failed to connect, going to be removed
         if (sock == -1) {
             dirty = true;
             net_handler.addNewNeighbor(true, address);

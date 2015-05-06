@@ -73,6 +73,7 @@ int64_t NeighborStorage::removeNeighbor(
         chunkhelper::pushChunkSend(ti);
     }
     delete ngh;
+    DATA->state.removed_neighbors++;
     n_mtx.unlock();
         printNeighborsInfo();
     return 0;
@@ -229,6 +230,7 @@ std::vector<struct sockaddr_storage>
 }
 
 void NeighborStorage::trashNeighborChunks(
+        //TODO: possibly leaking
         const sockaddr_storage &addr) {
     // removes if there are some chunks addressed to this neighbor
             DATA->chunks_to_send.removeIf(
