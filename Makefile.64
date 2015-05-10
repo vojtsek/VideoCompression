@@ -29,7 +29,7 @@ SOURCES       = ./commands/interactive.cpp \
 		./structures/TransferInfo.cpp \
 		./structures/NeighborInfo.cpp \
 		./structures/WindowPrinter.cpp \
-		./structures/VideoState.cpp \
+		./structures/TaskHandler.cpp \
 		./structures/HistoryStorage.cpp \
 		./structures/MyAddr.cpp \
 		./helpers/chunk_helper.cpp \
@@ -48,7 +48,7 @@ OBJECTS       = interactive.o \
 		TransferInfo.o \
 		NeighborInfo.o \
 		WindowPrinter.o \
-		VideoState.o \
+		TaskHandler.o \
 		HistoryStorage.o \
 		MyAddr.o \
 		chunk_helper.o \
@@ -141,7 +141,7 @@ interactive.o: ./commands/interactive.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -185,7 +185,7 @@ maintanance.o: ./commands/maintanance.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -211,7 +211,7 @@ transfer.o: ./commands/transfer.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -237,7 +237,7 @@ TransferInfo.o: ./structures/TransferInfo.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -263,7 +263,7 @@ NeighborInfo.o: ./structures/NeighborInfo.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -289,7 +289,7 @@ WindowPrinter.o: ./structures/WindowPrinter.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -297,7 +297,7 @@ WindowPrinter.o: ./structures/WindowPrinter.cpp ./headers/defines.h \
 		./helpers/OShelper.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o WindowPrinter.o ./structures/WindowPrinter.cpp
 
-VideoState.o: ./structures/VideoState.cpp ./headers/defines.h \
+TaskHandler.o: ./structures/TaskHandler.cpp ./headers/defines.h \
 		./headers/enums_types.h \
 		./structures/WindowPrinter.h \
 		./structures/singletons.h \
@@ -315,13 +315,13 @@ VideoState.o: ./structures/VideoState.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
 		./helpers/senders_receivers.h \
 		./helpers/OShelper.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o VideoState.o ./structures/VideoState.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o TaskHandler.o ./structures/TaskHandler.cpp
 
 HistoryStorage.o: ./structures/HistoryStorage.cpp ./headers/defines.h \
 		./headers/enums_types.h \
@@ -341,7 +341,7 @@ HistoryStorage.o: ./structures/HistoryStorage.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -367,7 +367,7 @@ MyAddr.o: ./structures/MyAddr.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -393,7 +393,7 @@ chunk_helper.o: ./helpers/chunk_helper.cpp ./headers/defines.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -419,7 +419,7 @@ network_helper.o: ./helpers/network_helper.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -445,7 +445,7 @@ OShelper.o: ./helpers/OShelper.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -474,7 +474,7 @@ handle_IO.o: ./sources/handle_IO.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -500,7 +500,7 @@ main.o: ./sources/main.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -526,7 +526,7 @@ utilities.o: ./sources/utilities.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -568,7 +568,7 @@ senders_receivers.o: ./helpers/senders_receivers.cpp ./headers/include_list.h \
 		./structures/NeighborInfo.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \
@@ -594,7 +594,7 @@ NetworkHandler.o: ./structures/NetworkHandler.cpp ./structures/NetworkHandler.h 
 		./headers/utilities.h \
 		./headers/templates.h \
 		./structures/HistoryStorage.h \
-		./structures/VideoState.h \
+		./structures/TaskHandler.h \
 		./structures/TransferInfo.h \
 		./helpers/chunk_helper.h \
 		./helpers/network_helper.h \

@@ -1,19 +1,17 @@
 #! /bin/bash
 
-# transformConfig filename chunk_size buffer_size
+# transformConfig filename option new_val
 function transformConfig {
-	cat $1 | sed 's/CHUNK_SIZE \([0-9]*\)/CHUNK_SIZE '$2'/' > NEWCONF
-	mv NEWCONF $1
-	cat $1 | sed 's/TRANSFER_BUF_LENGTH \([0-9]*\)/TRANSFER_BUF_LENGTH '$3'/' > NEWCONF
+	cat $1 | sed 's/'$2' \([0-9]*\)/'$2' '$3'/' > NEWCONF
 	mv NEWCONF $1
 }
 
 function digIPv4 {
-	ifconfig | sed -n 's/.*inet \([0-9.]*\) .*$/\1/p' | grep -v 127.0.0.1
+	ip addr | sed -n 's/.*inet \([0-9.]*\)\/.*$/\1/p' | grep -v 127.0.0.1
 }
 
 function digIPv6 {
-  ifconfig | grep global | sed -n 's/.*inet6 \([0-9a-f:]*\) .*$/\1/p'
+	ip addr | grep global | sed -n 's/.*inet6 \([0-9a-f:]*\)\/.*$/\1/p'
 }
 
 # digIPv4 hostname
@@ -28,7 +26,9 @@ function readLine {
 # spawnClient hostname port
 function spawnClient {
   #addr="::ffff:"`lookupIPv4 $1`
-  command="cd ~/VideoCompression/bin && ./VideoCompression -a ~$2 -n ${contact_addr}~${contact_port} -h ${root_dir}/run${run} nostdin >/dev/null"
+	HD=${root_dir}/run${run}/${2}_$$
+	echo $version $contact_addr
+  command="mkdir -p $HD && cd $executable_location && ./VideoCompression -a ~$2 -n ${contact_addr}~${contact_port} -h ${HD} nostdin $version && rm -rf $HD"
   ssh -tt "$1" "$command" &
 }
 
@@ -74,7 +74,7 @@ function runTest {
 }
 
 export test_file=$1
-eval "version=\$(readLine $test_file 1 )"
+export version=$(readLine $test_file 1 )
 eval "file=\$(readLine $test_file 2 )"
 eval "runs=\$(readLine $test_file 3 )"
 eval "quality=\$(readLine $test_file 4 )"
@@ -84,15 +84,21 @@ eval "bsize=\$(readLine $test_file 6 )"
 cat <<END
 version: $version
 file: $file
-number of runs: $runs
+number of iterations: $runs
+quality: $quality
+chunk size: $chsize
+buffer size: $bsize
 END
 
-transformConfig CONF $chsize $bsize
+transformConfig CONF "CHUNK_SIZE" $chsize
+transformConfig CONF "TRANSFER_BUF_LENGTH" $bsize
 
-export contact_addr="::ffff:"$(digIPv4)
-[[ $version == "v6" ]] && export contact_addr=$(digIPv6)
+export contact_addr=$(digIPv4)
+[[ $version == "ipv6" ]] && export contact_addr=$(digIPv6)
 export contact_port="6666"
-export root_dir=$(pwd)"/"$(date +test_%m_%d_%H-%M-%S)
+export root_dir="/tmp/hudecekv/"$(date +test_%m_%d_%H-%M-%S)
+export executable_location=~/VideoCompression/bin
+export report_location=~/video_tests/report
 mkdir -p $root_dir
 
 sum_t=0
@@ -105,13 +111,18 @@ for i in `seq 1 $runs`; do
   mkdir -p $HD
   start_t=$(date +%s)
   runTest $i &
-  cd ~/VideoCompression/bin && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}" nostdin > /dev/null
+	echo $contact_addr
+  cd $executable_location && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}" nostdin $version
   end_t=$(date +%s)
   exec_t=$(( $end_t - $start_t ))
   killAll VideoCompression
   sum_t=$(( sum_t + exec_t ))
-	add=$(tail -n1 $HD/logs/job_*.out)
-	printf "%d,%d,%d,%d,%s,%s,%s\n" $nodes_count $exec_t $bsize $chsize $add $quality $version >> ~/VideoCompression/bin/report
+	echo "iteration took $exec_t secs"
+	logfile=$HD/logs/job_*.out
+	add=$(tail -n1 $logfile | tr -d ' ')
+	splitting=$(grep Splitting $logfile | cut -d' ' -f2)
+	joining=$(grep Joining $logfile | cut -d' ' -f2)
+	printf "%d,%d,%d,%d,%d,%d,%s,%s,%s\n" $nodes_count $exec_t $bsize $chsize $splitting $joining $add $quality $version >> $report_location
 	rm -rf ${HD}/*.mkv
 done
 
@@ -122,3 +133,7 @@ time: $sum_t
 average: $avg_t
 number of participants: $nodes_count
 END
+cp $test_file $root_dir
+tar czf ${root_dir}.tar.gz $root_dir
+mv ${root_dir}.tar.gz ~/video_tests
+rm -rf $root_dir

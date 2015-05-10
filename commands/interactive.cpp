@@ -52,7 +52,7 @@ void CmdShow::execute() {
             reportError("Please load the file first.");
             return;
         }
-        state->printVideoState();
+        state->printTaskState();
     }
 }
 
@@ -74,7 +74,7 @@ void CmdStart::execute() {
         return;
     }
     // print state and begin to split
-    state->printVideoState();
+    state->printTaskState();
     if (state->split() == -1) {
         reportError("Error while splitting the video file.");
         OSHelper::rmrDir(state->dir_location.c_str(), false);
@@ -164,7 +164,7 @@ void CmdSet::execute() {
         DATA->cmds[CMDS::SET_QUALITY]->execute();
     else
         reportStatus("Available options: 'codec'', 'chunksize', 'quality'");
-    state->printVideoState();
+    state->printTaskState();
 }
 
 void CmdLoad::execute(){
@@ -174,5 +174,5 @@ void CmdLoad::execute(){
         reportError("File path not provided.");
         return;
     }
-    OSHelper::loadFile(path, this->state);
+    state->loadFile(path);
 }

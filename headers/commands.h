@@ -8,7 +8,7 @@
 #define COMMANDS_H
 
 
-class VideoState;
+class TaskHandler;
 
 /*!
  * \brief The Command class
@@ -19,11 +19,11 @@ class Command {
 protected:
     /*!
      * \brief state
-     * pointer to the VideoState instance
+     * pointer to the TaskHandler instance
      */
-    VideoState *state;
+    TaskHandler *state;
 public:
-    Command(VideoState *st) {
+    Command(TaskHandler *st) {
         state = st;
     }
     /*!
@@ -47,7 +47,7 @@ protected:
     //! pointer to NetworkHandlert instance
     NetworkHandler *handler;
 public:
-    NetworkCommand(VideoState *state, NetworkHandler *nhandler):
+    NetworkCommand(TaskHandler *state, NetworkHandler *nhandler):
         Command(state), handler(nhandler) {}
     /*!
      * \brief getName helper function to identify command

@@ -10,7 +10,7 @@
  */
 class CmdDistributePeer: public NetworkCommand {
 public:
-    CmdDistributePeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdDistributePeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Distr Peer");
@@ -25,7 +25,7 @@ public:
  */
 class CmdDistributeHost: public NetworkCommand {
 public:
-    CmdDistributeHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdDistributeHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Distr Host");
@@ -39,7 +39,7 @@ public:
  */
 class CmdReturnPeer: public NetworkCommand {
 public:
-    CmdReturnPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdReturnPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Return peer");
@@ -52,7 +52,7 @@ public:
  */
 class CmdReturnHost: public NetworkCommand {
 public:
-    CmdReturnHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdReturnHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Return host");
@@ -67,7 +67,7 @@ public:
  */
 class CmdGatherNeighborsPeer: public NetworkCommand {
 public:
-    CmdGatherNeighborsPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdGatherNeighborsPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Gather neighbors peer");
@@ -81,7 +81,7 @@ public:
  */
 class CmdGatherNeighborsHost: public NetworkCommand {
 public:
-    CmdGatherNeighborsHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdGatherNeighborsHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return ("Gather neighbors host");

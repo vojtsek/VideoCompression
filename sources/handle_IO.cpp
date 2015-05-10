@@ -143,14 +143,16 @@ void resizeHandler(int) {
 
 void initCurses() {
     initscr();
-    // allows reading function keys
-    keypad(stdscr, TRUE);
     // resizing;
     signal (SIGWINCH, &resizeHandler);
     // implicitly not show pressed keys
     noecho();
     // input immediately available
-    halfdelay(3);
+    cbreak();
+    halfdelay(30);
+
+    // allows reading function keys
+    keypad(stdscr, TRUE);
     // start using colors
     start_color();
     // define colors
@@ -162,7 +164,7 @@ void initCurses() {
     init_pair(YELLOWALL, COLOR_YELLOW, COLOR_YELLOW);
     init_pair(CYANALL, COLOR_CYAN, COLOR_CYAN);
     init_pair(GREYALL, COLOR_GREY, COLOR_GREY);
-    init_pair(BG, COLOR_WHITE, BG_COL);
+    init_pair(BG, COLOR_BLACK, BG_COL);
     init_pair(INVERTED, BG_COL, COLOR_WHITE);
     // set background
     wbkgd(stdscr, COLOR_PAIR(BG));

@@ -214,7 +214,7 @@ void initConfiguration(NetworkHandler &handler) {
              DATA->config.getIntValue("LISTENING_PORT");
 }
 
-void initCommands(VideoState &state, NetworkHandler &net_handler) {
+void initCommands(TaskHandler &state, NetworkHandler &net_handler) {
     DATA->cmds.emplace(CMDS::DEFCMD, new CmdDef(&state));
     DATA->cmds.emplace(CMDS::SHOW, new CmdShow(&state, &net_handler));
     DATA->cmds.emplace(CMDS::START, new CmdStart(&state));
@@ -246,7 +246,7 @@ void initCommands(VideoState &state, NetworkHandler &net_handler) {
 
 void periodicActions(NetworkHandler &net_handler) {
     // check whether should gain some neighbors
-    if ((!DATA->config.is_superpeer) &&
+    if (
             (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
                 "MAX_NEIGHBOR_COUNT"))) {
         net_handler.obtainNeighbors();
@@ -258,9 +258,9 @@ void periodicActions(NetworkHandler &net_handler) {
     DATA->neighbors.removeDirty();
 }
 
-void drawCurses() {
+void drawCurses(WINDOW *win) {
     // initialize the main window
-    WINDOW *win = subwin(stdscr, 5, 80, 0, 0);
+    keypad(win, TRUE);
     wmove(win, 0,0);
     wprintw(win, "Distributed video compression tool.");
     wmove(win, 1, 0);
@@ -279,19 +279,22 @@ int main(int argc, char **argv) {
         DATA->config.IPv4_ONLY = true;
 
     }
+    WINDOW *win;
     if (argsContains(argv, "nostdin")) {
+        reportError("DD");
         DATA->state.interact = false;
     } else {
             // inits the curses variables
             initCurses();
-            drawCurses();
+                    win = subwin(stdscr, 5, 80, 0, 0);
+            drawCurses(win);
     }
 
     NetworkHandler net_handler;
     // inits the configuration
     initConfiguration(net_handler);
     // prepares the working directory
-    VideoState state(&net_handler);
+    TaskHandler state(&net_handler);
 
 
     // sets handler of SIGPIPE
@@ -336,8 +339,8 @@ int main(int argc, char **argv) {
         });
         split_thr.detach();
     if (DATA->state.file_path != "") {
-            if (OSHelper::loadFile(
-                                    DATA->state.file_path, &state) == -1) {
+            if (state.loadFile(
+                                    DATA->state.file_path) == -1) {
                     reportError("Failed to load file!");
             }
     }
@@ -362,7 +365,7 @@ int main(int argc, char **argv) {
     // loops and tries read command keys
     // acceptCmd fails on F12
         try {
-                    do{ } while (!utilities::acceptCmd(DATA->cmds));
+                    do{ } while (!utilities::acceptCmd(DATA->cmds, win));
         } catch (exception e) {
                     printw(e.what());
                 }

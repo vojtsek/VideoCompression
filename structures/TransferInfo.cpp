@@ -117,6 +117,24 @@ int64_t TransferInfo::send(int64_t fd) {
         return -1;
     }
 
+    if (sendInt64(fd, run_args.size()) == -1) {
+        reportDebug("Failed to send number of arguments.", 1);
+        return -1;
+    }
+
+    for (u_int64_t i = 0; i < run_args.size(); ++i) {
+        try {
+        if (sendString(fd, run_args.at(i))) {
+            reportDebug("Failed to send argument.", 1);
+            return -1;
+        }
+        } catch(std::out_of_range) {
+            reportDebug("Failed to send argument.", 1);
+            return -1;
+        }
+    }
+
+
         RESPONSE_T resp;
     if (receiveResponse(fd, resp) == -1) {
         reportDebug("Failed to confirm chunk", 1);
@@ -132,6 +150,7 @@ int64_t TransferInfo::send(int64_t fd) {
 }
 
 int64_t TransferInfo::receive(int64_t fd) {
+    int64_t args_count;
     if (receiveInt64(fd, chunk_size) == -1) {
         reportDebug("Failed to receive size.", 1);
         return -1;
@@ -217,6 +236,21 @@ int64_t TransferInfo::receive(int64_t fd) {
         return -1;
     }
 
+    if (receiveInt64(fd, args_count) == -1) {
+        reportDebug("Failed to receive number of arguments.", 1);
+        return -1;
+    }
+
+    run_args.clear();
+    for (int i = 0; i < args_count; ++i) {
+        std::string arg;
+        if ((arg = receiveString(fd)).empty()) {
+            reportDebug("Failed to receive argument.", 1);
+            return -1;
+        }
+        run_args.push_back(arg);
+    }
+
     RESPONSE_T resp = RESPONSE_T::ACK_FREE;
     if (sendResponse(fd, resp) == -1) {
         reportDebug("Failed to send confirmation.", 1);
@@ -247,6 +281,20 @@ void TransferInfo::init(int64_t size,
     output_codec = oc;
     timestamp = utilities::getTimestamp();
     assigned = false;
+    run_args.push_back(
+                DATA->config.getStringValue("FFMPEG_LOCATION"));
+    run_args.push_back("-i");
+    run_args.push_back("IN");
+    run_args.push_back("-c:v");
+    run_args.push_back(output_codec);
+    run_args.push_back("-preset");
+    run_args.push_back(DATA->config.getStringValue("QUALITY"));
+    run_args.push_back("-c:a");
+    run_args.push_back("copy");
+    run_args.push_back("-nostdin");
+    run_args.push_back("-qp");
+    run_args.push_back("0");
+    run_args.push_back("OUT");
 }
 
 std::string TransferInfo::getInfo() {

@@ -1,9 +1,6 @@
 #include "headers/include_list.h"
 #include "structures/singletons.h"
 #include "headers/defines.h"
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/filestream.h"
 
 #include <sys/stat.h>
 #include <wait.h>
@@ -137,31 +134,29 @@ int64_t OSHelper::mkDir(std::string location, bool destroy) {
 }
 
 int64_t OSHelper::runExternal(
-        std::string &stdo, std::string &stde, int64_t limit,
-        const char *cmd, int64_t numargs, ...) {
+        std::string &stdo, std::string &stde,
+        int64_t limit, const std::vector<std::string> run_args) {
     pid_t pid;
     int pd_o[2], pd_e[2], j;
+    int64_t numargs = run_args.size();
     size_t bufsize = 65536;
-    std::string whole_command(cmd);
+    std::string whole_command;
     char buf_o[bufsize], buf_e[bufsize];
     char *bo = buf_o, *be = buf_e;
     // creates pipes
     pipe(pd_o);
     pipe(pd_e);
 
-    va_list arg_ptr;
-    va_start (arg_ptr, numargs);
     // obtain parameters
     char *args[numargs + 3];
     for(j = 0 ; j < numargs; ++j) {
-        char *arg = va_arg(arg_ptr, char *);
+        char *arg = run_args[j].c_str();
         args[j] = arg;
         whole_command += " ";
         whole_command += arg;
     }
         reportDebug("Spawning '" + whole_command + "'", 2);
         args[j] = nullptr;
-        va_end(arg_ptr);
 
     // forks
     switch (pid = fork()) {
@@ -174,10 +169,8 @@ int64_t OSHelper::runExternal(
         close(STDERR_FILENO);
         close(pd_e[0]);
         dup(pd_e[1]);
-        char command[BUF_LENGTH];
-        strcpy(command, cmd);
         // execute the desired programme
-        if ((execvp(command, args)) == -1) {
+        if ((execvp(run_args[0].c_str(), args)) == -1) {
             return -1;
         }
         break;
@@ -294,105 +287,3 @@ std::string OSHelper::getBasename(const std::string &str) {
     return basename;
 }
 
-int64_t OSHelper::loadFile(
-        const std::string fpath, VideoState *state) {
-    FileInfo &finfo = state->finfo;
-    std::string path(fpath), out, err, err_msg("Error loading the file: ");
-    rapidjson::Document document;
-    std::stringstream ssd;
-        // is file ok?
-    try {
-    if (OSHelper::checkFile(path) == -1){
-        reportError("Loading the file " + path + " failed");
-        throw 1;
-    }
-    // saves information in the FileInfo structure
-    finfo.fpath = path;
-    finfo.extension = "." + OSHelper::getExtension(path);
-    finfo.basename = OSHelper::getBasename(path);
-    // gain some info about the video
-    if (OSHelper::runExternal(out, err, 510,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 6,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               finfo.fpath.c_str(), "-show_streams", "-show_format",
-                              "-print_format", "json") < 0) {
-        reportError("Error while getting video information.");
-        throw 1;
-    }
-    if (err.find("Invalid data") != std::string::npos) {
-        reportError("Invalid video file");
-        state->resetFileInfo();
-        throw 1;
-    }
-
-    // parse the JSON output and save
-    if(document.Parse(out.c_str()).HasParseError()) {
-        reportError(err_msg + "Parse error");
-        throw 1;
-    }
-    if (!document.HasMember("format")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    if(!document["format"].HasMember("bit_rate")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["bit_rate"].GetString());
-    ssd >> finfo.bitrate;
-    finfo.bitrate /= 8;
-
-    if(!document["format"].HasMember("duration")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["duration"].GetString());
-    ssd >> finfo.duration;
-
-    if(!document["format"].HasMember("size")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    ssd.clear();
-    ssd.str(document["format"]["size"].GetString());
-    ssd >> finfo.fsize;
-
-    if(!document["format"].HasMember("format_name")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    finfo.format = document["format"]["format_name"].GetString();
-
-    if(!document.HasMember("streams")) {
-        reportError(err_msg);
-        throw 1;
-    }
-    const rapidjson::Value &streams = document["streams"];
-    bool found = false;
-    if (!streams.IsArray()) {
-        reportError("Invalid video file");
-        throw 1;
-    }
-    // codec information
-    for(rapidjson::SizeType i = 0; i < streams.Size(); ++i) {
-        if (streams[i].HasMember("codec_type") && (streams[i]["codec_type"].GetString() == std::string("video"))) {
-            finfo.codec = streams[i]["codec_name"].GetString();
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        reportError("Invalid video file");
-        throw 1;
-    }
-        } catch (int) {
-        return -1;
-        }
-    // loads the file to the VideoState
-    state->loadFileInfo(finfo);
-    reportSuccess(finfo.fpath + " loaded.");
-    state->printVideoState();
-    return 0;
-}

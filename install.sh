@@ -51,7 +51,7 @@ ENOUGH=2
 LPORT=2222
 CPORT=6666
 CADDR="::ffff:127.0.0.1"
-IP="::ffff:127.0.0.1"
+IP="::ffff:"$(ip addr | sed -n 's/.*inet \([0-9.]*\)\/.*$/\1/p' | grep -v 127.0.0.1)
 QUALITY=fast
 
 get_response "Set configuration?" "yes"
@@ -138,7 +138,7 @@ echo "Building for ${arch}-bit"
 cp "Makefile.$arch" "Makefile"
 
 echo "Running make..."
-make
+make || exit_config "Failed to run the make command"
 mv VideoCompression "$BUILD_DIR"
 echo "Cleaning..."
 cleanup

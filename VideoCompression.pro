@@ -10,7 +10,6 @@ SOURCES +=  \
     structures/TransferInfo.cpp \
     structures/NeighborInfo.cpp \
     structures/WindowPrinter.cpp \
-    structures/VideoState.cpp \
     structures/HistoryStorage.cpp \
     structures/MyAddr.cpp \
     helpers/chunk_helper.cpp \
@@ -22,13 +21,14 @@ SOURCES +=  \
     sources/utilities.cpp \
     structures/NeighborStorage.cpp \
     helpers/senders_receivers.cpp \
-    structures/NetworkHandler.cpp
+    structures/NetworkHandler.cpp \
+    structures/TaskHandler.cpp
 
 HEADERS += \
     commands/interactive.h \
     commands/maintanance.h \
     commands/transfer.h \
-    structures/VideoState.h \
+    structures/TaskHandler.h \
     structures/WindowPrinter.h \
     structures/singletons.h \
     structures/HistoryStorage.h \
@@ -52,10 +52,13 @@ HEADERS += \
 
 QMAKE_CXXFLAGS += -std=c++11 \
     -pthread \
+                -fPIC \
                 -g \
 -fpermissive
 
-QMAKE_CFLAGS += -pthread
+QMAKE_CFLAGS += -pthread \
+                -fPIC
 
-LIBS += -pthread
+LIBS += -pthread \
+
 unix|win32: LIBS += -lcurses

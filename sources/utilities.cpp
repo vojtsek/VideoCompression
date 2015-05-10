@@ -39,7 +39,7 @@ using namespace std;
 
 std::shared_ptr<Data> Data::inst = nullptr;
 
-int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
+int64_t utilities::acceptCmd(cmd_storage_t &cmds, WINDOW *win) {
     wchar_t c;
     std::unique_lock<std::mutex> lck(DATA->m_data.I_mtx, std::defer_lock);
 
@@ -50,7 +50,7 @@ int64_t utilities::acceptCmd(cmd_storage_t &cmds) {
             DATA->m_data.IO_cond.wait(lck);
         DATA->m_data.using_I = true;
         // non blocking mode is set, waits for key
-        c = getch();
+        c = wgetch(win);
         DATA->m_data.using_I = false;
         lck.unlock();
         DATA->m_data.IO_cond.notify_one();
@@ -118,7 +118,7 @@ void utilities::listCmds() {
     show("quit", "");
 }
 
-void utilities::printOverallState(VideoState *state) {
+void utilities::printOverallState(TaskHandler *state) {
     MSG_T type = PLAIN;
     // all chunks were delivered
     if ((state->processed_chunks == state->chunk_count) &&

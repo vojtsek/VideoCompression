@@ -8,7 +8,7 @@
  */
 class CmdDef: public Command {
 public:
-    CmdDef(VideoState *st): Command(st) {}
+    CmdDef(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -18,7 +18,7 @@ public:
  */
 class CmdHelp: public Command {
 public:
-    CmdHelp(VideoState *st): Command(st) {}
+    CmdHelp(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -28,7 +28,7 @@ public:
  */
 class CmdScrollUp: public Command {
 public:
-    CmdScrollUp(VideoState *st): Command(st) {}
+    CmdScrollUp(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -38,7 +38,7 @@ public:
  */
 class CmdScrollDown: public Command {
 public:
-    CmdScrollDown(VideoState *st): Command(st) {}
+    CmdScrollDown(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -48,7 +48,7 @@ public:
  */
 class CmdShow: public NetworkCommand {
 public:
-    CmdShow(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdShow(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t, struct sockaddr_storage &, void *);
     virtual void execute();
     virtual std::string getName() {
@@ -62,7 +62,7 @@ public:
  */
 class CmdAbort: public Command {
 public:
-    CmdAbort(VideoState *st): Command(st) {}
+    CmdAbort(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -73,7 +73,7 @@ public:
  */
 class CmdStart: public Command {
 public:
-    CmdStart(VideoState *st): Command(st) {}
+    CmdStart(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -84,7 +84,7 @@ public:
  */
 class CmdSet: public Command {
 public:
-    CmdSet(VideoState *st): Command(st) {}
+    CmdSet(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -94,7 +94,7 @@ public:
  */
 class CmdLoad: public Command {
 public:
-    CmdLoad(VideoState *st): Command(st) {}
+    CmdLoad(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -104,7 +104,7 @@ public:
  */
 class CmdSetCodec: public Command {
 public:
-    CmdSetCodec(VideoState *st): Command(st) {}
+    CmdSetCodec(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -114,7 +114,7 @@ public:
  */
 class CmdSetQuality: public Command {
 public:
-    CmdSetQuality(VideoState *st): Command(st) {}
+    CmdSetQuality(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -125,7 +125,7 @@ public:
  */
 class CmdSetFormat: public Command {
 public:
-    CmdSetFormat(VideoState *st): Command(st) {}
+    CmdSetFormat(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -135,7 +135,7 @@ public:
  */
 class CmdSetChSize: public Command {
 public:
-    CmdSetChSize(VideoState *st): Command(st) {}
+    CmdSetChSize(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 

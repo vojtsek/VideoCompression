@@ -170,18 +170,20 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
                     close(sock);
                     throw 1;
             }
+            close(sock);
     } catch (int) {
         // in case of failure fallback to address from the configuration
         if ((DATA->config.getIntValue("LISTENING_PORT")) == 0 ||
                 DATA->config.getStringValue("MY_IP") == "") {
             return -1;
         }
+
+        std::string ip = DATA->config.getStringValue("MY_IP");
         addr = networkHelper::addrstr2storage(
-                    DATA->config.getStringValue("MY_IP").c_str(),
+                    ip.c_str(),
                     DATA->config.getIntValue("LISTENING_PORT"), family);
     }
 
-    close(sock);
     // finally set the port
     networkHelper::changeAddressPort(addr,
                                      DATA->config.getIntValue("LISTENING_PORT"));
@@ -226,6 +228,7 @@ struct sockaddr_storage networkHelper::addrstr2storage(
             addr6->sin6_family = AF_UNSPEC;
         }
     }
+    addr.ss_family = family;
     return addr;
 }
 

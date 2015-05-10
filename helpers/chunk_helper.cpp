@@ -102,7 +102,7 @@ void chunkhelper::chunkProcessRoutine() {
 }
 
 void chunkhelper::processReturnedChunk(TransferInfo *ti,
-                          NetworkHandler *, VideoState *state) {
+                          NetworkHandler *, TaskHandler *state) {
     ti->time_per_kb = (double)
             (ti->sending_time + ti->receiving_time + ti->encoding_time) *
             1024 / (double) ti->chunk_size;
@@ -138,7 +138,7 @@ void chunkhelper::pushChunkSend(TransferInfo *ti) {
             DATA->chunks_to_send.push(ti);
 }
 
-int64_t chunkhelper::createChunk(VideoState *state,
+int64_t chunkhelper::createChunk(TaskHandler *state,
         TransferInfo *ti,
         double *time) {
     double retval;
@@ -166,15 +166,16 @@ int64_t chunkhelper::createChunk(VideoState *state,
             reportDebug("Creating chunk " +
                                     ti->path, 2);
             // spawn the command
-            split_duration = Measured<>::exec_measure(OSHelper::runExternal,
-                                                      out, err, state->secs_per_chunk * 2, cmd, 13, cmd,
+            std::vector<std::string> args = {cmd,
                                                             "-ss", current,
                                                             "-i", state->finfo.fpath.c_str(),
                                                             "-v", "quiet",
                                                             "-c", "copy",
                                                             "-t", chunk_duration,
                                                             "-nostdin",
-                                                            output);
+                                                            output };
+            split_duration = Measured<>::exec_measure(OSHelper::runExternal,
+                                                      out, err, state->secs_per_chunk * 2, args);
             // failure
             if ((err.find("Conversion failed") != std::string::npos) ||
                              (split_duration < 0)) {
@@ -232,7 +233,28 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                     return -1;
             }
 
+            std::string a;
+            for (uint i = 0; i < ti->run_args.size(); ++i) {
+                try {
+                    a = ti->run_args.at(i);
+                } catch (std::out_of_range) {
+                    reportError("Failed to process arguments");
+                    return -1;
+                }
+
+                if (a == "IN") {
+                    ti->run_args.at(i) = TO_PROCESS_PATH + PATH_SEPARATOR +
+                            ti->name + ti->original_extension;
+                } else if (a == "OUT") {
+                    ti->run_args.at(i) = ti->path;
+                }
+            }
             // spawns the encoding process
+            duration = Measured<>::exec_measure(
+                        OSHelper::runExternal, out, err,
+                                               ti->time_left * 2,
+                                               ti->run_args);
+            /*
             duration = Measured<>::exec_measure(
                         OSHelper::runExternal, out, err,
                         ti->time_left * 2, cmd, 13, cmd,
@@ -244,6 +266,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
                              "-nostdin",
                              "-qp", "0",
                              file_out.c_str());
+            */
             // case of failure
             if ((err.find("Conversion failed") != std::string::npos) ||
                     (duration < 0)) {
@@ -287,11 +310,11 @@ double chunkhelper::getChunkDuration(const string &fp) {
         return -1;
     }
     // gain some info about the video
-    if (OSHelper::runExternal(out, err, 10,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(), 3,
-                               DATA->config.getStringValue("FFPROBE_LOCATION").c_str(),
-                               path.c_str(), "-show_format"
-                              ) < 0) {
+    std::vector<std::string> args = {
+        DATA->config.getStringValue("FFPROBE_LOCATION"),
+        fp, "-show_format"
+    };
+    if (OSHelper::runExternal(out, err, 10, args) < 0) {
         reportError("Error while getting video information.");
         return -1;
     }

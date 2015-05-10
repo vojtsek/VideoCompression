@@ -17,7 +17,7 @@ class TransferInfo;
 namespace utilities
 {
 
-    int64_t readCmd(std::stringstream &ins, cmd_storage_t &cmds, VideoState &st);
+    int64_t readCmd(std::stringstream &ins, cmd_storage_t &cmds, TaskHandler &st);
 
     /*!
      * \brief acceptCmd reacts to user command input
@@ -28,7 +28,7 @@ namespace utilities
      * spawns the command execution in separate thread and returns.
      *
      */
-    int64_t acceptCmd(cmd_storage_t &cmds);
+    int64_t acceptCmd(cmd_storage_t &cmds, WINDOW *win);
 
     /*!
      * \brief computeDuration computes the difference between two string timestamps
@@ -91,10 +91,10 @@ namespace utilities
 
     /*!
      * \brief printOverallState prints information about encoding process
-     * \param state pointer to VideoState instance
+     * \param state pointer to TaskHandler instance
      *
      */
-    void printOverallState(VideoState *state);
+    void printOverallState(TaskHandler *state);
 
     /*!
      * \brief exitProgram terminates the program execution

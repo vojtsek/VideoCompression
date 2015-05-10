@@ -10,7 +10,7 @@
  */
 class CmdConfirmPeer: public NetworkCommand {
 public:
-    CmdConfirmPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdConfirmPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Confirm Peer");
@@ -25,7 +25,7 @@ public:
  */
 class CmdConfirmHost: public NetworkCommand {
 public:
-    CmdConfirmHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdConfirmHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Confirm Host");
@@ -39,7 +39,7 @@ public:
  */
 class CmdAskHost: public NetworkCommand {
 public:
-    CmdAskHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdAskHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Ask Host");
@@ -54,7 +54,7 @@ public:
  */
 class CmdAskPeer: public NetworkCommand {
 public:
-    CmdAskPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdAskPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Ask Peer");
@@ -69,7 +69,7 @@ public:
  */
 class CmdPingPeer: public NetworkCommand {
 public:
-    CmdPingPeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdPingPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Ping Peer");
@@ -83,7 +83,7 @@ public:
  */
 class CmdPingHost: public NetworkCommand {
 public:
-    CmdPingHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdPingHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Ping Host");
@@ -97,7 +97,7 @@ public:
  */
 class CmdGoodbyePeer: public NetworkCommand {
 public:
-    CmdGoodbyePeer(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdGoodbyePeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Goodbye Peer");
@@ -110,7 +110,7 @@ public:
  */
 class CmdGoodbyeHost: public NetworkCommand {
 public:
-    CmdGoodbyeHost(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdGoodbyeHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
     virtual std::string getName() {
         return("Goodbye Host");
@@ -123,7 +123,7 @@ public:
  */
 class CmdSayGoodbye: public NetworkCommand {
 public:
-    CmdSayGoodbye(VideoState *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    CmdSayGoodbye(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
     virtual bool execute(int64_t , struct sockaddr_storage &, void *) { return true; }
     virtual void execute();
 

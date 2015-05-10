@@ -9,7 +9,7 @@
 #include "headers/enums_types.h"
 #include "structures/WindowPrinter.h"
 #include "structures/HistoryStorage.h"
-#include "structures/VideoState.h"
+#include "structures/TaskHandler.h"
 #include "structures/singletons.h"
 #include "structures/NeighborInfo.h"
 #include "structures/TransferInfo.h"

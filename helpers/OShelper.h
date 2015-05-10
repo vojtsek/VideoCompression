@@ -55,24 +55,17 @@ namespace OSHelper {
  * \param stdo string to save stdout
  * \param stde string to save stderr
  * \param limit how many seconds before the process is killed
- * \param cmd name of the command to spawn
- * \param numargs number of parameters
+ * \param run_args arguments to pass to the spawned process
+ * first is name of the command
  * \return 0 on success
- * spawns the xternal command, parameters are given optionally
+ * spawns the external command, parameters are given optionally
  * uses fork & exec, waits for the result_type
  * stderr and stdout are saved in the corresponding strings
  */
+
     int64_t runExternal(
             std::string &o, std::string &e, int64_t limit,
-            const char *cmd, int64_t numargs, ...);
-
-    /*!
-         * \brief loadFile loads the given file into VideoState
-         * \param fpath path to the file to load
-         * \param state pointer to the VideoState structure
-         * \return zero on success
-         */
-        int64_t loadFile(const std::string fpath, VideoState *state);
+            const std::vector<std::string> run_args);
  /*!
  * \brief OSHelper::getFileSize
  * \param file path to the file

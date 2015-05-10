@@ -47,7 +47,7 @@
 #define INVERTED 9
 #define COLOR_GREY 100
 #define BG 20
-#define BG_COL COLOR_BLACK
+#define BG_COL COLOR_WHITE
 #define ST_Y 10
 #define DATA Data::getInstance("log")
 #define show(x, y) wprintw(DATA->io_data.info_win, "%15s%35s\n", x, y);

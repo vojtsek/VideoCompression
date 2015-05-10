@@ -77,6 +77,7 @@ struct TransferInfo : public Listener, Sendable {
      */
     std::string getCSV();
 
+    std::vector<std::string> run_args;
     /*!
      * \brief invoke metod called periodically, checks the processng time
      * \param handler reference to the NetworkHandler

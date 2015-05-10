@@ -33,7 +33,7 @@ namespace chunkhelper {
     /*!
      * \brief chunkhelper::processReturnedChunk handles the return of the chunk
      * \param ti pointer to TransferInfo structure holding info about the returned chunk
-     * \param state pointer to VideoState instance
+     * \param state pointer to TaskHandler instance
      * removes the chunk from periodic listener i.e. stops checking
      * also ensures that it is not queued for send, unqueues it otherwise
      * deletes the old structure associated with the chunk and
@@ -63,7 +63,7 @@ namespace chunkhelper {
      *
      */
     void processReturnedChunk(TransferInfo *ti,
-                  NetworkHandler *handler, VideoState *state);
+                  NetworkHandler *handler, TaskHandler *state);
 
     /*!
      * \brief chunkhelper::trashChunk destroys the TransferInfo structure safely
@@ -82,7 +82,7 @@ namespace chunkhelper {
      * \param time accurate length of the chunk
      * \return actual time of the process
      */
-    int64_t createChunk(VideoState *state,
+    int64_t createChunk(TaskHandler *state,
                      TransferInfo *ti,
                      double *time);
     /*!
