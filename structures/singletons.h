@@ -195,7 +195,7 @@ struct Data {
 
     //! known codecs to encode into
     static std::vector<std::string> getKnownCodecs() {
-        return {"libx264", "msmpeg"};
+        return {"libx264", "msmpeg4"};
     }
 
     //! containers which could wrap the resulting file

@@ -25,7 +25,7 @@ struct NeighborInfo : public Listener {
     int64_t processed_chunks;
     //! whether the neighbor is free
     bool free;
-    //! it's going to be remove
+    //! it's going to be removed
     bool dirty;
 
     /*!

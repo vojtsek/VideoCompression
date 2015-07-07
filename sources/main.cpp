@@ -46,8 +46,10 @@ int64_t parseOptions(int64_t argc, char **argv) {
  */
 
     int opt;
+    unsigned int pos;
     int64_t port;
     std::string addr_port, address;
+    char sep = ']';
     // use of getopt
     while ((opt = getopt(argc, argv, "sq:a:h:i:d:n:")) != -1) {
         switch (opt) {
@@ -62,21 +64,32 @@ int64_t parseOptions(int64_t argc, char **argv) {
         // port to listen superpeer
         case 'n':
             addr_port = std::string(optarg);
+            pos = addr_port.find(sep);
+            if (pos == std::string::npos) {
+                utilities::exitProgram("Invalid parameter provided.", 1);
+              }
             address = addr_port.substr(
-                        0, addr_port.find('~'));
+                        1, pos - 1);
             port = atoi(
-                        addr_port.substr(addr_port.find('~') + 1).c_str());
+                        addr_port.substr(pos + 2).c_str());
             DATA->config.setValue("SUPERPEER_ADDR", address, false);
             DATA->config.setValue("SUPERPEER_PORT", port, false);
             break;
             // host address
         case 'a':
             addr_port = std::string(optarg);
+            pos = addr_port.find(sep);
+            if (pos == std::string::npos) {
+                utilities::exitProgram("Invalid parameter provided.", 1);
+              }
             address = addr_port.substr(
-                        0, addr_port.find('~'));
+                        1, pos - 1);
             port = atoi(
-                        addr_port.substr(addr_port.find('~') + 1).c_str());
-            DATA->config.setValue("MY_IP", address, false);
+                        addr_port.substr(pos + 2).c_str());
+            reportError(address);
+            if (!address.empty()) {
+                                                        DATA->config.setValue("MY_IP", address, false);
+                                                }
             DATA->config.setValue("LISTENING_PORT", port, false);
             break;
         // configuration file location
@@ -362,6 +375,7 @@ int main(int argc, char **argv) {
             }
             lck.unlock();
     } else {
+        utilities::printOverallState(&state);
     // loops and tries read command keys
     // acceptCmd fails on F12
         try {

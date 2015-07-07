@@ -190,6 +190,7 @@ int64_t NetworkHandler::start_listening(int64_t port) {
             in6.sin6_port = htons(port);
             in6.sin6_addr.s6_addr[0] = 0;
 
+
             // open the socket
             if ((sock = socket(AF_INET6, SOCK_STREAM, 6)) == -1) {
                     reportDebug("Failed to create listening socket." + std::string(strerror(errno)), 1);
@@ -226,7 +227,7 @@ int64_t NetworkHandler::start_listening(int64_t port) {
                     return -1;
             }
     } else {
-            if (bind(sock, (struct sockaddr *) &in6, in6_size) == -1) {
+            if (bind(sock, (struct sockaddr *) &(DATA->config.my_IP.getAddress() 	), in6_size) == -1) {
                     reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
                     return -1;
             }

@@ -54,6 +54,7 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
                                             net_handler->gatherNeighbors(
                                                                                                                     DATA->config.getIntValue("TTL"),
                                                         maddr, neighbor_addr);
+                                            net_handler->obtainNeighbors();
                                     }
                 // resend the chunk and wait a while, then try again
                 chunkhelper::pushChunkSend(ti);

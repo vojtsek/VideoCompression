@@ -20,18 +20,21 @@ bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
         count = 1;
         if (!neighborCount) {
             reportError("No neighbors yet");
-            return false;
+            count = 0;
         }
 
         if (DATA->neighbors.getRandomNeighbor(addr) == 0) {
             reportDebug("No neighbors!", 3);
-            return false;
+            count = 0;
         }
 
         if (sendInt64(fd, count) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
         }
+        if (!count) {
+            return true;
+          }
 
         if (sendAdrressStruct(fd, addr) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -192,13 +195,7 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
             return false;
     }
 
-    // in case that I am working, I want more neighbors
-    // so add the neighbor instantly
-    if (DATA->state.working) {
-        handler->addNewNeighbor(false, address);
-    } else { // add just as a potential neighbor otherwise
         handler->addNewNeighbor(true, address);
-    }
 
     // adjust state
     if (neighbor_state == RESPONSE_T::ACK_FREE) {

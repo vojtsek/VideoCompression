@@ -1,6 +1,6 @@
 README
 ======
-Programme for distributed encoding of video files.
+Program for distributed encoding of video files.
 It was created as a school project.
 Faculty of Mathematics and Physics, Charles University in Prague
 Author Vojtech Hudecek 2015
