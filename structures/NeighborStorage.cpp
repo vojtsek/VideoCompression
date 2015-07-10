@@ -269,6 +269,7 @@ void NeighborStorage::assignChunk(const sockaddr_storage &addr,
     n_mtx.lock();
     NeighborInfo *ngh = _get(addr);
     if (ngh == nullptr) {
+        n_mtx.unlock();
         return;
     }
     if (assign) {
@@ -354,6 +355,22 @@ bool NeighborStorage::contains(const sockaddr_storage &addr) {
     is_contained = _contains(addr);
     n_mtx.unlock();
     return is_contained;
+}
+
+void NeighborStorage::cancelChunk(TransferInfo *ti, NetworkHandler *handler) {
+  applyToNeighbors([&](
+               std::pair<std::string, NeighborInfo *> entry) {
+      if (std::find(
+            entry.second->chunks_assigned.begin(),
+            entry.second->chunks_assigned.end(),
+            ti) != entry.second->chunks_assigned.end()) {
+          int64_t sock = handler->checkNeighbor(entry.second->address);
+          if (sock == -1) {
+                                                handler->spawnOutgoingConnection(entry.second->address, sock,
+          { CMDS::CANCEL_PEER}, true, (void *) ti);
+          }
+      }});
+return;
 }
 
 std::string NeighborStorage::_createHash(

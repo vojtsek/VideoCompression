@@ -300,6 +300,7 @@ bool CmdReturnPeer::execute(
                 chunkhelper::processReturnedChunk(ti, handler, state);
         // remove chunk association
         DATA->neighbors.assignChunk(address, false, ti);
+        DATA->neighbors.cancelChunk(ti, handler);
                 // all chunks has returned
                 if ((state->processed_chunks == state->chunk_count) &&
                     (state->chunk_count != 0)) {

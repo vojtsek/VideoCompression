@@ -8,6 +8,7 @@
 
 struct NeighborInfo;
 struct TransferInfo;
+struct NetworkHandler;
 
 /*!
  * \brief The NeighborStorage class maintains the neighbors
@@ -171,6 +172,7 @@ public:
     void applyToNeighbors(
             std::function<void (std::pair<std::string, NeighborInfo *>)> func);
 
+    void cancelChunk(TransferInfo *ti, NetworkHandler *handler);
     /*!
      * \brief clear clears the storage
      */
