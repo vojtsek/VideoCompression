@@ -91,6 +91,33 @@ public:
 };
 
 /*!
+ * \brief The CmdCancelPeer class
+ * the host informs the peer, that it no longer need to process particular chunk
+ */
+class CmdCancelPeer: public NetworkCommand {
+public:
+    CmdCancelPeer(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
+    virtual std::string getName() {
+        return("Cancel Peer");
+    }
+};
+
+/*!
+ * \brief The CmdCancelHost class
+ * the host informs the peer, that it no longer need to process particular chunk
+ */
+class CmdCancelHost: public NetworkCommand {
+public:
+    CmdCancelHost(TaskHandler *st, NetworkHandler *hndl): NetworkCommand(st, hndl) {}
+    virtual bool execute(int64_t fd, struct sockaddr_storage &address, void *data);
+    virtual std::string getName() {
+        return("Cancel Host");
+    }
+};
+
+
+/*!
  * \brief The CmdGoodbyePeer class
  * peer reads the host's port, removes the host from its database
  * and sends confirmative response
@@ -103,6 +130,7 @@ public:
         return("Goodbye Peer");
     }
 };
+
 
 /*!
  * \brief The CmdGoodbyeHost class

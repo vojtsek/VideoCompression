@@ -46,7 +46,7 @@ int64_t parseOptions(int64_t argc, char **argv) {
  */
 
     int opt;
-    unsigned int pos;
+    uint64_t pos;
     int64_t port;
     std::string addr_port, address;
     char sep = ']';
@@ -246,6 +246,8 @@ void initCommands(TaskHandler &state, NetworkHandler &net_handler) {
     DATA->net_cmds.emplace(CMDS::ASK_HOST, new CmdAskHost(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::PING_PEER, new CmdPingPeer(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::PING_HOST, new CmdPingHost(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::CANCEL_PEER, new CmdCancelPeer(&state, &net_handler));
+    DATA->net_cmds.emplace(CMDS::CANCEL_HOST, new CmdCancelHost(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::DISTRIBUTE_PEER, new CmdDistributePeer(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::DISTRIBUTE_HOST, new CmdDistributeHost(&state, &net_handler));
     DATA->net_cmds.emplace(CMDS::GATHER_PEER, new CmdGatherNeighborsPeer(&state, &net_handler));

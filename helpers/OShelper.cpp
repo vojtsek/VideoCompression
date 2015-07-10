@@ -150,7 +150,7 @@ int64_t OSHelper::runExternal(
     // obtain parameters
     char *args[numargs + 3];
     for(j = 0 ; j < numargs; ++j) {
-        char *arg = run_args[j].c_str();
+        const char *arg = run_args[j].c_str();
         args[j] = arg;
         whole_command += " ";
         whole_command += arg;

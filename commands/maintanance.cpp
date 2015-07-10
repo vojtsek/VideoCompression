@@ -138,8 +138,34 @@ bool CmdConfirmHost::execute(int64_t fd,
     return true;
 }
 
+bool CmdCancelPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
+    CMDS action = CMDS::CANCEL_HOST;
+    std::string id;
+    if (sendCmd(fd, action) == -1) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+
+    if ((id = receiveString(fd)).empty()) {
+            reportError("Error while communicating with peer." + MyAddr(address).get());
+            return false;
+    }
+    DATA->chunks_to_encode.removeIf(
+          [&](TransferInfo *t){ return t->toString() == id;});
+    reportDebug("Removing " + id, 2);
+    return true;
+}
+
+bool CmdCancelHost::execute(int64_t fd,
+                             struct sockaddr_storage &, void *data) {
+  TransferInfo *ti = (TransferInfo *) data;
+        if (sendString(fd, ti->toString())) {
+                reportError(ti->name + ": Failed to send cancellation.");
+                return false;
+        }
+        return true;
+}
 bool CmdPingHost::execute(int64_t fd, struct sockaddr_storage &address, void *) {
-    reportDebug("PONG", 5);
     // is able to do some work?
     RESPONSE_T resp = networkHelper::isFree() ? RESPONSE_T::ACK_FREE : RESPONSE_T::ACK_BUSY;
 
