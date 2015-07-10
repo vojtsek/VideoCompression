@@ -360,17 +360,17 @@ bool NeighborStorage::contains(const sockaddr_storage &addr) {
 void NeighborStorage::cancelChunk(TransferInfo *ti, NetworkHandler *handler) {
   applyToNeighbors([&](
                std::pair<std::string, NeighborInfo *> entry) {
-      if (std::find(
-            entry.second->chunks_assigned.begin(),
-            entry.second->chunks_assigned.end(),
-            ti) != entry.second->chunks_assigned.end()) {
-          int64_t sock = handler->checkNeighbor(entry.second->address);
-          if (sock == -1) {
+    for(auto tin : entry.second->chunks_assigned) {
+        if (tin->toString() == ti->toString()) {
+        int64_t sock = handler->connectPeer(&entry.second->address);
+          if (sock != -1) {
                                                 handler->spawnOutgoingConnection(entry.second->address, sock,
-          { CMDS::CANCEL_PEER}, true, (void *) ti);
+          { CMDS::CANCEL_PEER}, false, (void *) ti);
           }
-      }});
-return;
+         }
+      }
+  });
+        return;
 }
 
 std::string NeighborStorage::_createHash(

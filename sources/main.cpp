@@ -259,7 +259,7 @@ void initCommands(TaskHandler &state, NetworkHandler &net_handler) {
     DATA->net_cmds.emplace(CMDS::SAY_GOODBYE, new CmdSayGoodbye(&state, &net_handler));
 }
 
-void periodicActions(NetworkHandler &net_handler) {
+void periodicActions(NetworkHandler &net_handler, TaskHandler *state) {
     // check whether should gain some neighbors
     if (
             (DATA->neighbors.getNeighborCount() < DATA->config.getIntValue(
@@ -271,6 +271,7 @@ void periodicActions(NetworkHandler &net_handler) {
                 [&](Listener *l) { l->invoke(net_handler);  });
     // in case that some neighbors were not able to check
     DATA->neighbors.removeDirty();
+    utilities::printOverallState(state);
 }
 
 void drawCurses(WINDOW *win) {
@@ -296,7 +297,6 @@ int main(int argc, char **argv) {
     }
     WINDOW *win;
     if (argsContains(argv, "nostdin")) {
-        reportError("DD");
         DATA->state.interact = false;
     } else {
             // inits the curses variables
@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
         std::thread thr2 ([&]() {
             // invokes some action periodically
             while (1) {
-                periodicActions(net_handler);
+                periodicActions(net_handler, &state);
                 sleep(TICK_DURATION);
             }
         });

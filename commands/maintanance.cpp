@@ -152,7 +152,9 @@ bool CmdCancelPeer::execute(int64_t fd, struct sockaddr_storage &address, void *
     }
     DATA->chunks_to_encode.removeIf(
           [&](TransferInfo *t){ return t->toString() == id;});
-    reportDebug("Removing " + id, 2);
+    DATA->chunks_received.removeIf(
+          [&](TransferInfo *t){ return t->toString() == id;});
+    reportDebug("Cancelling " + id, 2);
     return true;
 }
 
