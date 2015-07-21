@@ -227,7 +227,8 @@ int64_t NetworkHandler::start_listening(int64_t port) {
                     return -1;
             }
     } else {
-            if (bind(sock, (struct sockaddr *) &(DATA->config.my_IP.getAddress() 	), in6_size) == -1) {
+        struct sockaddr_storage addr = DATA->config.my_IP.getAddress();
+            if (bind(sock, (struct sockaddr *) &addr, in6_size) == -1) {
                     reportDebug("Failed to bind the listening socket." + std::string(strerror(errno)), 1);
                     return -1;
             }

@@ -20,7 +20,8 @@ void NeighborInfo::invoke(NetworkHandler &net_handler) {
     int64_t sock;
     intervals -= TICK_DURATION;
     // decrease intervals
-    if (intervals <= 0) {
+    if (intervals <= 0 &&
+        DATA->neighbors.getNeighborCount() < DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
         // if time is up, tries to connect
         sock = net_handler.checkNeighbor(address);
         // failed to connect, going to be removed

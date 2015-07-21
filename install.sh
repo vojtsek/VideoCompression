@@ -135,7 +135,7 @@ arch=32
 uname -a | grep "x86_64"
 [[ $? == 0 ]] && arch=64
 echo "Building for ${arch}-bit"
-cp "Makefile.$arch" "Makefile"
+cp "Makefile_New.$arch" "Makefile"
 
 echo "Running make..."
 make || exit_config "Failed to run the make command"

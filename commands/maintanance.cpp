@@ -237,7 +237,7 @@ bool CmdPingPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) 
 bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
     reportDebug("GOODBYE PEER", 5);
     CMDS action = CMDS::TERM;
-    RESPONSE_T resp = RESPONSE_T::ACK_FREE;
+    // needed to follow the command mechanism
     if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
@@ -245,24 +245,11 @@ bool CmdGoodbyePeer::execute(int64_t fd, struct sockaddr_storage &address, void 
 
     // removes the neighbor and confirms
     DATA->neighbors.removeNeighbor(address);
-    if (sendResponse(fd, resp) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
     return true;
 }
 
-bool CmdGoodbyeHost::execute(int64_t fd, sockaddr_storage &address, void *) {
-    RESPONSE_T resp;
-
-    // waits for confirmation
-    if (receiveResponse(fd, resp) == -1) {
-            reportError("Error while communicating with peer." + MyAddr(address).get());
-            return false;
-    }
-    reportDebug("I have informed neighbor: " + MyAddr(address).get(), 2);
+bool CmdGoodbyeHost::execute(int64_t, sockaddr_storage &, void *) {
     return true;
-
 }
 
 void CmdSayGoodbye::execute() {

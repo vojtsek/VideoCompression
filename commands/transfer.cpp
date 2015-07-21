@@ -32,10 +32,11 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
         }
 
         // this chunk has been received already
-        if (DATA->chunks_received.contains(ti->toString())) {
+        if (DATA->chunks_received.contains(ti->toString()) ||
+            DATA->chunks_processed.find(ti->toString()) != DATA->chunks_processed.end()) {
             resp = RESPONSE_T::ABORT;
             if (sendResponse(fd, resp) == -1) {
-                reportError("Error while communicating with peer." + MyAddr(address).get());
+                reportError("Error while communicating with peeSr." + MyAddr(address).get());
                 throw 1;
             }
             reportDebug("I have this chunk already.", 2);
@@ -230,6 +231,7 @@ bool CmdReturnHost::execute(
         return false;
     }
 
+    DATA->chunks_processed.emplace(ti->toString());
     // remove the file, no longer needed
     OSHelper::rmFile(ti->path);
     chunkhelper::trashChunk(ti, true);

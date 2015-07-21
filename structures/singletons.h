@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <algorithm>
+#include <set>
 #include <unordered_map>
 #include "structures/WindowPrinter.h"
 #include "headers/enums_types.h"
@@ -181,6 +182,8 @@ struct Data {
     State state;
     //! maintains the neighbor list
     NeighborStorage neighbors;
+    //! set holds information about chunks that has been processed by this node
+    std::set<std::string> chunks_processed;
     //! queue with synchronized access, holds chunks to be sent
     SynchronizedQueue<TransferInfo> chunks_to_send;
     //! queue with synchronized access, holds chunks to be encoded
