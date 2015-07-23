@@ -28,7 +28,7 @@ function spawnClient {
   #addr="::ffff:"`lookupIPv4 $1`
 	HD=${root_dir}/run${run}/${2}_$$
 	echo $version $contact_addr
-  command="mkdir -p $HD && cd $executable_location && ./VideoCompression -a ~$2 -n ${contact_addr}~${contact_port} -h ${HD} nostdin $version && rm -rf $HD"
+  command="mkdir -p $HD && cd $executable_location && ./VideoCompression -a ~$2 -n [${contact_addr}]:${contact_port} -h ${HD} nostdin $version && rm -rf $HD"
   ssh -tt "$1" "$command" &
 }
 
@@ -112,7 +112,7 @@ for i in `seq 1 $runs`; do
   start_t=$(date +%s)
   runTest $i &
 	echo $contact_addr
-  cd $executable_location && ./VideoCompression -q $quality -a ${contact_addr}~${contact_port} -i $file -h "${HD}" nostdin $version
+  cd $executable_location && ./VideoCompression -q $quality -a "[${contact_addr}:${contact_port}]" -i $file -h "${HD}" nostdin $version
   end_t=$(date +%s)
   exec_t=$(( $end_t - $start_t ))
   killAll VideoCompression
