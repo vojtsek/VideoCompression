@@ -39,7 +39,6 @@ bool CmdAskPeer::execute(int64_t fd, struct sockaddr_storage &address, void *) {
         if (sendAdrressStruct(fd, addr) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             return false;
-            reportSuccess(MyAddr(addr).get());
         }
     } else {
         if (sendInt64(fd, count) == -1) {

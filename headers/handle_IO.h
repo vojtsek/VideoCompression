@@ -37,22 +37,9 @@ void cursToPerc();
 void cursToCmd();
 
 /*!
- * \brief cursToStatus() moves the cursor to the status y coordinate
- */
-void cursToStatus();
-
-/*!
  * \brief cursToQuestion moves the cursor to the question y coordinate
  */
 void cursToQuestion();
-
-/*!
- * \brief clearNlines clears given number of lines
- * \param n number of lines to clear
- * The given number of lines from current position is cleared,
- * the cursor is eventually at the same place as in the start
- */
-void clearNlines(int64_t n);
 
 /*!
  * \brief clearProgress clears the progress bar

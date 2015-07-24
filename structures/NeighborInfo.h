@@ -35,11 +35,6 @@ struct NeighborInfo : public Listener {
     std::string getInfo();
 
     /*!
-     * \brief NeighborInfo::printInfo prints information about neighbor
-     */
-    void printInfo();
-
-    /*!
      * \brief NeighborInfo::invoke checks the neighbor state
      * \param net_handler
      * is supposed to be invoked periodically;
@@ -54,8 +49,8 @@ struct NeighborInfo : public Listener {
     virtual std::string toString();
     virtual ~NeighborInfo() {}
 
-    NeighborInfo(const struct sockaddr_storage &addr):
-        quality(0), overall_time(0), processed_chunks(0),
+    explicit NeighborInfo(const struct sockaddr_storage &addr):
+        intervals(0), quality(0), overall_time(0), processed_chunks(0),
         free(true), dirty(false) {
         address = addr;
     }

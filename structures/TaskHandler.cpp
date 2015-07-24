@@ -10,7 +10,7 @@
 
 
 int64_t TaskHandler::loadFile(
-        const std::string fpath) {
+        const std::string &fpath) {
     std::string path(fpath), out, err, err_msg("Error loading the file: ");
     rapidjson::Document document;
     std::stringstream ssd;

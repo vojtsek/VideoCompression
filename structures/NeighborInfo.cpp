@@ -3,10 +3,6 @@
 
 #include <arpa/inet.h>
 
-void NeighborInfo::printInfo() {
-    reportStatus(getInfo());
-}
-
 std::string NeighborInfo::getInfo() {
     MyAddr mad(address);
     std::string result(mad.get() +
@@ -17,13 +13,12 @@ std::string NeighborInfo::getInfo() {
 }
 
 void NeighborInfo::invoke(NetworkHandler &net_handler) {
-    int64_t sock;
     intervals -= TICK_DURATION;
     // decrease intervals
     if (intervals <= 0 &&
         DATA->neighbors.getNeighborCount() < DATA->config.getIntValue("MAX_NEIGHBOR_COUNT")) {
         // if time is up, tries to connect
-        sock = net_handler.checkNeighbor(address);
+        int64_t sock = net_handler.checkNeighbor(address);
         // failed to connect, going to be removed
         if (sock == -1) {
             dirty = true;

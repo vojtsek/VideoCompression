@@ -80,8 +80,8 @@ int64_t reportFileProgress(const std::string &file, long desired) {
     long fs = 0, old = 0;
     // how many times try it
     int64_t tries = 20;
-    double percent;
     while (fs < desired) {
+        double percent;
         // get the file size
         fs = OSHelper::getFileSize(file);
         if (fs < 0) {
@@ -201,14 +201,6 @@ void cursToInfo() {
     move(3, 0);
 }
 
-void cursToStatus() {
-    if (!DATA->io_data.status_y) {
-        DATA->io_data.status_y = getmaxy(stdscr) - 4;
-    }
-    static int64_t status_y = DATA->io_data.status_y;
-    move(status_y, 0);
-}
-
 void cursToQuestion() {
     if (!DATA->io_data.question_y)
         DATA->io_data.question_y = getmaxy(stdscr) - 2;
@@ -231,20 +223,6 @@ void cursorToX(int64_t nx) {
     int64_t y, x;
     getyx(stdscr, y, x);
     move(y, nx);
-}
-
-void clearNlines(int64_t n) {
-    int64_t orig_x, orig_y, x, y;
-    getyx(stdscr, y, x);
-    // remembers the original position
-    orig_x = x;
-    orig_y = y;
-    // clears lines and moves to the original position
-    while(n--) {
-        move(y++, 0);
-        clrtoeol();
-    }
-    move(orig_y, orig_x);
 }
 
 bool isBackspace(wchar_t c) {

@@ -40,7 +40,8 @@ struct TaskHandler {
     //! reference to the NetworkHandler instance
     NetworkHandler *net_handler;
 
-    TaskHandler(NetworkHandler *nh): aborted(false), secs_per_chunk(0), chunk_count(0),
+    TaskHandler(NetworkHandler *nh): finfo(),
+      aborted(false), secs_per_chunk(0), chunk_count(0),
         chunk_size(DATA->config.getIntValue("CHUNK_SIZE")),
         processed_chunks(0), dir_location(DATA->config.getStringValue("WD")),
       o_format(".mkv"), o_codec("libx264"), quality("ultrafast") {
@@ -51,7 +52,7 @@ struct TaskHandler {
          * \param fpath path to the file to load
          * \return zero on success
          */
-        int64_t loadFile(const std::string fpath);
+        int64_t loadFile(const std::string &fpath);
 
     /*!
      * \brief split handles splitting of the loaded file

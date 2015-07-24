@@ -86,7 +86,6 @@ bool CmdDistributePeer::execute(int64_t fd, sockaddr_storage &address, void *) {
 }
 
 bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *data) {
-    RESPONSE_T resp;
     TransferInfo *ti = (TransferInfo *) data;
 
     // too many failed send attempts -> invalid file
@@ -109,6 +108,7 @@ bool CmdDistributeHost::execute(int64_t fd, sockaddr_storage &address, void *dat
         }
         ti->tries_sent++;
     try {
+          RESPONSE_T resp;
         if (receiveResponse(fd, resp) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
             throw 1;
@@ -243,7 +243,7 @@ bool CmdReturnPeer::execute(
         int64_t fd, sockaddr_storage &address, void *) {
     CMDS action = CMDS::RETURN_HOST;
     RESPONSE_T resp = RESPONSE_T::AWAITING;
-    TransferInfo helper_ti, *ti = nullptr;
+    TransferInfo helper_ti;
     try {
         if (sendCmd(fd, action) == -1) {
             reportError("Error while communicating with peer." + MyAddr(address).get());
@@ -256,7 +256,7 @@ bool CmdReturnPeer::execute(
         }
 
         // get pointer to corresponding TransferInfo structure
-        ti = (TransferInfo *) DATA->periodic_listeners.get(helper_ti.toString());
+        TransferInfo *ti = (TransferInfo *) DATA->periodic_listeners.get(helper_ti.toString());
         // propably was received before
         if (ti == nullptr) {
             resp = RESPONSE_T::ABORT;

@@ -73,7 +73,7 @@ public:
  */
 class CmdStart: public Command {
 public:
-    CmdStart(TaskHandler *st): Command(st) {}
+    explicit CmdStart(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -84,7 +84,7 @@ public:
  */
 class CmdSet: public Command {
 public:
-    CmdSet(TaskHandler *st): Command(st) {}
+    explicit CmdSet(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -94,7 +94,7 @@ public:
  */
 class CmdLoad: public Command {
 public:
-    CmdLoad(TaskHandler *st): Command(st) {}
+    explicit CmdLoad(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -104,7 +104,7 @@ public:
  */
 class CmdSetCodec: public Command {
 public:
-    CmdSetCodec(TaskHandler *st): Command(st) {}
+    explicit CmdSetCodec(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -114,7 +114,7 @@ public:
  */
 class CmdSetQuality: public Command {
 public:
-    CmdSetQuality(TaskHandler *st): Command(st) {}
+    explicit CmdSetQuality(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -125,7 +125,7 @@ public:
  */
 class CmdSetFormat: public Command {
 public:
-    CmdSetFormat(TaskHandler *st): Command(st) {}
+    explicit CmdSetFormat(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 
@@ -135,7 +135,7 @@ public:
  */
 class CmdSetChSize: public Command {
 public:
-    CmdSetChSize(TaskHandler *st): Command(st) {}
+    explicit CmdSetChSize(TaskHandler *st): Command(st) {}
     virtual void execute();
 };
 

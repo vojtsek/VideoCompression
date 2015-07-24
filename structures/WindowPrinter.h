@@ -51,14 +51,6 @@ public:
     int64_t add(const std::string &msg, MSG_T type);
 
     /*!
-     * \brief updateAt updates the message on the specified index
-     * \param idx index of the message
-     * \param value new value
-     * \param type new message type (i.e. color)
-     */
-    void updateAt(int64_t idx, std::string value, MSG_T type);
-
-    /*!
      * \brief changeLogLocation specifies where to store the log
      * \param log_location new log location
      */

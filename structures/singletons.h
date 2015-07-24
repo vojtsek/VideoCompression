@@ -40,8 +40,11 @@ struct State {
  * holds information regarding IO stuff
  */
 struct IO_Data {
-    IO_Data(std::string log_location): info_handler(STATIC, false, TOP, log_location),
-        status_handler(UP, true, BOTTOM, log_location) {}
+    explicit IO_Data(std::string log_location): info_handler(STATIC, false, TOP, log_location),
+        status_handler(UP, true, BOTTOM, log_location) {
+      status_win = info_win = derwin(stdscr, 0, 0, 0, 0);
+
+    }
     //! handlers corresponding to windows
     WindowPrinter info_handler;
     //! handlers corresponding to windows
@@ -248,7 +251,7 @@ struct Data {
         return coeffs[q];
     }
 
-    Data(std::string log_location) : io_data(log_location) {}
+    explicit Data(std::string log_location) : io_data(log_location) {}
 
 private:
     static std::shared_ptr<Data> inst;

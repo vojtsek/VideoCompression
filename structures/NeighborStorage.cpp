@@ -198,9 +198,8 @@ int64_t NeighborStorage::getFreeNeighbor(struct sockaddr_storage &addr) {
 }
 
 int64_t NeighborStorage::getRandomNeighbor(struct sockaddr_storage  &addr) {
-    int count;
     // no neighbors at all
-    if (!(count = getNeighborCount())) {
+    if (!getNeighborCount()) {
         return 0;
     }
     // get random neighbor

@@ -117,7 +117,7 @@ struct MyAddr : public Sendable {
      * Transfers field by field.
      */
     virtual int64_t receive(int64_t fd);
-    MyAddr(const struct sockaddr_storage &addr);
+    explicit MyAddr(const struct sockaddr_storage &addr);
     MyAddr() {}
     virtual ~MyAddr() {}
 };

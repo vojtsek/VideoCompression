@@ -68,17 +68,6 @@ bool networkHelper::cmpStorages(
     return false;
 }
 
-bool networkHelper::addrIn(
-        const struct sockaddr_storage &addr,
-            neighbor_storageT &list) {
-    // traverse the list and look for a match
-    for (auto &n : list) {
-        if (cmpStorages(n.second->address, addr))
-            return true;
-    }
-    return false;
-}
-
 bool networkHelper::isFree() {
     int64_t can_accept = DATA->config.getIntValue("MAX_ACCEPTED_CHUNKS") -
             DATA->chunks_received.getSize();
@@ -119,34 +108,9 @@ int64_t networkHelper::getHostAddr(
     return -1;
 }
 
-int64_t networkHelper::getPeerAddr(
-        struct sockaddr_storage &addr, int64_t fd) {
-    struct sockaddr_in *in4p = (struct sockaddr_in *) &addr;
-    struct sockaddr_in6 *in6p = (struct sockaddr_in6 *) &addr;
-    bzero(&in4p->sin_addr, INET_ADDRSTRLEN);
-    bzero(&in6p->sin6_addr, INET6_ADDRSTRLEN);
-    socklen_t size4 = sizeof (*in4p), size6 = sizeof(*in6p);
-    // gets the IP address using the provided file descriptor
-    // tries both IPv4 and IPv6
-    if (getpeername(fd, (struct sockaddr *) in4p, &size4) == -1) {
-        reportDebug("Not an IPv4 addr.", 4);
-    } else {
-        addr.ss_family = AF_INET;
-        return 0;
-    }
-    if (getpeername(fd, (struct sockaddr *) in6p, &size6) == -1) {
-        reportDebug("Not an IPv6 addr.", 4);
-    } else {
-        addr.ss_family = AF_INET6;
-        return 0;
-    }
-    reportDebug("Failed to get host's address.", 2);
-    return -1;
-}
-
 int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         struct sockaddr_storage &addr, NetworkHandler *handler) {
-    int64_t sock, family;
+    int64_t family;
 
     if (DATA->config.IPv4_ONLY) {
         family = AF_INET;
@@ -158,6 +122,7 @@ int64_t networkHelper::getMyAddress(struct sockaddr_storage &neighbor_addr,
         if (DATA->config.is_superpeer) {
             throw 1;
         }
+        int64_t sock;
             // connect to it
             if ((sock = handler->checkNeighbor(neighbor_addr)) == -1) {
                     reportDebug("Error getting host address.", 2);

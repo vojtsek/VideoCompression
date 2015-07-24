@@ -23,9 +23,9 @@ void NetworkHandler::spawnOutgoingConnection(struct sockaddr_storage addri,
         CMDS action;
         int64_t fd = fdi;
         struct sockaddr_storage addr = addri;
-        bool response;
 				// traverse the commands to be spawned on the peer side
         for (auto cmd : cmds) {
+            bool response;
 						// sendCmd handles communication
             if ((sendCmd(fd, cmd)) == -1) {
                 reportDebug("Failed to send command.", 2);
@@ -97,21 +97,19 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                                     int64_t fdi, bool async) {
     std::thread handling_thread([=]() {
         CMDS action;
-        ssize_t r;
         int64_t fd = fdi, port;
         struct sockaddr_storage addr = addri;
-        bool response;
         if (receiveInt64(fd, port) == -1) {
             reportDebug("Failed to receive port.", 2);
         } else {
             networkHelper::changeAddressPort(
                         addr, port);
         // read action to process
-        while ((r = read(fd, &action, sizeof (action)))
+        while (read(fd, &action, sizeof (action))
                == sizeof(action)) {
-        response = true;
         // try to process the command
        try {
+              bool response = true;
            if (DATA->net_cmds.find(action) == DATA->net_cmds.end()) {
                response = false;
                if (sendSth(response, fd) == -1) {
@@ -141,7 +139,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
                reportDebug("Failed to process: " + cmd->getName(), 3);
                throw exception();
            }
-        }catch (exception e) {
+        }catch (exception &e) {
            reportDebug("Error while communicating: Unrecognized command."
                        + std::string(e.what()), 1);
            break;
@@ -162,7 +160,7 @@ void NetworkHandler::spawnIncomingConnection(struct sockaddr_storage addri,
 }
 
 int64_t NetworkHandler::start_listening(int64_t port) {
-    int64_t sock, accepted, ip6_only = 0, reuse = 1;
+    int64_t sock, ip6_only = 0, reuse = 1;
     struct sockaddr_in6 in6;
     struct sockaddr_in in4;
     // initialize the storage structure
@@ -242,6 +240,7 @@ int64_t NetworkHandler::start_listening(int64_t port) {
 
     // waits for connection, handles it in separate thread
     for (;;) {
+        int64_t accepted;
         if ((accepted = accept(sock, (struct sockaddr *) &peer_addr, &psize)) == -1) {
             reportDebug("Failed to accept connection." + std::string(strerror(errno)), 1);
             continue;

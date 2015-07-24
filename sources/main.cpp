@@ -382,7 +382,7 @@ int main(int argc, char **argv) {
     // acceptCmd fails on F12
         try {
                     do{ } while (!utilities::acceptCmd(DATA->cmds, win));
-        } catch (exception e) {
+        } catch (exception &e) {
                     printw(e.what());
                 }
     }

@@ -104,10 +104,6 @@ void CmdSetChSize::execute() {
     size_t nsize = DATA->config.getIntValue("CHUNK_SIZE");
     std::stringstream ss(in), msg;
     ss >> nsize;
-    if (nsize <= 0) {
-        reportError("Should be number");
-        return;
-    }
     // is supposed to be stored in bytes
     state->changeChunkSize(nsize * 1024);
     msg << "Chunk size set to: " << nsize << " kB";

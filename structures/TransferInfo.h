@@ -119,20 +119,20 @@ struct TransferInfo : public Listener, Sendable {
               std::string ji, std::string n, std::string oe, std::string de,
               std::string p, std::string oc);
 
-    TransferInfo(): addressed(false) {
+    TransferInfo(): addressed(false), time_per_kb(0) {
         init(0, "", "", "", "", "", "");
     }
 
     TransferInfo(struct sockaddr_storage addr, int64_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
-                 std::string p, std::string oc): addressed(true) {
+                 std::string p, std::string oc): addressed(true), time_per_kb(0) {
         init(size, ji, n, oe, de, p, oc);
         src_address = addr;
     }
 
     TransferInfo(int64_t size,
                  std::string ji, std::string n, std::string oe, std::string de,
-                 std::string p, std::string oc): addressed(false) {
+                 std::string p, std::string oc): addressed(false), time_per_kb(0) {
         init(size, ji, n, oe, de, p, oc);
     }
 

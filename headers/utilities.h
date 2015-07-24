@@ -31,21 +31,13 @@ namespace utilities
     int64_t acceptCmd(cmd_storage_t &cmds, WINDOW *win);
 
     /*!
-     * \brief computeDuration computes the difference between two string timestamps
-     * \param t1 timestamp1
-     * \param t2 timestamp2
-     * \return numeric difference of the timestamps
-     */
-    int64_t computeDuration(std::string t1, std::string t2);
-
-    /*!
      * \brief extract extracts text from string from the given word
      * \param text text from which should extract
      * \param from words to extract from
      * \param count how many words should extract
      * \return vector of extracted values
      */
-    std::vector<std::string> extract(const std::string text, const std::string from, int64_t count);
+    std::vector<std::string> extract(const std::string &text, const std::string &from, int64_t count);
 
     /*!
      * \brief split splits the given into parts
@@ -75,19 +67,6 @@ namespace utilities
      * \return justified string
      */
     std::string formatString(std::string str1, std::string str2);
-
-    /*!
-     * \brief pathFromChunk creates path to file associated with the structure
-     * \param ti structure to obtain path from
-     * \param which what type of path
-     * \return created path
-     */
-    std::string pathFromChunk(TransferInfo *ti,
-                              const std::string &which);
-    /*!
-     * \brief listCmds print the list of available commands
-     */
-    void listCmds();
 
     /*!
      * \brief printOverallState prints information about encoding process

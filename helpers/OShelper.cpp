@@ -119,7 +119,7 @@ int64_t OSHelper::mkDir(std::string location, bool destroy) {
             // if destroy, the existing direcotry is removed recursively
             // end with error otherwise
             if (destroy) {
-                if (rmrDir(location.c_str(), false) == -1) {
+                if (rmrDir(location, false) == -1) {
                     return -1;
                 }
                 if (mkdir(location.c_str(), 0700) == -1) {
@@ -135,7 +135,7 @@ int64_t OSHelper::mkDir(std::string location, bool destroy) {
 
 int64_t OSHelper::runExternal(
         std::string &stdo, std::string &stde,
-        int64_t limit, const std::vector<std::string> run_args) {
+        int64_t limit, const std::vector<std::string> &run_args) {
     pid_t pid;
     int pd_o[2], pd_e[2], j;
     int64_t numargs = run_args.size();

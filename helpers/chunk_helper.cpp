@@ -20,10 +20,10 @@
 using namespace std;
 
 void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
-    TransferInfo *ti;
     struct sockaddr_storage free_address;
     // should run in separate thread
     while (true) {
+        TransferInfo *ti;
         // pops one chunk to send
         ti = DATA->chunks_to_send.pop();
         // assure no duplicates
@@ -95,8 +95,8 @@ void chunkhelper::chunkSendRoutine(NetworkHandler *net_handler) {
 }
 
 void chunkhelper::chunkProcessRoutine() {
-    TransferInfo *ti;
     while (1) {
+        TransferInfo *ti;
         ti = DATA->chunks_to_encode.pop();
         chunkhelper::encodeChunk(ti);
     }
@@ -158,7 +158,7 @@ int64_t chunkhelper::createChunk(TaskHandler *state,
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
 
         OSHelper::rmFile(ti->path);
-    if (!OSHelper::prepareDir(SPLITTED_PATH, false) == -1) {
+    if (OSHelper::prepareDir(SPLITTED_PATH, false) == -1) {
         reportError("Failed to prepare directory while creating " +
                     ti->name);
         return -1;
@@ -302,9 +302,7 @@ int64_t chunkhelper::encodeChunk(TransferInfo *ti) {
 
 double chunkhelper::getChunkDuration(const string &fp) {
     std::string out, err, path = fp;
-    std::string err_msg = "Error while getting video information";
     rapidjson::Document document;
-    double duration;
     // is file ok?
     if (OSHelper::checkFile(path) == -1){
         reportError("Loading the file " + path + " failed");
@@ -328,6 +326,7 @@ double chunkhelper::getChunkDuration(const string &fp) {
     std::string dur_str(utilities::extract(
                             out, "duration", 1).at(0));
     try {
+      double duration;
             std::stringstream ssd(dur_str.substr(dur_str.find("=") + 1));
             ssd >> duration;
             return duration;

@@ -295,11 +295,10 @@ struct SynchronizedQueue {
      * \return true if item is contained in the queue
      */
     bool contains(T *item) {
-        bool cont = false;
         std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
         lck.lock();
         // true if contained
-        cont = !(std::find(
+        bool cont = !(std::find(
                     queue.begin(), queue.end(), item) == queue.end());
         lck.unlock();
         return cont;

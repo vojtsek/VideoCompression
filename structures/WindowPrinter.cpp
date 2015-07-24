@@ -52,11 +52,6 @@ void WindowPrinter::clear() {
     DATA->m_data.report_mtx.unlock();
 }
 
-void WindowPrinter::updateAt(int64_t idx, std::string value, MSG_T type) {
-    q.at(idx) = std::make_pair<>(value, type);
-    print();
-}
-
 void WindowPrinter::setLength(int64_t l) {
     this->length = l;
 }
@@ -81,7 +76,7 @@ void WindowPrinter::print() {
     wbkgd(win, COLOR_PAIR(BG));
     wmove(win, 0, 0);
     werase(win);
-    int64_t y, col;
+    int64_t y;
     if (start == BOTTOM) {
         // start from the bottom
         y = length - 2;
@@ -104,6 +99,7 @@ void WindowPrinter::print() {
     int64_t i = length;
     // shows the length or until reaches the end
     while ((i-- > 0) && (s != e)) {
+        int64_t col;
         // loads the data and adds to output
         auto a = *s++;
         // first item is bold

@@ -6,9 +6,8 @@
 int64_t sendInt64(int64_t fd, int64_t i) {
     // to network byte order
     i = htonl(i);
-    int64_t w;
     // check the size written
-    if ((w = write(fd, &i, sizeof (int64_t ))) !=
+    if (write(fd, &i, sizeof (int64_t)) !=
             sizeof(int64_t )) {
         reportDebug("Problem occured while sending the data.", 1);
         return -1;
@@ -18,9 +17,8 @@ int64_t sendInt64(int64_t fd, int64_t i) {
 
 int64_t receiveInt64(int64_t fd, int64_t &i) {
     int64_t ir;
-    int64_t r;
     // should read exactly size of int
-     if ((r = read(fd, &ir, sizeof (int64_t ))) !=
+     if (read(fd, &ir, sizeof (int64_t )) !=
              sizeof(int64_t )) {
         reportDebug("Problem occured while accepting int64.", 1);
         return (-1);
@@ -125,11 +123,11 @@ std::string receiveString(int64_t fd) {
 }
 
 int64_t receiveFile(int64_t fd, std::string fn) {
-    int64_t fsize, read_bytes = 0, r, w;
-    int64_t o_file, to_receive;
+    int64_t read_bytes = 0, o_file;
     std::string tmp_fn = fn + ".tmp";
-    char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
+      char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
+      int64_t fsize, r, to_receive;
         if (OSHelper::isFileOk(fn)) {
             reportDebug(fn + ": File exists!", 2);
             return -1;
@@ -154,7 +152,7 @@ int64_t receiveFile(int64_t fd, std::string fn) {
                         to_receive = (fsize - read_bytes > DATA->config.getIntValue("TRANSFER_BUF_LENGTH")) ?
                     DATA->config.getIntValue("TRANSFER_BUF_LENGTH") : fsize -read_bytes;
             // writes read bytes
-            if ((w = write(o_file, buf, r)) == -1) {
+            if (write(o_file, buf, r) == -1) {
                 reportDebug("Error; received " +
                             utilities::m_itoa(read_bytes), 2);
                 throw 1;
@@ -186,9 +184,9 @@ int64_t receiveFile(int64_t fd, std::string fn) {
 
 int64_t sendFile(int64_t fd, std::string fn) {
     int64_t file;
-    int64_t fsize, to_sent = 0, r, w;
-    char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
     try {
+      char buf[DATA->config.getIntValue("TRANSFER_BUF_LENGTH")];
+      int64_t fsize, to_sent = 0, r;
         // opens file
         if ((file = open(fn.c_str(), O_RDONLY)) == -1) {
             reportDebug(fn + ": Failed to open.", 2);
@@ -212,6 +210,7 @@ int64_t sendFile(int64_t fd, std::string fn) {
         while ((r = read(file, buf,
                          DATA->config.getIntValue("TRANSFER_BUF_LENGTH"))) > 0) {
             // write it to the file descriptor, decrease counter accordingly
+            int64_t w;
             if ((w = write(fd, buf, r)) != -1) {
                 to_sent -= w;
             } else {

@@ -65,7 +65,7 @@ namespace OSHelper {
 
     int64_t runExternal(
             std::string &o, std::string &e, int64_t limit,
-            const std::vector<std::string> run_args);
+            const std::vector<std::string> &run_args);
  /*!
  * \brief OSHelper::getFileSize
  * \param file path to the file

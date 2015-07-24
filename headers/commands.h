@@ -23,7 +23,7 @@ protected:
      */
     TaskHandler *state;
 public:
-    Command(TaskHandler *st) {
+    explicit Command(TaskHandler *st) {
         state = st;
     }
     /*!

@@ -36,14 +36,6 @@ std::string storage2addrstr(const struct sockaddr_storage &addr);
 int64_t getHostAddr(struct sockaddr_storage &addr, int64_t fd);
 
 /*!
- * \brief getPeerAddr loads the address on which the peer is communicating into the given structure
- * \param addr structure to load the address
- * \param fd file descriptor of the connection
- * \return zero on success
- */
-int64_t getPeerAddr(struct sockaddr_storage &addr, int64_t fd);
-
-/*!
  * \brief getMyAddress loads the address on which the node is communicating
  * \param neighbor neighbor to connect in order to obtain address
  * \param addr structure to receive the address
@@ -62,15 +54,6 @@ int64_t getMyAddress(struct sockaddr_storage &neighbor,
  * \return zero on success
  */
 int64_t getSuperPeerAddr(struct sockaddr_storage &addr);
-
-/*!
- * \brief addrIn determines, whether the given address is contained in the list
- * \param st address structure to look for
- * \param list list of structures
- * \return true if address has been found in the list
- */
-bool addrIn(const struct sockaddr_storage &st,
-            neighbor_storageT &list);
 
 /*!
  * \brief cmpStorages compares two sockaddr structures of same family

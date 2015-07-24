@@ -108,16 +108,6 @@ void utilities::exitProgram(const std::string &msg, int64_t retval) {
     exit(retval);
 }
 
-void utilities::listCmds() {
-    printw("List of available commands:\n");
-    show("help", "[command_name]");
-    show("show", "parametres|jobs|neighbors");
-    show("load", "/path/to/file");
-    show("set", "[parameter=new_value[,...]]");
-    show("start", "");
-    show("quit", "");
-}
-
 void utilities::printOverallState(TaskHandler *state) {
     MSG_T type = PLAIN;
     // all chunks were delivered
@@ -161,7 +151,6 @@ void utilities::printOverallState(TaskHandler *state) {
 
 std::string utilities::m_itoa(int64_t n) {
     std::string res;
-    int64_t nn;
     bool negative = false;
     // handle negative values
     if (n < 0) {
@@ -174,6 +163,7 @@ std::string utilities::m_itoa(int64_t n) {
     }
     // do the conversion
     while(n > 0) {
+        int64_t nn;
         nn = n % 10;
         n /= 10;
         res.push_back('0' + nn);
@@ -187,11 +177,7 @@ std::string utilities::m_itoa(int64_t n) {
     return res;
 }
 
-int64_t utilities::computeDuration(std::string t1, std::string t2) {
-    return (atoll(t1.c_str()) - atoll(t2.c_str()));
-}
-
-vector<string> utilities::extract(const std::string text, const std::string from, int64_t count) {
+vector<string> utilities::extract(const std::string &text, const std::string &from, int64_t count) {
     vector<std::string> result;
     std::string word;
     std::stringstream ss(text);
@@ -220,13 +206,6 @@ std::string utilities::formatString(
     char value[BUF_LENGTH];
     snprintf(value, BUF_LENGTH, "%20s%35s", str1.c_str(), str2.c_str());
     return std::string(value);
-}
-
-std::string utilities::pathFromChunk(
-        TransferInfo *ti,const string &which) {
-    return std::string(DATA->config.getStringValue("WD") + PATH_SEPARATOR +
-                     ti->job_id + PATH_SEPARATOR + which + PATH_SEPARATOR + ti->name
-                );
 }
 
 std::string utilities::getTimestamp() {
