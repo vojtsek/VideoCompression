@@ -11,7 +11,7 @@ MAKEFILE      = Makefile
 ####### Compiler, tools and options
 
 CXX           = g++
-CXXFLAGS      = -m32 -pipe -std=c++11 -pthread -fpermissive -g -Wall -W -fPIE
+CXXFLAGS      = -m32 -pipe -std=c++11 -pthread -fpermissive -g -W -fPIE
 INCPATH       = -I.
 LINK          = g++
 LFLAGS        = -m32

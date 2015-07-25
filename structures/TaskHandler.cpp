@@ -4,6 +4,7 @@
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
 
+#include <inttypes.h>
 #include <fstream>
 #include <algorithm>
 #include <dirent.h>
@@ -183,7 +184,7 @@ int64_t TaskHandler::split() {
     char cmd[BUF_LENGTH], chunk_duration[BUF_LENGTH];
     snprintf(cmd, BUF_LENGTH, "%s",
              DATA->config.getStringValue("FFMPEG_LOCATION").c_str());
-    snprintf(chunk_duration, BUF_LENGTH, "%lu", secs_per_chunk);
+    snprintf(chunk_duration, BUF_LENGTH, "%" PRId64, secs_per_chunk);
     std::string output = SPLITTED_PATH + PATH_SEPARATOR +
                 job_id + "_%d" + finfo.extension;
     // spawn the splitting command
@@ -230,7 +231,7 @@ int64_t TaskHandler::split() {
 
             break;
         }
-        snprintf(chunk_id, BUF_LENGTH, "%s_%lu", job_id.c_str(), i);
+        snprintf(chunk_id, BUF_LENGTH, "%s_%" PRId64, job_id.c_str(), i);
         chunk_name = std::string(chunk_id);
         // creates new TransferInfo structure
         TransferInfo *ti = new TransferInfo(0, job_id, chunk_name,
@@ -302,7 +303,7 @@ int64_t TaskHandler::join() {
     // create the joining text file
 
     for (int64_t i = 0; i < chunk_count; ++i) {
-        snprintf(fn, BUF_LENGTH, "%s_%lu", job_id.c_str(), i);
+        snprintf(fn, BUF_LENGTH, "%s_%" PRId64, job_id.c_str(), i);
         file = RECEIVED_PATH + PATH_SEPARATOR + fn + o_format;
         if (OSHelper::getFileSize(file) <= 0) {
             reportError("file: '" + file + "'' is not ok, failed.");

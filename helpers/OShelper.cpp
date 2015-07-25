@@ -150,10 +150,10 @@ int64_t OSHelper::runExternal(
     // obtain parameters
     char *args[numargs + 3];
     for(j = 0 ; j < numargs; ++j) {
-        const char *arg = run_args[j].c_str();
-        args[j] = arg;
+        args[j] = new char[255];
+        snprintf(args[j], 255, "%s", run_args[j].c_str());
         whole_command += " ";
-        whole_command += arg;
+        whole_command += args[j];
     }
         reportDebug("Spawning '" + whole_command + "'", 2);
         args[j] = nullptr;
@@ -239,6 +239,9 @@ int64_t OSHelper::runExternal(
         close(pd_e[0]);
         break;
     }
+    for(j = 0 ; j < numargs; ++j) {
+        delete args[j];
+      }
     return 0;
 }
 

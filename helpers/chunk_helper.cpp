@@ -149,7 +149,7 @@ int64_t chunkhelper::createChunk(TaskHandler *state,
     char chunk_duration[BUF_LENGTH], output[BUF_LENGTH],
          current[BUF_LENGTH], msg[BUF_LENGTH], cmd[BUF_LENGTH];
 
-    snprintf(chunk_duration, BUF_LENGTH, "%lu",
+    snprintf(chunk_duration, BUF_LENGTH, "%" PRId64,
              state->secs_per_chunk);
     snprintf(current, BUF_LENGTH, "%f", ti->start);
     snprintf(output, BUF_LENGTH, "%s",

@@ -32,6 +32,7 @@
 #include <thread>
 #include <string.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 using namespace std;
 
@@ -178,7 +179,7 @@ void printProgress(double percent) {
     cursToPerc();
     clrtoeol();
     // prints number of percent done
-    printw("(%lu%%)", (int) (percent * 100));
+    printw("(%" PRId64 "%%)", (int) (percent * 100));
     attron(COLOR_PAIR(CYANALL));
     // shows the filebar
     for(int64_t i = 0; i < percent * (getmaxx(stdscr) - 7); ++i)
